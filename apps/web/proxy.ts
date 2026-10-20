@@ -9,7 +9,8 @@ const PUBLIC_PATHS = ["/login", "/signup", "/auth", "/api/public", "/api/health"
  * and server action verifies the session again (lib/auth.ts).
  */
 export async function proxy(request: NextRequest) {
-  const isPublic = PUBLIC_PATHS.some((p) => request.nextUrl.pathname.startsWith(p));
+  // The marketing homepage is public; every other path is matched by prefix.
+  const isPublic = request.nextUrl.pathname === "/" || PUBLIC_PATHS.some((p) => request.nextUrl.pathname.startsWith(p));
   const devAuth = process.env.DEV_AUTH === "true" && process.env.NODE_ENV !== "production" && !process.env.VERCEL;
 
   if (devAuth) {
