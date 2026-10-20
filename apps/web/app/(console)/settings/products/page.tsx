@@ -1,5 +1,6 @@
 import { CATEGORY_LABELS, formatPence, inStock, margin, PRODUCT_CATEGORIES, SPEC_FIELDS, type ProductCategory } from "@goinstall/core";
 import { ActionForm, SubmitButton } from "@/components/forms";
+import { ProductLibrary } from "@/components/product-library";
 import { PriceFileImport } from "@/components/price-file-import";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -147,6 +148,16 @@ export default async function ProductsSettingsPage() {
               </details>
             </li>
           </ul>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex-col items-start">
+          <CardTitle>Add from the product library</CardTitle>
+          <p className="text-sm text-ink-3">Over 21,000 panels with their datasheet values. Adding one copies it into your catalogue; set your own prices and suppliers after.</p>
+        </CardHeader>
+        <CardContent>
+          <ProductLibrary />
         </CardContent>
       </Card>
 

@@ -7,13 +7,16 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "reset-dev": "tsx scripts/reset-dev.ts",
-    "codegen": "kysely-codegen --dialect postgres --include-pattern 'public.*' --out-file src/schema.ts --url ${CODEGEN_DATABASE_URL:-postgres://postgres:postgres@localhost:5432/goinstall_dev}"
+    "codegen": "kysely-codegen --dialect postgres --include-pattern 'public.*' --out-file src/schema.ts --url ${CODEGEN_DATABASE_URL:-postgres://postgres:postgres@localhost:5432/goinstall_dev}",
+    "build-library": "tsx scripts/build-library.ts",
+    "load-library": "tsx scripts/load-library.ts"
   },
   "devDependencies": {
     "@types/pg": "^8.15.0",
     "kysely-codegen": "^0.20.0",
     "pg": "^8.16.0",
-    "tsx": "^4.23.15"
+    "tsx": "^4.23.15",
+    "@goinstall/core": "workspace:*"
   },
   "dependencies": {
     "kysely": "^0.29.7",

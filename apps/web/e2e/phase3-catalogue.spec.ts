@@ -40,3 +40,20 @@ test("office staff can't open product settings", async ({ page }) => {
   await page.goto("/settings/products");
   await expect(page).not.toHaveURL(/settings\/products/);
 });
+
+test("admin adds a panel from the product library with its datasheet values", async ({ page }) => {
+  await signInAs(page, "Alex Morgan");
+  await page.goto("/settings/products");
+  await page.getByLabel("Search panels by make, model or watts").fill("jinko JKM445M-60HL4");
+  const results = page.getByRole("region", { name: "Library results" });
+  await expect(results.getByRole("button", { name: "Add Jinko Solar JKM445M-60HL4 445 W" })).toBeVisible();
+  await results.getByRole("button", { name: "Add Jinko Solar JKM445M-60HL4 445 W" }).click();
+  await expect(page.getByText(/Jinko Solar JKM445M-60HL4 445 W added\. The library has no dimensions/)).toBeVisible();
+  await expect(results.getByRole("row", { name: /^Jinko Solar JKM445M-60HL4 445 .*In catalogue/ })).toBeVisible();
+  // It's now an ordinary catalogue product, with the library's Voc and temperature coefficient.
+  await expect(page.getByRole("cell", { name: "Jinko Solar JKM445M-60HL4 445 W" }).first()).toBeVisible();
+  // Adding it twice is refused.
+  await page.reload();
+  await page.getByLabel("Search panels by make, model or watts").fill("JKM445M-60HL4");
+  await expect(page.getByRole("region", { name: "Library results" }).getByText("In catalogue").first()).toBeVisible();
+});

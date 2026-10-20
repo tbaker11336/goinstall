@@ -55,3 +55,19 @@ describe("catalogue RLS", () => {
     expect(await errorCode(asUser(a.users.admin, (c) => c.query("insert into products (category, name, model) values ('panel', 'Copy', 'p1')")))).toBe("23505");
   });
 });
+
+describe("product library", () => {
+  it("is readable by everyone signed in, written only by the loader, and copyable into a catalogue", async () => {
+    const libId = await asSuperuser(async (c) => (await c.query("insert into product_library (category, source, make, model, name, specs) values ('panel', 'test', 'Acme', 'L1', 'Acme L1 400 W', '{\"watts_peak\": 400}') returning id")).rows[0].id);
+    for (const role of ["admin", "installer"] as const) {
+      const rows = await asUser(a.users[role], async (c) => (await c.query("select name, search from product_library where id = $1", [libId])).rows);
+      expect(rows).toEqual([{ name: "Acme L1 400 W", search: "acme l1 400" }]);
+    }
+    const write = asUser(a.users.admin, (c) => c.query("insert into product_library (category, source, make, model, name) values ('panel', 'test', 'Acme', 'L2', 'x')"));
+    expect(await errorCode(write)).toBe("42501");
+    const edit = await asUser(a.users.admin, async (c) => (await c.query("update product_library set name = 'changed' where id = $1", [libId])).rowCount);
+    expect(edit).toBe(0);
+    const copied = await asUser(a.users.admin, async (c) => (await c.query("insert into products (category, name, make, model, library_id) values ('panel', 'Acme L1 400 W', 'Acme', 'L1', $1) returning library_id", [libId])).rows[0].library_id);
+    expect(copied).toBe(libId);
+  });
+});

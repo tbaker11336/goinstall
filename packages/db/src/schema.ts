@@ -460,6 +460,20 @@ export interface PriceFileImports {
   supplier_id: string | null;
 }
 
+export interface ProductLibrary {
+  category: ProductCategory;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  make: string;
+  model: string;
+  name: string;
+  search: Generated<string | null>;
+  source: string;
+  source_version: string | null;
+  specs: Generated<Json>;
+  updated_at: Generated<Timestamp>;
+}
+
 export interface Products {
   archived_at: Timestamp | null;
   category: ProductCategory;
@@ -469,6 +483,7 @@ export interface Products {
   datasheet_file_id: string | null;
   id: Generated<string>;
   legacy_id: string | null;
+  library_id: string | null;
   make: string | null;
   model: string;
   name: string;
@@ -805,6 +820,7 @@ export interface DB {
   payments: Payments;
   photo_categories: PhotoCategories;
   price_file_imports: PriceFileImports;
+  product_library: ProductLibrary;
   products: Products;
   projects: Projects;
   proposal_lines: ProposalLines;

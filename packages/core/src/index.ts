@@ -6,6 +6,7 @@ export { routeLength, voltDropPercent, sizeCable, maxDemand, parseAmps, chargerC
 export * from "./rules";
 export * from "./solar-design";
 export * from "./site-plan";
+export * from "./library";
 export * from "./proposal";
 export * from "./kit";
 export * from "./schedule";

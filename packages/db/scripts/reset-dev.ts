@@ -1,6 +1,7 @@
 // Recreate the local development database: Supabase stand-in, migrations and
 // demo data. Usage: pnpm --filter @goinstall/db reset-dev [database-name]
 import pg from "pg";
+import { loadProductLibrary } from "../src/library";
 import { applyMigrations, withDatabase } from "../src/migrate";
 import { seed } from "../src/seed";
 
@@ -20,7 +21,8 @@ const db = new pg.Client({ connectionString: url });
 await db.connect();
 const files = await applyMigrations(db);
 await seed(db);
+const library = await loadProductLibrary(db);
 await db.end();
 
-console.log(`Reset ${dbName}: ${files.length} migrations applied, demo data seeded.`);
+console.log(`Reset ${dbName}: ${files.length} migrations applied, demo data seeded, ${library} library products.`);
 console.log(`DATABASE_URL=${url}`);

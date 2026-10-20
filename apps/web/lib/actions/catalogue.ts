@@ -229,3 +229,55 @@ export async function importPriceFileAction(input: { csv: string; fileName: stri
     return { message: `Imported: ${created} new, ${updated} updated, ${prices} supplier prices${skipped}.`, created, updated, prices, skipped: errors.length };
   }, [...ADMIN]);
 }
+
+export interface LibraryHit {
+  id: string;
+  name: string;
+  make: string;
+  model: string;
+  specs: Record<string, number>;
+  sourceVersion: string | null;
+  inCatalogue: boolean;
+}
+
+/** Search the shared product library by make, model or watts (every word must match). */
+export async function searchLibraryAction(query: string): Promise<{ hits: LibraryHit[]; total: number }> {
+  const words = String(query ?? "").toLowerCase().split(/\s+/).map((w) => w.replace(/[%_\\]/g, "")).filter(Boolean).slice(0, 6);
+  if (!words.length || words.join("").length < 2) return { hits: [], total: 0 };
+  return asUser(async (tx) => {
+    let q = tx.selectFrom("product_library as l");
+    for (const w of words) q = q.where("l.search", "like", `%${w}%`);
+    const [rows, count] = await Promise.all([
+      q
+        .leftJoin("products as p", (j) => j.onRef("p.library_id", "=", "l.id").on("p.archived_at", "is", null))
+        .select(["l.id", "l.name", "l.make", "l.model", "l.specs", "l.source_version", "p.id as product_id"])
+        .orderBy("l.make")
+        .orderBy(sql`(l.specs ->> 'watts_peak')::numeric`, "desc")
+        .orderBy("l.model")
+        .limit(30)
+        .execute(),
+      q.select((eb) => eb.fn.countAll<string>().as("n")).executeTakeFirstOrThrow(),
+    ]);
+    return {
+      total: Number(count.n),
+      hits: rows.map((r) => ({ id: r.id, name: r.name, make: r.make, model: r.model, specs: r.specs as Record<string, number>, sourceVersion: r.source_version, inCatalogue: Boolean(r.product_id) })),
+    };
+  }, [...ADMIN]);
+}
+
+/** Copy a library product into this company's catalogue with its datasheet values. */
+export async function addFromLibraryAction(libraryId: string): Promise<ActionResult> {
+  if (!z.uuid().safeParse(libraryId).success) return { error: "Product not found" };
+  try {
+    return await asUser(async (tx) => {
+      const l = await tx.selectFrom("product_library").selectAll().where("id", "=", libraryId).executeTakeFirst();
+      if (!l) return { error: "Product not found" };
+      await tx.insertInto("products").values({ category: l.category, name: l.name, make: l.make, model: l.model, specs: JSON.stringify(l.specs), library_id: l.id }).execute();
+      const s = l.specs as Record<string, unknown>;
+      return done(`${l.name} added.${s.width_mm && s.height_mm ? "" : " The library has no dimensions for it: add its width and height from the datasheet."} Set your sell price and supplier prices under Products.`);
+    }, [...ADMIN]);
+  } catch (err) {
+    if (pgErrorCode(err) === "23505") return { error: "That make and model is already in your catalogue." };
+    throw err;
+  }
+}
