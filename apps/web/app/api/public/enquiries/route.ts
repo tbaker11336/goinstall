@@ -1,7 +1,6 @@
-import { sql, withService } from "@goinstall/db";
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
-import { db } from "@/lib/db";
+import { createEnquiry } from "@/lib/enquiries";
 
 /**
  * Public endpoint for website enquiry forms. Identifies the company by its
@@ -35,7 +34,10 @@ const schema = z.object({
   address: text(300),
   town: text(100),
   postcode: text(10).transform((v) => v?.toUpperCase() ?? null),
-  products: z.array(z.enum(["solar", "battery", "ev"])).max(3).default([]),
+  products: z
+    .array(z.enum(["solar", "battery", "ev"]))
+    .max(3)
+    .default([]),
   message: text(5000),
   source: text(100),
   redirect: z.url().optional(),
@@ -43,16 +45,29 @@ const schema = z.object({
   _hp: z.string().optional(),
 });
 
-async function readBody(request: NextRequest): Promise<{ data: Record<string, unknown>; isForm: boolean }> {
+async function readBody(
+  request: NextRequest,
+): Promise<{ data: Record<string, unknown>; isForm: boolean }> {
   const type = request.headers.get("content-type") ?? "";
   if (type.includes("application/json")) {
     const json = (await request.json()) as Record<string, unknown>;
     const products = json.products;
-    return { data: { ...json, products: Array.isArray(products) ? products : products ? [products] : [] }, isForm: false };
+    return {
+      data: {
+        ...json,
+        products: Array.isArray(products)
+          ? products
+          : products
+            ? [products]
+            : [],
+      },
+      isForm: false,
+    };
   }
   const form = await request.formData();
   const data: Record<string, unknown> = {};
-  for (const [k, v] of form.entries()) if (typeof v === "string" && k !== "products") data[k] = v;
+  for (const [k, v] of form.entries())
+    if (typeof v === "string" && k !== "products") data[k] = v;
   data.products = form.getAll("products").map(String);
   return { data, isForm: true };
 }
@@ -73,88 +88,31 @@ export async function POST(request: NextRequest) {
     return reply(400, { error: "Could not read the form." });
   }
   const parsed = schema.safeParse(body.data);
-  if (!parsed.success) return reply(422, { error: "Name and form key are required.", issues: parsed.error.issues.map((i) => i.path.join(".")) });
+  if (!parsed.success)
+    return reply(422, {
+      error: "Name and form key are required.",
+      issues: parsed.error.issues.map((i) => i.path.join(".")),
+    });
   const e = parsed.data;
-  if (!e.email && !e.phone) return reply(422, { error: "Give an email address or phone number." });
+  if (!e.email && !e.phone)
+    return reply(422, { error: "Give an email address or phone number." });
 
   // Only redirect back to the site that posted the form, so this route can't
   // be used as an open redirect.
-  const origin = request.headers.get("origin") ?? request.headers.get("referer");
-  const safeRedirect = e.redirect && origin && new URL(e.redirect).host === new URL(origin).host ? e.redirect : null;
-  const done = () => (body.isForm && safeRedirect ? NextResponse.redirect(safeRedirect, { status: 303, headers: CORS }) : reply(201, { ok: true }));
+  const origin =
+    request.headers.get("origin") ?? request.headers.get("referer");
+  const safeRedirect =
+    e.redirect && origin && new URL(e.redirect).host === new URL(origin).host
+      ? e.redirect
+      : null;
+  const done = () =>
+    body.isForm && safeRedirect
+      ? NextResponse.redirect(safeRedirect, { status: 303, headers: CORS })
+      : reply(201, { ok: true });
 
   if (e._hp) return done(); // pretend success to bots
 
-  const created = await withService(db(), async (tx) => {
-    const company = await tx.selectFrom("companies").select("id").where("enquiry_form_key", "=", e.key).executeTakeFirst();
-    if (!company) return false;
-
-    const existing = e.email
-      ? await tx
-          .selectFrom("contacts")
-          .select(["id", "interested_in"])
-          .where("company_id", "=", company.id)
-          .where(sql`lower(email)`, "=", e.email)
-          .executeTakeFirst()
-      : undefined;
-
-    const contactId =
-      existing?.id ??
-      (
-        await tx
-          .insertInto("contacts")
-          .values({
-            company_id: company.id,
-            name: e.name,
-            email: e.email,
-            phone: e.phone,
-            address_line1: e.address,
-            town: e.town,
-            postcode: e.postcode,
-            source: e.source ?? "Website form",
-            interested_in: e.products,
-          })
-          .returning("id")
-          .executeTakeFirstOrThrow()
-      ).id;
-
-    if (existing && e.products.some((p) => !existing.interested_in.includes(p))) {
-      await tx
-        .updateTable("contacts")
-        .set({ interested_in: [...new Set([...existing.interested_in, ...e.products])] })
-        .where("id", "=", existing.id)
-        .execute();
-    }
-
-    const project = await tx
-      .insertInto("projects")
-      .values({
-        company_id: company.id,
-        contact_id: contactId,
-        products: e.products,
-        site_address_line1: e.address,
-        site_town: e.town,
-        site_postcode: e.postcode,
-      })
-      .returning("id")
-      .executeTakeFirstOrThrow();
-
-    if (e.message) {
-      await tx
-        .insertInto("messages")
-        .values({
-          company_id: company.id,
-          contact_id: contactId,
-          project_id: project.id,
-          channel: "note",
-          direction: "internal",
-          subject: "Website enquiry",
-          body: e.message,
-        })
-        .execute();
-    }
-    return true;
-  });
+  const created = await createEnquiry(e);
 
   if (!created) return reply(404, { error: "Unknown form key." });
   return done();

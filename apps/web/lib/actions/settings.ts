@@ -70,7 +70,7 @@ export async function rotateEnquiryKeyAction() {
         .execute(),
     [...ADMIN],
   );
-  revalidatePath("/settings/company");
+  revalidatePath("/settings/marketing");
 }
 
 const roleSchema = z.enum(["admin", "office", "installer", "subcontractor"]);

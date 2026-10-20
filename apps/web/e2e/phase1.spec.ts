@@ -156,7 +156,7 @@ test("admin edits company details and invites a colleague", async ({ page }) => 
 
 test("website enquiry form creates a contact and project", async ({ page, request }) => {
   await signInAs(page, "Alex Morgan");
-  await page.goto("/settings/company");
+  await page.goto("/settings/marketing");
   const key = (await page.getByTestId("enquiry-key").textContent())!.trim();
 
   const bad = await request.post("/api/public/enquiries", { data: { key: "nope", name: "X", email: "x@example.com" } });

@@ -11,6 +11,7 @@ const SECTIONS = [
   { href: "/settings/surveys", label: "Surveys & templates" },
   { href: "/settings/invoices", label: "Invoices & quotes" },
   { href: "/settings/checklists", label: "Install checklists" },
+  { href: "/settings/marketing", label: "Marketing" },
 ];
 
 export default async function SettingsLayout({ children }: { children: React.ReactNode }) {

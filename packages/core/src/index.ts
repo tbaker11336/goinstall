@@ -9,3 +9,4 @@ export * from "./proposal";
 export * from "./kit";
 export * from "./schedule";
 export * from "./checklist";
+export * from "./enquiry-form";

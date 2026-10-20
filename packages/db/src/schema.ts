@@ -204,6 +204,7 @@ export interface Companies {
   email_domain_status: Generated<string>;
   email_from_local: Generated<string>;
   email_sender: string | null;
+  enquiry_form: Generated<Json>;
   enquiry_form_key: Generated<string>;
   id: Generated<string>;
   logo_path: string | null;

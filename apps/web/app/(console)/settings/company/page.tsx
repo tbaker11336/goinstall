@@ -1,10 +1,8 @@
 import { ActionForm, SubmitButton } from "@/components/forms";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/input";
-import { rotateEnquiryKeyAction, updateCompanyAction } from "@/lib/actions/settings";
+import { updateCompanyAction } from "@/lib/actions/settings";
 import { asUser } from "@/lib/auth";
-import { env } from "@/lib/env";
 
 export const metadata = { title: "Company details" };
 
@@ -25,7 +23,6 @@ function TextField({ c, name, label, type = "text", hint, className }: { c: Comp
 
 export default async function CompanySettingsPage() {
   const c = await load();
-  const endpoint = `${env.siteUrl}/api/public/enquiries`;
   return (
     <div className="grid max-w-3xl gap-6">
       <Card>
@@ -63,51 +60,6 @@ export default async function CompanySettingsPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Website enquiry form</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-3 text-sm">
-          <p className="text-muted-foreground">
-            Post your website's enquiry form to this address and each submission creates a contact and project here. Include your form key as a field
-            named <code>key</code>.
-          </p>
-          <dl className="grid gap-2">
-            <div>
-              <dt className="text-xs text-muted-foreground">Endpoint</dt>
-              <dd>
-                <code className="break-all">{endpoint}</code>
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs text-muted-foreground">Form key</dt>
-              <dd>
-                <code data-testid="enquiry-key">{c.enquiry_form_key}</code>
-              </dd>
-            </div>
-          </dl>
-          <details>
-            <summary className="cursor-pointer font-medium text-primary">Example HTML form</summary>
-            <pre className="mt-2 overflow-x-auto rounded-md bg-muted p-3 text-xs">{`<form method="post" action="${endpoint}">
-  <input type="hidden" name="key" value="${c.enquiry_form_key}">
-  <input type="hidden" name="redirect" value="https://your-site/thanks">
-  <input name="name" required> <input name="email" type="email">
-  <input name="phone"> <input name="postcode">
-  <label><input type="checkbox" name="products" value="solar"> Solar</label>
-  <label><input type="checkbox" name="products" value="battery"> Battery</label>
-  <label><input type="checkbox" name="products" value="ev"> EV charger</label>
-  <textarea name="message"></textarea>
-  <button>Send</button>
-</form>`}</pre>
-          </details>
-          <form action={rotateEnquiryKeyAction}>
-            <Button type="submit" variant="outline" size="sm">
-              Generate a new key
-            </Button>
-          </form>
-          <p className="text-xs text-muted-foreground">A new key stops the old one working, so update your website form at the same time.</p>
-        </CardContent>
-      </Card>
     </div>
   );
 }
