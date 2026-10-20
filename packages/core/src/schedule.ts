@@ -27,9 +27,14 @@ export function weekDays(monday: string, days = 5): string[] {
 
 /** Days a booking covers (inclusive list of dates). */
 export function bookingDates(startsAt: Date | string, endsAt: Date | string): string[] {
-  const first = ukDate(startsAt);
+  const s = new Date(startsAt);
+  const e = new Date(endsAt);
+  // All-day bookings are stored at UTC midnight: read their dates in UTC, or
+  // British Summer Time would push the end onto the next day.
+  const allDay = s.getTime() % DAY_MS === 0 && e.getTime() % DAY_MS === 0;
+  const first = allDay ? s.toISOString().slice(0, 10) : ukDate(s);
   // End is exclusive: a booking ending at midnight doesn't cover that day.
-  const last = ukDate(new Date(new Date(endsAt).getTime() - 1));
+  const last = allDay ? new Date(e.getTime() - DAY_MS).toISOString().slice(0, 10) : ukDate(new Date(e.getTime() - 1));
   const out: string[] = [];
   for (let d = first; d <= last && out.length < 366; d = addDays(d, 1)) out.push(d);
   return out;

@@ -492,3 +492,15 @@ create policy solar_designs_assigned_select on public.solar_designs for select t
   using (company_id = (select private.current_company_id()) and (select private.has_role('installer', 'subcontractor')) and is_active and private.is_assigned_to_project(project_id));
 create policy ev_designs_assigned_select on public.ev_designs for select to authenticated
   using (company_id = (select private.current_company_id()) and (select private.has_role('installer')) and is_active and private.is_assigned_to_project(project_id));
+
+-- Customer signatures from the installer app are SVGs drawn by the server
+-- from validated stroke data (never uploaded markup).
+do $$
+begin
+  if to_regclass('storage.buckets') is not null then
+    update storage.buckets
+    set allowed_mime_types = array['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'application/pdf', 'image/svg+xml']
+    where id = 'project-files';
+  end if;
+end;
+$$;

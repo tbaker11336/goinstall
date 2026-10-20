@@ -1,0 +1,48 @@
+{
+  "expo": {
+    "name": "GoInstall",
+    "slug": "goinstall-installer",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "io.goinstall.installer",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Take photos of the install and scan serial numbers.",
+        "NSPhotoLibraryUsageDescription": "Attach photos of the install."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0B7A62",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "io.goinstall.installer"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "name": "GoInstall installer"
+    },
+    "scheme": "goinstall",
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Take photos of the install and scan serial numbers."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Take photos of the install and scan serial numbers.",
+          "photosPermission": "Attach photos of the install."
+        }
+      ]
+    ]
+  }
+}

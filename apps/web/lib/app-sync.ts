@@ -2,10 +2,12 @@ import "server-only";
 import { firstName } from "@goinstall/core";
 import { sql, withService, type Tx } from "@goinstall/db";
 import { textToHtml } from "@goinstall/integrations";
+import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import type { Session } from "./auth";
 import { db } from "./db";
 import { emailSender, fromAddress } from "./email";
+import { fileStore } from "./files";
 
 /**
  * Offline captures from the installer app, replayed in order when the device
@@ -30,7 +32,15 @@ export const opSchema = z.discriminatedUnion("type", [
     capturedAt: at,
   }),
   z.object({ opId: z.string().max(64), type: z.literal("booking_status"), bookingId: z.uuid(), status: z.enum(["in_progress", "completed"]), capturedAt: at }),
-  z.object({ opId: z.string().max(64), type: z.literal("signoff"), bookingId: z.uuid(), name: z.string().trim().min(2).max(120), signatureFileId: z.uuid().nullable(), capturedAt: at }),
+  z.object({
+    opId: z.string().max(64),
+    type: z.literal("signoff"),
+    bookingId: z.uuid(),
+    name: z.string().trim().min(2).max(120),
+    // Strokes from the signature pad: move/line commands and numbers only, so the SVG we build can't carry markup.
+    signaturePaths: z.array(z.string().regex(/^M[0-9.]+,[0-9.]+( L[0-9.]+,[0-9.]+)*$/).max(20_000)).max(200),
+    capturedAt: at,
+  }),
   z.object({ opId: z.string().max(64), type: z.literal("kit_issue"), kitItemId: z.uuid(), issue: z.enum(["missing", "damaged"]).nullable(), note: z.string().max(500).nullable(), capturedAt: at }),
   z.object({ opId: z.string().max(64), type: z.literal("on_my_way"), bookingId: z.uuid(), etaMinutes: z.number().int().min(1).max(600), capturedAt: at }),
 ]);
@@ -90,7 +100,20 @@ export async function applyOp(tx: Tx, session: Session, op: SyncOp): Promise<OpR
     case "signoff": {
       const b = await booking(tx, op.bookingId);
       if (!b) return fail("Job not found");
-      await tx.updateTable("bookings").set({ signoff_name: op.name, signoff_signature_file_id: op.signatureFileId }).where("id", "=", b.id).execute();
+      const already = await tx.selectFrom("bookings").select("signoff_signature_file_id").where("id", "=", b.id).executeTakeFirstOrThrow();
+      let fileId = already.signoff_signature_file_id;
+      if (!fileId && op.signaturePaths.length && b.project_id) {
+        fileId = randomUUID();
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="200" viewBox="0 0 600 200"><rect width="600" height="200" fill="#fff"/>${op.signaturePaths.map((d) => `<path d="${d}" stroke="#101828" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`).join("")}</svg>`;
+        const bytes = new TextEncoder().encode(svg);
+        const path = `${session.companyId}/${b.project_id}/${fileId}.svg`;
+        await fileStore().put(path, bytes, "image/svg+xml");
+        await tx
+          .insertInto("files")
+          .values({ id: fileId, company_id: session.companyId, project_id: b.project_id, kind: "signature", path, content_type: "image/svg+xml", size_bytes: bytes.length, original_name: "signature.svg", source: "installer_app", uploaded_by: session.userId })
+          .execute();
+      }
+      await tx.updateTable("bookings").set({ signoff_name: op.name, signoff_signature_file_id: fileId }).where("id", "=", b.id).execute();
       if (!b.completed_at) await finishJob(tx, session, b, when, op.name);
       return ok();
     }

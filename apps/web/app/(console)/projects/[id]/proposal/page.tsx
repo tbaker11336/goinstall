@@ -238,10 +238,8 @@ export default async function ProposalPage({
         >
           Download PDF
         </a>
-        {isDraft && <SendButton proposalId={proposal.id} kind="send" />}
-        {live && proposal.id === latest.id && (
-          <SendButton proposalId={proposal.id} kind="reminder" />
-        )}
+        {/* One slot for send and reminder, so the "sent" message survives the switch. */}
+        {(isDraft || (live && proposal.id === latest.id)) && <SendButton key={proposal.id} proposalId={proposal.id} kind={isDraft ? "send" : "reminder"} />}
       </div>
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">

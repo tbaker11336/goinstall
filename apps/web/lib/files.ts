@@ -16,7 +16,7 @@ function diskStore(root: string): FileStore {
     if (!full.startsWith(path.resolve(root) + path.sep)) throw new Error("Bad path");
     return full;
   };
-  const types: Record<string, string> = { ".jpg": "image/jpeg", ".png": "image/png", ".webp": "image/webp", ".heic": "image/heic", ".pdf": "application/pdf" };
+  const types: Record<string, string> = { ".jpg": "image/jpeg", ".png": "image/png", ".webp": "image/webp", ".heic": "image/heic", ".pdf": "application/pdf", ".svg": "image/svg+xml" };
   return {
     name: "disk",
     async put(p, bytes) {

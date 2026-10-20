@@ -21,6 +21,8 @@ export const metadata = { title: "Install & paperwork" };
 
 type Kind = "install" | "scaffold_up" | "scaffold_down" | "survey";
 
+const BOOKING_STATUS: Record<string, string> = { tentative: "Pencilled in", confirmed: "Confirmed", in_progress: "In progress", completed: "Completed" };
+
 function Ready({ done, title, detail, action }: { done: boolean; title: string; detail: string; action?: React.ReactNode }) {
   return (
     <li className="flex items-center gap-3 border-b py-3 last:border-b-0">
@@ -59,7 +61,7 @@ function BookingForm({
         <h3 id={`${p}title`} className="text-sm font-bold">
           {BOOKING_TYPE_LABELS[kind]}
         </h3>
-        {booking ? <Badge variant={booking.status === "confirmed" ? "success" : "warning"}>{booking.status === "confirmed" ? "Confirmed" : "Pencilled in"}</Badge> : <Badge>Not booked</Badge>}
+        {booking ? <Badge variant={booking.status === "tentative" ? "warning" : "success"}>{BOOKING_STATUS[booking.status] ?? booking.status}</Badge> : <Badge>Not booked</Badge>}
       </div>
       <ActionForm action={saveBookingAction.bind(null, projectId, booking?.id ?? null)} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <input type="hidden" name="type" value={kind} />
@@ -170,7 +172,8 @@ export default async function InstallPage({ params, searchParams }: { params: Pr
       tx
         .selectFrom("checklist_items as ci")
         .leftJoin("users as u", "u.id", "ci.completed_by")
-        .select(["ci.id", "ci.kind", "ci.product", "ci.title", "ci.done", "ci.serial", "ci.readings", "ci.photo_file_ids", "ci.note", "ci.captured_at", "u.full_name"])
+        .leftJoin("checklist_templates as t", "t.id", "ci.template_id")
+        .select(["ci.id", "ci.kind", "ci.product", "ci.title", "ci.done", "ci.serial", "ci.readings", "ci.photo_file_ids", "ci.note", "ci.captured_at", "u.full_name", "t.readings as reading_fields"])
         .where("ci.project_id", "=", id)
         .orderBy("ci.kind")
         .orderBy("ci.captured_at")
@@ -290,7 +293,12 @@ export default async function InstallPage({ params, searchParams }: { params: Pr
                           </span>
                         </p>
                         {i.serial && <p className="text-sm">Serial: {i.serial}</p>}
-                        {readings.length > 0 && <p className="text-sm">{readings.map(([k, v]) => `${k.replace(/_/g, " ")}: ${v}`).join(" · ")}</p>}
+                        {readings.length > 0 && <p className="text-sm">{readings
+                              .map(([k, v]) => {
+                                const f = ((i.reading_fields ?? []) as { key: string; label: string; unit: string | null }[]).find((r) => r.key === k);
+                                return `${f?.label ?? k.replace(/_/g, " ")}: ${v}${f?.unit ? ` ${f.unit}` : ""}`;
+                              })
+                              .join(" · ")}</p>}
                         {i.note && <p className="text-sm text-ink-3">{i.note}</p>}
                         {i.photo_file_ids.length > 0 && (
                           <div className="flex flex-wrap gap-2">

@@ -11,7 +11,10 @@ import { calendarFeedUrl, newCalendarNonce } from "@/lib/schedule";
 import type { ActionResult } from "./crm";
 
 const uuid = z.uuid();
-const optionalId = z.union([z.literal(""), z.uuid()]).transform((v) => v || null);
+const optionalId = z
+  .union([z.literal(""), z.uuid()])
+  .optional()
+  .transform((v) => v || null);
 
 const bookingSchema = z.object({
   type: z.enum(["survey", "install", "scaffold_up", "scaffold_down"]),
@@ -23,7 +26,12 @@ const bookingSchema = z.object({
   electrician_id: optionalId,
   scaffolder_id: optionalId,
   surveyor_id: optionalId,
-  notes: z.string().trim().max(2000).transform((v) => v || null),
+  notes: z
+    .string()
+    .trim()
+    .max(2000)
+    .optional()
+    .transform((v) => v || null),
 });
 
 async function setAssignment(tx: Tx, bookingId: string, role: "team" | "electrician" | "scaffolder" | "surveyor", target: { teamId?: string | null; userId?: string | null }) {

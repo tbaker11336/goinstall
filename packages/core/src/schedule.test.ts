@@ -9,6 +9,10 @@ describe("schedule", () => {
     const s = allDaySpan("2026-11-03", 2);
     expect(s).toEqual({ startsAt: "2026-11-03T00:00:00.000Z", endsAt: "2026-11-05T00:00:00.000Z" });
     expect(bookingDates(s.startsAt, s.endsAt)).toEqual(["2026-11-03", "2026-11-04"]);
+    // A one-day booking in British Summer Time is still one day.
+    expect(bookingDates("2026-10-20T00:00:00.000Z", "2026-10-21T00:00:00.000Z")).toEqual(["2026-10-20"]);
+    // Timed bookings use UK time: 23:30 UTC on 20 Oct is 00:30 on the 21st in BST.
+    expect(bookingDates("2026-10-20T23:30:00Z", "2026-10-21T00:30:00Z")).toEqual(["2026-10-21"]);
     // Fri for 2 working days skips the weekend.
     expect(bookingDates(...(Object.values(allDaySpan("2026-11-06", 2)) as [string, string]))).toEqual(["2026-11-06", "2026-11-07", "2026-11-08", "2026-11-09"]);
   });

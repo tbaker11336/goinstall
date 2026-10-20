@@ -1,6 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const port = 3100;
+const appPort = 3101;
+export const APP_URL = `http://localhost:${appPort}`;
 const pgAdmin = process.env.PG_ADMIN_URL ?? "postgres://postgres:postgres@localhost:5432/postgres";
 const e2eDb = pgAdmin.replace(/\/[^/]*$/, "/goinstall_e2e");
 // Emails are recorded here instead of sent (see lib/email.ts); tests read survey links from it.
@@ -20,7 +22,8 @@ export default defineConfig({
     launchOptions: process.env.PW_CHROMIUM_PATH ? { executablePath: process.env.PW_CHROMIUM_PATH } : {},
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
-  webServer: {
+  webServer: [
+  {
     // Fresh database with demo data, then the app with dev sign-in.
     command: `mkdir -p .data && rm -f ${OUTBOX} && rm -rf .data/e2e-uploads && DATABASE_URL=${pgAdmin} pnpm --filter @goinstall/db reset-dev goinstall_e2e && pnpm exec next dev --port ${port}`,
     url: `http://localhost:${port}/login`,
@@ -40,4 +43,12 @@ export default defineConfig({
       STRIPE_WEBHOOK_SECRET: "",
     },
   },
+  {
+    // The installer app's web build, pointed at the console above.
+    command: `cd ../installer && EXPO_OFFLINE=1 CI=1 EXPO_PUBLIC_API_URL=http://localhost:${port} EXPO_PUBLIC_DEV_SIGN_IN=true npx expo export --platform web --output-dir ../web/.data/installer-web --clear && node ../web/e2e/serve-static.mjs ../web/.data/installer-web ${appPort}`,
+    url: `http://localhost:${appPort}`,
+    reuseExistingServer: false,
+    timeout: 240_000,
+  },
+  ],
 });
