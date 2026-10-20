@@ -229,6 +229,8 @@ export default async function DesignPage({
               ? {
                   pvgisKwh: design.pvgis_kwh,
                   pvgisMonthly: design.pvgis_monthly,
+                  googleKwh: design.google_yearly_kwh,
+                  imageryDate: design.imagery_date ? design.imagery_date.toISOString().slice(0, 10) : null,
                 }
               : null
           }

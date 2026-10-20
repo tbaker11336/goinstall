@@ -2,12 +2,13 @@
 
 import { evaluateSolarDesign, type Specs } from "@goinstall/core";
 import type { Tx } from "@goinstall/db";
-import { createPvgisClient } from "@goinstall/integrations";
+import { createPvgisClient, googleYearlyEstimateKwh } from "@goinstall/integrations";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { asUser } from "@/lib/auth";
 import { loadDesignRules } from "@/lib/design-rules";
 import { loadEnergy } from "@/lib/energy";
+import { roofData } from "@/lib/site";
 import { surveyAnswers } from "@/lib/survey";
 
 const rect = z.object({ x: z.number().finite(), y: z.number().finite(), w: z.number().positive().max(10), h: z.number().positive().max(10) });
@@ -68,6 +69,8 @@ export async function saveSolarDesignAction(projectId: string, payload: SolarDes
       tx.selectFrom("solar_designs").select(["version", "segments", "pvgis_kwh", "pvgis_monthly"]).where("project_id", "=", projectId).orderBy("version", "desc").limit(1).executeTakeFirst(),
       loadEnergy(tx, projectId),
     ]);
+    // Google's own yearly estimate and imagery date (from the cached Solar API response) sit beside MCS as a cross-check.
+    const roof = await roofData(tx, projectId, null);
     const arrays = d.segments.filter((s) => s.used).map((s) => ({ id: s.id, label: s.label, pitch: s.pitch, azimuth: s.azimuth, panelCount: s.panels.length, shadeFactor: s.shadeFactor }));
     const result = evaluateSolarDesign({
       arrays,
@@ -137,6 +140,8 @@ export async function saveSolarDesignAction(projectId: string, payload: SolarDes
         calc_notes: JSON.stringify(result.notes),
         mcs_arrays: JSON.stringify(result.perArray),
         mcs_zone: result.zone,
+        google_yearly_kwh: roof.insights && panel?.specs.watts_peak ? googleYearlyEstimateKwh(roof.insights, result.panelCount, Number(panel.specs.watts_peak)) : null,
+        imagery_date: roof.insights?.imageryDate ?? null,
       })
       .execute();
     revalidatePath(`/projects/${projectId}/design`);

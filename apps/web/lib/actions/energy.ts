@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { asUser } from "@/lib/auth";
 import type { ActionResult } from "./crm";
+import { saveSolarDesignAction, type SolarDesignPayload } from "./design";
 
 const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"] as const;
 
@@ -50,15 +51,29 @@ export async function saveEnergyProfileAction(projectId: string, _: ActionResult
     tariff_name: String(form.get("tariff_name") ?? "").trim().slice(0, 100) || null,
     source,
   };
-  return asUser(async (tx) => {
+  const active = await asUser(async (tx) => {
     const project = await tx.selectFrom("projects").select("id").where("id", "=", projectId).executeTakeFirst();
-    if (!project) return { error: "Project not found" };
+    if (!project) return null;
     await tx
       .insertInto("energy_profiles")
       .values({ project_id: projectId, ...values })
       .onConflict((oc) => oc.columns(["company_id", "project_id"]).doUpdateSet(values))
       .execute();
-    revalidatePath(`/projects/${projectId}/design`);
-    return { message: "Saved. The saving and payback use these figures; the design recalculates on its next change." };
+    return (await tx.selectFrom("solar_designs").select(["roof_source", "segments", "panel_product_id", "inverter_product_id", "battery_product_id", "battery_count"]).where("project_id", "=", projectId).where("is_active", "=", true).executeTakeFirst()) ?? false;
   });
+  if (active === null) return { error: "Project not found" };
+  // Self-consumption depends on use, so the active design is saved again (a new version) with the new figures.
+  if (active) {
+    const r = await saveSolarDesignAction(projectId, {
+      roofSource: active.roof_source as "google_solar" | "drawn",
+      segments: active.segments as SolarDesignPayload["segments"],
+      panelProductId: active.panel_product_id,
+      inverterProductId: active.inverter_product_id,
+      batteryProductId: active.battery_product_id,
+      batteryCount: active.battery_count,
+    });
+    if (r.error) return { error: `Saved, but the design couldn't be recalculated: ${r.error}` };
+  }
+  revalidatePath(`/projects/${projectId}/design`);
+  return { message: active ? "Saved, and the design recalculated with these figures." : "Saved." };
 }

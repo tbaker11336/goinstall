@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createResendDomains, createStripePayments, signStripePayload, verifyStripeWebhook, createGoogleMapsClient, createMemoryFileStore, createOfflineSupplier, createPvgisClient, metresPerPixel, parseBuildingInsights, toLocalMetres, createRecordingSender, pvgisAspect, createResendSender, createSupabaseFileStore, textToHtml } from "./index";
+import { googleYearlyEstimateKwh, createResendDomains, createStripePayments, signStripePayload, verifyStripeWebhook, createGoogleMapsClient, createMemoryFileStore, createOfflineSupplier, createPvgisClient, metresPerPixel, parseBuildingInsights, toLocalMetres, createRecordingSender, pvgisAspect, createResendSender, createSupabaseFileStore, textToHtml } from "./index";
 
 describe("textToHtml", () => {
   it("escapes HTML, keeps paragraphs and links URLs", () => {
@@ -119,6 +119,24 @@ describe("Google Solar", () => {
     });
     expect(insights).toMatchObject({ imageryQuality: "HIGH", maxPanels: 30, suggestedPanels: { 0: 18 } });
     expect(insights.segments[0]).toMatchObject({ pitch: 35.2, azimuth: 178.6, areaM2: 40.3, sunshineHours: 1000 });
+  });
+
+  it("reads imagery date, carbon factor and Google's yearly estimates", () => {
+    const insights = parseBuildingInsights({
+      imageryDate: { year: 2025, month: 6, day: 3 },
+      solarPotential: {
+        panelCapacityWatts: 400,
+        carbonOffsetFactorKgPerMwh: 228.5,
+        solarPanelConfigs: [
+          { panelsCount: 10, yearlyEnergyDcKwh: 3800 },
+          { panelsCount: 20, yearlyEnergyDcKwh: 7400 },
+        ],
+      },
+    });
+    expect(insights).toMatchObject({ imageryDate: "2025-06-03", carbonOffsetKgPerMwh: 228.5, panelCapacityWatts: 400 });
+    // 19 × 445 W from the nearest layout (20 × 400 W → 7,400 kWh).
+    expect(googleYearlyEstimateKwh(insights, 19, 445)).toBe(Math.round((7400 / (20 * 400)) * 19 * 445));
+    expect(googleYearlyEstimateKwh({ configs: [], panelCapacityWatts: 400 }, 19, 445)).toBeNull();
   });
 
   it("treats 404 as no coverage", async () => {

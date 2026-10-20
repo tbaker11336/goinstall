@@ -1,4 +1,5 @@
-import { formatPence, paybackYears, proposalReference, proposalTotals, SECTION_LABELS, type ProposalSection } from "@goinstall/core";
+import { formatPence, paybackLabel, paybackYears, proposalReference, proposalTotals, SECTION_LABELS, type ProposalSection, type ProposalSummary } from "@goinstall/core";
+import { AssumptionsSection, BillsSection, EnvironmentSection, FinanceSection, LayoutImage, McsSection, SystemSection } from "./proposal-sections";
 import { formatDate } from "@/lib/utils";
 
 export interface ProposalView {
@@ -12,7 +13,9 @@ export interface ProposalView {
   intro: string | null;
   contactName: string;
   depositPct: number;
-  summary: { kWp?: number | null; panelCount?: number | null; annualKwh?: number | null; yearlySavingPence?: number | null };
+  summary: ProposalSummary;
+  /** Signed URL of the saved aerial layout image, when there is one. */
+  layoutUrl?: string | null;
   lines: { id: string; section: string; description: string; quantity: number; unitPricePence: number; vatRate: number }[];
   terms: string | null;
 }
@@ -64,11 +67,14 @@ function Tile({ label, value }: { label: string; value: string }) {
 /** The proposal as the customer sees it (console preview and public page). */
 export function ProposalDocument({ p }: { p: ProposalView }) {
   const totals = proposalTotals(p.lines, p.depositPct);
-  const payback = paybackYears(totals.totalPence, p.summary.yearlySavingPence ?? null);
+  const f = p.summary.finance;
+  // With the customer's tariff, the finance figures; otherwise the simple estimate.
+  const saving = f ? f.firstYear.totals.savingPence : (p.summary.yearlySavingPence ?? null);
+  const payback = f ? (f.cashFlow.discountedPaybackYears === null ? null : paybackLabel(f.cashFlow.discountedPaybackYears)) : paybackYears(totals.totalPence, saving) ? `${paybackYears(totals.totalPence, saving)} yrs` : null;
   const tiles = [
     p.summary.annualKwh ? { label: "Generation", value: `${Math.round(p.summary.annualKwh).toLocaleString("en-GB")} kWh` } : null,
-    p.summary.yearlySavingPence ? { label: "Yearly saving", value: formatPence(Math.round(p.summary.yearlySavingPence / 100) * 100) } : null,
-    payback ? { label: "Payback", value: `${payback} yrs` } : null,
+    saving ? { label: "Yearly saving", value: formatPence(Math.round(saving / 100) * 100) } : null,
+    payback ? { label: "Payback", value: payback } : null,
     p.summary.kWp ? { label: "System size", value: `${Number(p.summary.kWp).toFixed(2)} kWp` } : null,
   ].filter((t): t is { label: string; value: string } => Boolean(t));
 
@@ -100,7 +106,11 @@ export function ProposalDocument({ p }: { p: ProposalView }) {
         <div className="grid gap-3 sm:grid-cols-[1.7fr_1fr_1fr]">
           {p.summary.panelCount ? (
             <div className="overflow-hidden rounded-[10px] sm:row-span-2">
-              <RoofSketch panels={p.summary.panelCount} />
+              {p.summary.layout && p.layoutUrl ? (
+                <LayoutImage layout={p.summary.layout} url={p.layoutUrl} label={`Proposed layout: ${p.summary.panelCount} panels on the aerial view of the roof`} />
+              ) : (
+                <RoofSketch panels={p.summary.panelCount} />
+              )}
             </div>
           ) : null}
           {tiles.map((t) => (
@@ -162,6 +172,13 @@ export function ProposalDocument({ p }: { p: ProposalView }) {
           </div>
         )}
       </dl>
+
+      <BillsSection s={p.summary} />
+      <FinanceSection s={p.summary} />
+      <SystemSection s={p.summary} />
+      <McsSection s={p.summary} />
+      <EnvironmentSection s={p.summary} />
+      <AssumptionsSection s={p.summary} />
 
       {p.terms && (
         <details className="border-t pt-4 text-sm">

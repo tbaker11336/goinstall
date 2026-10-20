@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/input";
 import { recordBankTransferAction } from "@/lib/actions/proposals";
 import { asUser } from "@/lib/auth";
-import { proposalContent, proposalView } from "@/lib/proposals";
+import { proposalContent, proposalViewWithLayout } from "@/lib/proposals";
 import { cn, formatDateTime } from "@/lib/utils";
 import {
   CopyLinkButton,
@@ -195,7 +195,7 @@ export default async function ProposalPage({
     );
   }
 
-  const view = proposalView(content);
+  const view = await proposalViewWithLayout(content);
   const isDraft = proposal.status === "draft";
   const live = ["sent", "viewed"].includes(proposal.status);
   const latest = versions[0]!;

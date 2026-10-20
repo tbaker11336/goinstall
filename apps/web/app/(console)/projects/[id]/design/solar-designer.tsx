@@ -34,7 +34,7 @@ export interface CatalogueOption {
 export interface SolarDesignerProps {
   projectId: string;
   initial: SolarDesignPayload & { version: number | null; savedAt: string | null };
-  saved: { pvgisKwh: number | null; pvgisMonthly: number[] | null } | null;
+  saved: { pvgisKwh: number | null; pvgisMonthly: number[] | null; googleKwh: number | null; imageryDate: string | null } | null;
   roofStatus: string;
   aerial: { url: string; widthM: number } | null;
   panels: CatalogueOption[];
@@ -554,6 +554,13 @@ export function SolarDesigner(props: SolarDesignerProps) {
             ) : (
               result.annualKwh === null && <p className="text-[13px] text-accent-strong">Needs your MCS tables (see below).</p>
             )}
+            {props.saved?.googleKwh && result.annualKwh ? (
+              <p className="text-[13px] font-medium text-accent-strong">
+                Google Solar estimate {props.saved.googleKwh.toLocaleString("en-GB")} kWh DC ({props.saved.googleKwh >= result.annualKwh ? "+" : ""}
+                {(((props.saved.googleKwh - result.annualKwh) / result.annualKwh) * 100).toFixed(1)}%)
+              </p>
+            ) : null}
+            {props.saved?.imageryDate && <p className="text-xs text-accent-strong/80">Aerial imagery from {new Date(props.saved.imageryDate).toLocaleDateString("en-GB", { month: "long", year: "numeric" })}</p>}
           </div>
           <dl className="grid grid-cols-2 gap-4">
             <Figure label="System size" value={`${result.kWp.toFixed(2)} kWp`} />

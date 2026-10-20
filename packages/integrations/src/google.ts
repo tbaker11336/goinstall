@@ -24,6 +24,14 @@ export interface RoofSegment {
 
 export interface BuildingInsights {
   imageryQuality: string | null;
+  /** When the aerial imagery was taken (YYYY-MM-DD). */
+  imageryDate: string | null;
+  /** Google's regional grid carbon factor, kg CO2 per MWh. */
+  carbonOffsetKgPerMwh: number | null;
+  /** Panel size Google's layouts assume, watts. */
+  panelCapacityWatts: number | null;
+  /** Google's layouts: panel count and estimated yearly DC energy. */
+  configs: { panelsCount: number; yearlyEnergyDcKwh: number }[];
   center: LatLng;
   segments: RoofSegment[];
   /** Largest suggested layout's panel count per segment index. */
@@ -55,9 +63,12 @@ export function toLocalMetres(origin: LatLng, p: LatLng): { x: number; y: number
 
 interface SolarResponse {
   imageryQuality?: string;
+  imageryDate?: { year: number; month: number; day: number };
   center?: { latitude: number; longitude: number };
   solarPotential?: {
     maxArrayPanelsCount?: number;
+    panelCapacityWatts?: number;
+    carbonOffsetFactorKgPerMwh?: number;
     roofSegmentStats?: {
       pitchDegrees?: number;
       azimuthDegrees?: number;
@@ -65,7 +76,7 @@ interface SolarResponse {
       center?: { latitude: number; longitude: number };
       boundingBox?: { sw: { latitude: number; longitude: number }; ne: { latitude: number; longitude: number } };
     }[];
-    solarPanelConfigs?: { panelsCount: number; roofSegmentSummaries?: { segmentIndex: number; panelsCount: number }[] }[];
+    solarPanelConfigs?: { panelsCount: number; yearlyEnergyDcKwh?: number; roofSegmentSummaries?: { segmentIndex: number; panelsCount: number }[] }[];
   };
   error?: { code: number; status: string; message: string };
 }
@@ -89,7 +100,31 @@ export function parseBuildingInsights(body: SolarResponse): BuildingInsights {
   const biggest = [...(sp.solarPanelConfigs ?? [])].sort((a, b) => b.panelsCount - a.panelsCount)[0];
   const suggestedPanels: Record<number, number> = {};
   for (const s of biggest?.roofSegmentSummaries ?? []) suggestedPanels[s.segmentIndex] = s.panelsCount;
-  return { imageryQuality: body.imageryQuality ?? null, center: ll(body.center), segments, suggestedPanels, maxPanels: sp.maxArrayPanelsCount ?? null };
+  const d = body.imageryDate;
+  return {
+    imageryQuality: body.imageryQuality ?? null,
+    imageryDate: d?.year ? `${d.year}-${String(d.month).padStart(2, "0")}-${String(d.day || 1).padStart(2, "0")}` : null,
+    carbonOffsetKgPerMwh: sp.carbonOffsetFactorKgPerMwh ?? null,
+    panelCapacityWatts: sp.panelCapacityWatts ?? null,
+    configs: (sp.solarPanelConfigs ?? []).filter((c) => c.yearlyEnergyDcKwh).map((c) => ({ panelsCount: c.panelsCount, yearlyEnergyDcKwh: Math.round(c.yearlyEnergyDcKwh!) })),
+    center: ll(body.center),
+    segments,
+    suggestedPanels,
+    maxPanels: sp.maxArrayPanelsCount ?? null,
+  };
+}
+
+/**
+ * Google's own yearly DC estimate for a layout of this size, scaled from its
+ * nearest layout to the designed panel count and wattage. A cross-check
+ * beside the MCS figure (which stays the headline), not a replacement.
+ */
+export function googleYearlyEstimateKwh(insights: Pick<BuildingInsights, "configs" | "panelCapacityWatts">, panelCount: number, panelWatts: number): number | null {
+  // Older cached responses have no configs.
+  if (!panelCount || !panelWatts || !insights.configs?.length || !insights.panelCapacityWatts) return null;
+  const nearest = [...insights.configs].sort((a, b) => Math.abs(a.panelsCount - panelCount) - Math.abs(b.panelsCount - panelCount))[0]!;
+  const perPanelWatt = nearest.yearlyEnergyDcKwh / (nearest.panelsCount * insights.panelCapacityWatts);
+  return Math.round(perPanelWatt * panelCount * panelWatts);
 }
 
 export function createGoogleMapsClient({ apiKey, fetch: fetchImpl = fetch }: { apiKey: string; fetch?: typeof fetch }): GoogleMapsClient {

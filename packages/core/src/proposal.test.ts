@@ -65,3 +65,23 @@ describe("helpers", () => {
     expect(paybackYears(1485000, null)).toBeNull();
   });
 });
+
+describe("proposal finance", () => {
+  it("needs the inputs and the price", async () => {
+    const { financeForSummary } = await import("./proposal-summary");
+    const { DEFAULT_FINANCE, monthlyConsumption } = await import("./finance");
+    const base = { kWp: 7.885, panelCount: 19, annualKwh: 6858, selfUse: 0.76, yearlySavingPence: null, evRouteM: null, segments: [] };
+    expect(financeForSummary(base, 2_250_000).missing).toEqual(["the customer's electricity use", "the tariff (unit rate, standing charge, export)", "finance assumptions"]);
+    const full = {
+      ...base,
+      energy: { annualKwh: 8700, monthlyKwh: null, consumption: monthlyConsumption({ annualKwh: 8700 }), tariff: { unitRatePence: 36, standingChargePencePerDay: 100, exportRatePence: 6 }, tariffName: null, source: "bills" },
+      assumptions: DEFAULT_FINANCE,
+      emissions: { kgPerKwh: 0.1, source: "test" },
+    };
+    const r = financeForSummary(full, 2_250_000);
+    expect(r.missing).toEqual([]);
+    expect(r.finance!.firstYear.totals.savingPct).toBeCloseTo(0.565, 2);
+    expect(r.finance!.co2KgPerYear).toBe(686);
+    expect(r.finance!.cashFlow.rows[0]!.totalPence).toBe(-2_250_000);
+  });
+});

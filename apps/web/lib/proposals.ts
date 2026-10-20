@@ -1,8 +1,10 @@
 import "server-only";
 import { createHash, createHmac, randomBytes } from "node:crypto";
-import { buildLinesFromDesigns, type CatalogueItem, type ProductCategory, type VatRates } from "@goinstall/core";
+import { buildLinesFromDesigns, financeForSummary, type CatalogueItem, type ProductCategory, type ProposalSummary, type SummaryArray, type SummaryProduct, type VatRates } from "@goinstall/core";
 import { sql, type Tx } from "@goinstall/db";
 import type { ProposalView } from "@/components/proposal-document";
+import { loadEnergy } from "./energy";
+import { signedUrls } from "./files";
 import { env } from "./env";
 
 /** Secret for proposal links. A dedicated one if set; else the service key (server-only either way). */
@@ -37,7 +39,7 @@ export async function designInputs(tx: Tx, projectId: string) {
     tx.selectFrom("ev_designs").selectAll().where("project_id", "=", projectId).where("is_active", "=", true).executeTakeFirst(),
     tx
       .selectFrom("companies")
-      .select(["id", "name", "vat_rates", "shared_visit_discount_pence", "default_deposit_pct", "proposal_valid_days", "terms_and_conditions", "document_prefix", "design_settings"])
+      .select(["id", "name", "vat_rates", "shared_visit_discount_pence", "default_deposit_pct", "proposal_valid_days", "terms_and_conditions", "document_prefix"])
       .executeTakeFirstOrThrow(),
   ]);
   const ids = [solar?.panel_product_id, solar?.inverter_product_id, solar?.battery_product_id, ev?.charger_product_id].filter((x): x is string => Boolean(x));
@@ -52,19 +54,54 @@ export async function designInputs(tx: Tx, projectId: string) {
     vatRates: (company.vat_rates ?? {}) as VatRates,
     sharedVisitDiscountPence: company.shared_visit_discount_pence === null ? null : Number(company.shared_visit_discount_pence),
   });
-  const settings = (company.design_settings ?? {}) as { importPencePerKwh?: number; exportPencePerKwh?: number };
-  const summary = {
+  const full = ids.length ? await tx.selectFrom("products").select(["id", "name", "make", "model", "category", "specs"]).where("id", "in", ids).execute() : [];
+  const productOf = (id: string | null | undefined, role: SummaryProduct["role"], count: number): SummaryProduct[] => {
+    const p = full.find((x) => x.id === id);
+    return p && count > 0 ? [{ role, count, name: p.name, make: p.make, model: p.model, specs: (p.specs ?? {}) as SummaryProduct["specs"] }] : [];
+  };
+  const panelSpecs = (full.find((x) => x.id === solar?.panel_product_id)?.specs ?? {}) as Record<string, number>;
+  const batterySpecs = (full.find((x) => x.id === solar?.battery_product_id)?.specs ?? {}) as Record<string, number>;
+  const energy = await loadEnergy(tx, projectId);
+  const selfUse = solar?.self_consumption_with_battery ?? solar?.self_consumption ?? null;
+  const summary: ProposalSummary = {
     kWp: solar ? Number(solar.kwp) : null,
     panelCount: solar?.panel_count ?? null,
     annualKwh: solar?.annual_kwh_mcs ?? null,
-    selfUse: solar?.self_consumption_with_battery ?? solar?.self_consumption ?? null,
-    yearlySavingPence:
-      solar?.annual_kwh_mcs && (solar.self_consumption_with_battery ?? solar.self_consumption) !== null && settings.importPencePerKwh != null && settings.exportPencePerKwh != null
-        ? Math.round(solar.annual_kwh_mcs * (Number(solar.self_consumption_with_battery ?? solar.self_consumption) * settings.importPencePerKwh + (1 - Number(solar.self_consumption_with_battery ?? solar.self_consumption)) * settings.exportPencePerKwh))
-        : null,
+    selfUse: selfUse === null ? null : Number(selfUse),
+    yearlySavingPence: null,
     evRouteM: ev?.route_length_m === null || ev?.route_length_m === undefined ? null : Number(ev.route_length_m),
     segments: solar ? (solar.segments as unknown[]) : [],
+    details: solar
+      ? {
+          zone: solar.mcs_zone,
+          arrays: (solar.mcs_arrays ?? []) as unknown as SummaryArray[],
+          selfUsePvOnly: solar.self_consumption === null ? null : Number(solar.self_consumption),
+          selfUseWithBattery: solar.self_consumption_with_battery === null ? null : Number(solar.self_consumption_with_battery),
+          batteryUsableKwh: solar.battery_count ? Number(batterySpecs.usable_kwh ?? batterySpecs.capacity_kwh ?? 0) * solar.battery_count || null : null,
+          pvgisMonthly: solar.pvgis_monthly,
+          googleKwh: solar.google_yearly_kwh,
+          imageryDate: solar.imagery_date ? solar.imagery_date.toISOString().slice(0, 10) : null,
+          products: [
+            ...productOf(solar.panel_product_id, "panel", solar.panel_count),
+            ...productOf(solar.inverter_product_id, "inverter", 1),
+            ...productOf(solar.battery_product_id, "battery", solar.battery_count),
+            ...productOf(ev?.charger_product_id, "ev_charger", 1),
+          ],
+        }
+      : undefined,
+    energy: { annualKwh: energy.annualKwh, monthlyKwh: energy.monthlyKwh, consumption: energy.consumption, tariff: energy.tariff, tariffName: energy.tariffName, source: energy.source },
+    // A panel's datasheet degradation wins over the company default.
+    assumptions: {
+      ...energy.finance,
+      ...(typeof panelSpecs.degradation_first_year_pct === "number" ? { degradationFirstYearPct: panelSpecs.degradation_first_year_pct } : {}),
+      ...(typeof panelSpecs.degradation_annual_pct === "number" ? { degradationAnnualPct: panelSpecs.degradation_annual_pct } : {}),
+    },
+    emissions: energy.gridEmissions,
+    layout: null,
   };
+  if (summary.annualKwh && summary.selfUse !== null && energy.unitRatePence !== null && energy.exportRatePence !== null) {
+    summary.yearlySavingPence = Math.round(summary.annualKwh * (summary.selfUse * energy.unitRatePence + (1 - summary.selfUse) * energy.exportRatePence));
+  }
   return { solar, ev, company, built, summary };
 }
 
@@ -174,7 +211,7 @@ export function proposalView(c: ProposalContent): ProposalView {
     intro: p.intro,
     contactName: p.contact_name,
     depositPct: Number(p.deposit_pct),
-    summary: (p.summary ?? {}) as ProposalView["summary"],
+    summary: (p.summary ?? {}) as unknown as ProposalView["summary"],
     lines: c.lines.map((l) => ({ id: l.id, section: l.section, description: l.description, quantity: Number(l.quantity), unitPricePence: Number(l.unit_price_pence), vatRate: Number(l.vat_rate) })),
     terms: p.terms,
   };
@@ -197,4 +234,21 @@ export async function recordProposalView(tx: Tx, p: PublicProposal, userAgent: s
   if (p.status === "sent") {
     await tx.insertInto("activity_log").values({ company_id: p.companyId, project_id: p.projectId, contact_id: p.contactId, actor_id: null, event: "proposal_viewed", payload: {} }).execute();
   }
+}
+
+/** Work out the proposal's finance for its total price and store it in the summary (drafts only). */
+export async function refreshProposalFinance(tx: Tx, proposalId: string) {
+  const p = await tx.selectFrom("proposals").select(["summary", "total_pence", "status"]).where("id", "=", proposalId).executeTakeFirstOrThrow();
+  if (p.status !== "draft") return;
+  const summary = (p.summary ?? {}) as unknown as ProposalSummary;
+  const { finance } = financeForSummary(summary, Number(p.total_pence));
+  await tx.updateTable("proposals").set({ summary: JSON.stringify({ ...summary, finance }) }).where("id", "=", proposalId).execute();
+}
+
+/** The proposal view with a short-lived URL for its saved layout image. */
+export async function proposalViewWithLayout(c: ProposalContent): Promise<ProposalView> {
+  const view = proposalView(c);
+  const path = view.summary.layout?.path;
+  if (path) view.layoutUrl = (await signedUrls([path], 3600)).get(path) ?? null;
+  return view;
 }

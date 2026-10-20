@@ -1,0 +1,7 @@
+occupancy,consumption_from_kwh,generation_from_kwh,battery_from_kwh,fraction
+Most of the day,0,0,0,0.45
+Most of the day,0,0,2,0.7
+Mornings and evenings,0,0,0,0.35
+Mornings and evenings,0,0,2,0.65
+Mostly evenings and weekends,0,0,0,0.3
+Mostly evenings and weekends,0,0,2,0.6

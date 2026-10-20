@@ -7,7 +7,7 @@ import { Logo } from "@/components/sidebar";
 import { buttonVariants } from "@/components/ui/button";
 import { db } from "@/lib/db";
 import { payments } from "@/lib/payments";
-import { findPublicProposal, proposalContent, proposalView, recordProposalView } from "@/lib/proposals";
+import { findPublicProposal, proposalContent, proposalViewWithLayout, recordProposalView } from "@/lib/proposals";
 import { formatDateTime } from "@/lib/utils";
 import { AcceptForm, PayByCardButton } from "./accept-form";
 
@@ -63,7 +63,7 @@ export default async function PublicProposalPage({ params, searchParams }: { par
 
   const { p, content, invoice, cardAvailable } = data;
   const c = content.proposal;
-  const view = proposalView(content);
+  const view = await proposalViewWithLayout(content);
   const accepted = p.status === "accepted";
   const depositPaid = invoice?.status === "paid";
   const ref = proposalReference(c.document_prefix, c.number);

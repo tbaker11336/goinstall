@@ -8,7 +8,8 @@ import { z } from "zod";
 import { asUser, type Session } from "@/lib/auth";
 import { ensureDepositInvoice, recordDepositPayment } from "@/lib/deposits";
 import { emailConfigured, emailSender, fromAddress } from "@/lib/email";
-import { designInputs, hashToken, newLinkNonce, PROPOSAL_LINK_DAYS, proposalToken, proposalUrl } from "@/lib/proposals";
+import { captureLayout } from "@/lib/proposal-layout";
+import { designInputs, hashToken, newLinkNonce, PROPOSAL_LINK_DAYS, proposalToken, proposalUrl, refreshProposalFinance } from "@/lib/proposals";
 import type { ActionResult } from "./crm";
 
 const uuid = z.uuid();
@@ -68,6 +69,7 @@ export async function createProposalAction(projectId: string): Promise<{ error?:
     const project = await tx.selectFrom("projects as p").innerJoin("contacts as c", "c.id", "p.contact_id").select(["p.id", "p.site_address_line1", "c.name"]).where("p.id", "=", projectId).executeTakeFirst();
     if (!project) return { error: "Project not found" };
     const { solar, ev, company, built, summary } = await designInputs(tx, projectId);
+    if (solar) summary.layout = await captureLayout(tx, { projectId, companyId: company.id, solarDesignId: solar.id, segments: solar.segments });
     if (!built.lines.length) return { error: "Design the system first: the proposal is built from the active solar and EV designs." };
     if (company.default_deposit_pct === null) return { error: "Set the default deposit % in Settings › Invoices & quotes first." };
     const latest = await tx.selectFrom("proposals").selectAll().where("project_id", "=", projectId).orderBy("number", "desc").orderBy("version", "desc").limit(1).executeTakeFirst();
@@ -108,6 +110,7 @@ export async function createProposalAction(projectId: string): Promise<{ error?:
     const lines = await writeLines(tx, proposalId, [...built.lines, ...keep]);
     const dep = await tx.selectFrom("proposals").select("deposit_pct").where("id", "=", proposalId).executeTakeFirstOrThrow();
     await writeTotals(tx, proposalId, lines, Number(dep.deposit_pct));
+    await refreshProposalFinance(tx, proposalId);
     return { proposalId, notes: built.notes };
   });
   revalidatePath(`/projects/${projectId}`, "layout");
@@ -149,6 +152,7 @@ export async function saveProposalDraftAction(proposalId: string, input: DraftIn
     await tx.updateTable("proposals").set({ title: parsed.data.title, intro: parsed.data.intro || null }).where("id", "=", proposalId).execute();
     await writeLines(tx, proposalId, lines);
     const t = await writeTotals(tx, proposalId, lines, parsed.data.depositPct);
+    await refreshProposalFinance(tx, proposalId);
     revalidatePath(`/projects/${p.project_id}/proposal`);
     return { message: `Saved. Total ${formatPence(t.totalPence)}, deposit ${formatPence(t.depositPence)}.` };
   });

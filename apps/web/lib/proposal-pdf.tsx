@@ -1,8 +1,9 @@
 import "server-only";
-import { formatPence, paybackYears, proposalReference, proposalTotals, SECTION_LABELS, type ProposalSection } from "@goinstall/core";
+import { formatPence, paybackLabel, paybackYears, proposalReference, proposalTotals, SECTION_LABELS, type ProposalSection } from "@goinstall/core";
 import { Document, Page, renderToBuffer, StyleSheet, Text, View } from "@react-pdf/renderer";
 import { initials, type ProposalView } from "@/components/proposal-document";
-import { proposalView, type ProposalContent } from "./proposals";
+import { ProposalPdfSections } from "./proposal-pdf-sections";
+import { proposalViewWithLayout, type ProposalContent } from "./proposals";
 import { formatDate } from "./utils";
 
 const INK = "#101828";
@@ -41,14 +42,22 @@ export interface PdfExtras {
 function ProposalPdf({ p, x }: { p: ProposalView; x: PdfExtras }) {
   const s = styles(x.brandColour && /^#[0-9a-f]{6}$/i.test(x.brandColour) ? x.brandColour : "#0B7A62");
   const t = proposalTotals(p.lines, p.depositPct);
-  const payback = paybackYears(t.totalPence, p.summary.yearlySavingPence ?? null);
+  const fin = p.summary.finance;
+  const saving = fin ? fin.firstYear.totals.savingPence : (p.summary.yearlySavingPence ?? null);
+  const payback = fin ? (fin.cashFlow.discountedPaybackYears === null ? null : paybackLabel(fin.cashFlow.discountedPaybackYears)) : paybackYears(t.totalPence, saving) ? `${paybackYears(t.totalPence, saving)} years` : null;
   const tiles = [
     p.summary.kWp ? ["System size", `${Number(p.summary.kWp).toFixed(2)} kWp`] : null,
     p.summary.annualKwh ? ["Generation", `${Math.round(p.summary.annualKwh).toLocaleString("en-GB")} kWh a year`] : null,
-    p.summary.yearlySavingPence ? ["Yearly saving", formatPence(Math.round(p.summary.yearlySavingPence / 100) * 100)] : null,
-    payback ? ["Payback", `${payback} years`] : null,
+    saving ? ["Yearly saving", formatPence(Math.round(saving / 100) * 100)] : null,
+    payback ? ["Payback", payback] : null,
   ].filter((r): r is string[] => Boolean(r));
   const ref = proposalReference(p.documentPrefix, p.number, p.version);
+  const footer = (
+    <View style={s.footer} fixed>
+      <Text>{x.contact.join(" · ")}</Text>
+      <Text render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
+    </View>
+  );
   return (
     <Document title={`${p.companyName} proposal ${ref}`} author={p.companyName}>
       <Page size="A4" style={s.page}>
@@ -143,11 +152,9 @@ function ProposalPdf({ p, x }: { p: ProposalView; x: PdfExtras }) {
             <Text>{p.terms}</Text>
           </View>
         )}
-        <View style={s.footer} fixed>
-          <Text>{x.contact.join(" · ")}</Text>
-          <Text render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
-        </View>
+        {footer}
       </Page>
+      <ProposalPdfSections sm={p.summary} layoutSrc={p.layoutUrl ?? null} footer={footer} />
     </Document>
   );
 }
@@ -159,7 +166,7 @@ export function renderProposalPdf(p: ProposalView, x: PdfExtras) {
 /** The PDF for a loaded proposal as a download response. */
 export async function proposalPdfResponse(c: ProposalContent) {
   const p = c.proposal;
-  const buf = await renderProposalPdf(proposalView(c), {
+  const buf = await renderProposalPdf(await proposalViewWithLayout(c), {
     brandColour: p.brand_primary_colour,
     contact: [p.company_phone, p.company_email, p.company_website].filter((v): v is string => Boolean(v)),
     bank: { name: p.bank_account_name, sortCode: p.bank_sort_code, account: p.bank_account_number },
