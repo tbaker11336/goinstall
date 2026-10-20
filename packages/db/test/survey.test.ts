@@ -114,3 +114,23 @@ describe("survey field history", () => {
     expect(err).toBe("42501");
   });
 });
+
+describe("survey kinds", () => {
+  it("allows one survey per kind per project", async () => {
+    const c = await seedCompany("Kinds");
+    await asUser(c.users.office, (x) => x.query("insert into surveys (project_id, kind) values ($1, 'solar_battery'), ($1, 'ev')", [c.projectId]), { commit: true });
+    const dup = asUser(c.users.office, (x) => x.query("insert into surveys (project_id, kind) values ($1, 'ev')", [c.projectId]));
+    expect(await errorCode(dup)).toBe("23505");
+  });
+
+  it("seeds separate question sets, sharing keys like the electrics", async () => {
+    const c = await seedCompany("Kinds seed");
+    const rows = await asUser(c.users.admin, async (x) => (await x.query("select survey_kind, key from survey_questions where key in ('main_fuse', 'charger_location', 'roof_type') order by survey_kind, key")).rows);
+    expect(rows).toEqual([
+      { survey_kind: "solar_battery", key: "main_fuse" },
+      { survey_kind: "solar_battery", key: "roof_type" },
+      { survey_kind: "ev", key: "charger_location" },
+      { survey_kind: "ev", key: "main_fuse" },
+    ]);
+  });
+});

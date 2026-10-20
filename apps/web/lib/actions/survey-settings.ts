@@ -1,15 +1,20 @@
 "use server";
 
-import { templatePlaceholders } from "@goinstall/core";
+import { isSurveyKind, SURVEY_KINDS, templatePlaceholders, type SurveyKind } from "@goinstall/core";
 import { pgErrorCode, sql } from "@goinstall/db";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { asUser } from "@/lib/auth";
 import type { ActionResult } from "./crm";
 
-const PLACEHOLDERS = ["first_name", "name", "company_name", "survey_link", "sender_name", "site_address"];
+const PLACEHOLDERS = ["first_name", "name", "company_name", "survey_link", "survey_name", "sender_name", "site_address"];
 
-const products = (form: FormData) => z.array(z.enum(["solar", "battery", "ev"])).parse(form.getAll("products").map(String));
+/** Within a survey, a question can be limited to some of its products (e.g. battery questions). */
+const products = (form: FormData, kind: SurveyKind) =>
+  z
+    .array(z.enum(["solar", "battery", "ev"]))
+    .parse(form.getAll("products").map(String))
+    .filter((p) => SURVEY_KINDS[kind].products.includes(p));
 const text = (form: FormData, k: string) => String(form.get(k) ?? "").trim();
 const optionsFrom = (form: FormData) =>
   text(form, "options")
@@ -35,7 +40,7 @@ const questionSchema = z.object({
   type: z.enum(["text", "long_text", "number", "select", "yes_no"]),
 });
 
-function parseQuestion(form: FormData) {
+function parseQuestion(form: FormData, kind: SurveyKind) {
   const parsed = questionSchema.safeParse({ label: text(form, "label"), help: text(form, "help"), section: text(form, "section"), type: text(form, "type") });
   if (!parsed.success) return { error: parsed.error.issues[0]!.message } as const;
   const options = optionsFrom(form);
@@ -44,19 +49,20 @@ function parseQuestion(form: FormData) {
     values: {
       ...parsed.data,
       options: parsed.data.type === "select" ? options : [],
-      products: products(form),
+      products: products(form, kind),
       required: form.get("required") === "on",
       ask_online: form.get("ask_online") === "on",
     },
   } as const;
 }
 
-export async function updateQuestionAction(id: string, _: ActionResult, form: FormData): Promise<ActionResult> {
-  const parsed = parseQuestion(form);
+export async function updateQuestionAction(id: string, kind: SurveyKind, _: ActionResult, form: FormData): Promise<ActionResult> {
+  if (!isSurveyKind(kind)) return { error: "Unknown survey" };
+  const parsed = parseQuestion(form, kind);
   if ("error" in parsed) return { error: parsed.error };
   return asUser(
     async (tx) => {
-      const r = await tx.updateTable("survey_questions").set(parsed.values).where("id", "=", z.uuid().parse(id)).executeTakeFirst();
+      const r = await tx.updateTable("survey_questions").set(parsed.values).where("id", "=", z.uuid().parse(id)).where("survey_kind", "=", kind).executeTakeFirst();
       if (!r.numUpdatedRows) return { error: "Question not found" };
       revalidatePath("/settings/surveys");
       return { message: "Question saved." };
@@ -65,18 +71,19 @@ export async function updateQuestionAction(id: string, _: ActionResult, form: Fo
   );
 }
 
-export async function addQuestionAction(_: ActionResult, form: FormData): Promise<ActionResult> {
-  const parsed = parseQuestion(form);
+export async function addQuestionAction(kind: SurveyKind, _: ActionResult, form: FormData): Promise<ActionResult> {
+  if (!isSurveyKind(kind)) return { error: "Unknown survey" };
+  const parsed = parseQuestion(form, kind);
   if ("error" in parsed) return { error: parsed.error };
   return asUser(
     async (tx) => {
-      const last = await tx.selectFrom("survey_questions").select((eb) => eb.fn.max("position").as("p")).executeTakeFirst();
+      const last = await tx.selectFrom("survey_questions").select((eb) => eb.fn.max("position").as("p")).where("survey_kind", "=", kind).executeTakeFirst();
       const base = keyFrom(parsed.values.label);
       for (let i = 0; i < 5; i++) {
         try {
           await tx
             .insertInto("survey_questions")
-            .values({ ...parsed.values, key: i ? `${base}_${i + 1}` : base, position: (Number(last?.p) || 0) + 10 })
+            .values({ ...parsed.values, survey_kind: kind, key: i ? `${base}_${i + 1}` : base, position: (Number(last?.p) || 0) + 10 })
             .execute();
           revalidatePath("/settings/surveys");
           return { message: "Question added." };
@@ -111,20 +118,21 @@ const categorySchema = z.object({
   help: z.string().trim().max(300).transform((v) => v || null),
 });
 
-export async function savePhotoCategoryAction(id: string | null, _: ActionResult, form: FormData): Promise<ActionResult> {
+export async function savePhotoCategoryAction(kind: SurveyKind, id: string | null, _: ActionResult, form: FormData): Promise<ActionResult> {
+  if (!isSurveyKind(kind)) return { error: "Unknown survey" };
   const parsed = categorySchema.safeParse({ label: text(form, "label"), help: text(form, "help") });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message };
-  const values = { ...parsed.data, products: products(form), required: form.get("required") === "on" };
+  const values = { ...parsed.data, products: products(form, kind), required: form.get("required") === "on" };
   return asUser(
     async (tx) => {
       if (id) {
-        await tx.updateTable("photo_categories").set(values).where("id", "=", z.uuid().parse(id)).execute();
+        await tx.updateTable("photo_categories").set(values).where("id", "=", z.uuid().parse(id)).where("survey_kind", "=", kind).execute();
       } else {
-        const last = await tx.selectFrom("photo_categories").select((eb) => eb.fn.max("position").as("p")).executeTakeFirst();
+        const last = await tx.selectFrom("photo_categories").select((eb) => eb.fn.max("position").as("p")).where("survey_kind", "=", kind).executeTakeFirst();
         try {
           await tx
             .insertInto("photo_categories")
-            .values({ ...values, key: keyFrom(values.label), position: (Number(last?.p) || 0) + 10 })
+            .values({ ...values, survey_kind: kind, key: keyFrom(values.label), position: (Number(last?.p) || 0) + 10 })
             .execute();
         } catch (err) {
           if (pgErrorCode(err) === "23505") return { error: "A photo type with that name already exists." };

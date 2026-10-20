@@ -1,4 +1,5 @@
-import { SOURCE_LABELS, surveyProgress, type FieldSource } from "@goinstall/core";
+import { isSurveyKind, SOURCE_LABELS, SURVEY_KINDS, surveyKindsFor, surveyProgress, type FieldSource } from "@goinstall/core";
+import Link from "next/link";
 import { MapPin, Smartphone } from "lucide-react";
 import { notFound } from "next/navigation";
 import { z } from "zod";
@@ -30,8 +31,9 @@ const SOURCE_DOTS: Record<FieldSource | "missing", string> = {
   missing: "bg-warning",
 };
 
-export default async function ProjectSurveyPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ProjectSurveyPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ kind?: string }> }) {
   const { id } = await params;
+  const { kind: kindParam } = await searchParams;
   if (!z.uuid().safeParse(id).success) notFound();
   const data = await asUser(async (tx) => {
     const project = await tx
@@ -41,12 +43,16 @@ export default async function ProjectSurveyPage({ params }: { params: Promise<{ 
       .where("p.id", "=", id)
       .executeTakeFirst();
     if (!project) return null;
-    const [config, survey, photos, staff] = await Promise.all([
-      surveyConfig(tx, project.products),
-      tx.selectFrom("surveys").selectAll().where("project_id", "=", id).executeTakeFirst(),
-      surveyPhotos(tx, id),
+    // EV chargers and solar & battery are separate surveys.
+    const kinds = surveyKindsFor(project.products);
+    const kind = isSurveyKind(kindParam) && kinds.includes(kindParam) ? kindParam : kinds[0]!;
+    const [config, surveys, photos, staff] = await Promise.all([
+      surveyConfig(tx, kind, project.products),
+      tx.selectFrom("surveys").selectAll().where("project_id", "=", id).execute(),
+      surveyPhotos(tx, id, undefined, kind),
       listStaff(tx),
     ]);
+    const survey = surveys.find((s) => s.kind === kind);
     const fields = survey
       ? await tx
           .selectFrom("survey_fields as f")
@@ -55,10 +61,10 @@ export default async function ProjectSurveyPage({ params }: { params: Promise<{ 
           .where("f.survey_id", "=", survey.id)
           .execute()
       : [];
-    return { project, ...config, survey, photos, staff, fields };
+    return { project, ...config, kinds, kind, surveys, survey, photos, staff, fields };
   });
   if (!data) notFound();
-  const { project, questions, categories, survey, photos, staff, fields } = data;
+  const { project, questions, categories, kinds, kind, surveys, survey, photos, staff, fields } = data;
 
   const byKey = new Map(fields.map((f) => [f.key, f]));
   const counts = photoCounts(photos);
@@ -69,19 +75,39 @@ export default async function ProjectSurveyPage({ params }: { params: Promise<{ 
   const status = survey?.online_status ?? "not_sent";
   const onlinePhotos = photos.filter((p) => p.source === "online_survey").length;
   const onlineAnswers = fields.filter((f) => f.source === "online").length;
-  const canComplete = project.stage === "enquiry" || project.stage === "survey";
+  const canComplete = (project.stage === "enquiry" || project.stage === "survey") && !survey?.completed_at;
   // Photos in a category since archived still show.
   const otherPhotos = photos.filter((p) => !categories.some((c) => c.key === p.category));
   const visitAt = survey?.site_visit_at ? new Date(survey.site_visit_at).toISOString().slice(0, 16) : "";
 
   return (
     <div className="flex flex-col gap-6">
+      {kinds.length > 1 && (
+        <nav aria-label="Surveys" className="flex w-fit rounded-[9px] bg-divider p-[3px]">
+          {kinds.map((k) => {
+            const s = surveys.find((x) => x.kind === k);
+            return (
+              <Link
+                key={k}
+                href={`/projects/${project.id}/survey${k === kinds[0] ? "" : `?kind=${k}`}`}
+                aria-current={k === kind ? "page" : undefined}
+                className={cn("rounded-[7px] px-4 py-2 text-sm font-semibold text-ink-3 hover:text-foreground", k === kind && "bg-card text-foreground shadow-[0_1px_2px_rgba(16,24,40,0.1)]")}
+              >
+                {SURVEY_KINDS[k].label}
+                {s?.completed_at ? " ✓" : ""}
+              </Link>
+            );
+          })}
+        </nav>
+      )}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-ink-3">
+          <span className="font-semibold text-foreground">{SURVEY_KINDS[kind].label}</span>
+          {survey?.completed_at ? ` · completed ${formatDate(survey.completed_at)}` : ""} ·{" "}
           {progress.answered} of {progress.total} answers · {progress.photosTaken} of {categories.length} photo types
           {missing.length > 0 && <span className="text-warning-text"> · missing {missing.length}</span>}
         </p>
-        {canComplete && <MarkCompleteButton projectId={project.id} missing={missing} />}
+        {canComplete && <MarkCompleteButton projectId={project.id} kind={kind} label={kinds.length > 1 ? `Mark ${SURVEY_KINDS[kind].short.toLowerCase()} survey complete` : undefined} missing={missing} />}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -91,7 +117,7 @@ export default async function ProjectSurveyPage({ params }: { params: Promise<{ 
           </span>
           <div className="flex min-w-0 flex-1 flex-col gap-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="text-[17px] font-bold">Online survey</h2>
+              <h2 className="text-[17px] font-bold">Online {SURVEY_KINDS[kind].short.toLowerCase()} survey</h2>
               <OnlineStatusPill status={status} completedAt={survey?.online_completed_at ?? null} />
             </div>
             <p className="text-sm text-ink-3">
@@ -100,7 +126,7 @@ export default async function ProjectSurveyPage({ params }: { params: Promise<{ 
               {status === "in_progress" && `${project.contact_name} has started: ${onlineAnswers} answers, ${onlinePhotos} photos so far.`}
               {status === "completed" && `Filled in by ${project.contact_name} · ${onlineAnswers} answers, ${onlinePhotos} photos.`}
             </p>
-            <SurveyLinkActions projectId={project.id} canEmail={Boolean(project.contact_email)} sent={status !== "not_sent"} />
+            <SurveyLinkActions projectId={project.id} kind={kind} canEmail={Boolean(project.contact_email)} sent={status !== "not_sent"} />
           </div>
         </Card>
 
@@ -110,7 +136,7 @@ export default async function ProjectSurveyPage({ params }: { params: Promise<{ 
           </span>
           <div className="flex min-w-0 flex-1 flex-col gap-3">
             <h2 className="text-[17px] font-bold">Site visit</h2>
-            <ActionForm action={updateSiteVisitAction.bind(null, project.id)} className="flex flex-col gap-3">
+            <ActionForm action={updateSiteVisitAction.bind(null, project.id, kind)} className="flex flex-col gap-3">
               <div className="grid gap-2.5 sm:grid-cols-3">
                 <div className="flex flex-col gap-1.5">
                   <label htmlFor="site_visit_status" className="text-[13px] font-semibold text-ink-2">
@@ -164,7 +190,7 @@ export default async function ProjectSurveyPage({ params }: { params: Promise<{ 
             ))}
           </ul>
         </div>
-        <ActionForm action={saveSurveyFieldsAction.bind(null, project.id)} className="flex flex-col gap-5">
+        <ActionForm action={saveSurveyFieldsAction.bind(null, project.id, kind)} className="flex flex-col gap-5">
           <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2 xl:grid-cols-4">
             {questions.map((q) => {
               const f = byKey.get(q.key);
@@ -218,7 +244,7 @@ export default async function ProjectSurveyPage({ params }: { params: Promise<{ 
               {progress.photosRequired - progress.missingPhotos.length} of {progress.photosRequired} required photos
             </p>
           </div>
-          <ActionForm action={uploadStaffPhotoAction.bind(null, project.id)} className="flex flex-wrap items-end gap-2" resetOnSuccess>
+          <ActionForm action={uploadStaffPhotoAction.bind(null, project.id, kind)} className="flex flex-wrap items-end gap-2" resetOnSuccess>
             <div className="flex flex-col gap-1.5">
               <label htmlFor="photo-category" className="text-[13px] font-semibold text-ink-2">
                 Photo of

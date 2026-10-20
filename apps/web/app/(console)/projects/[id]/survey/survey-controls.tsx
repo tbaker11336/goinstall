@@ -2,6 +2,7 @@
 
 import { ArrowRight, Copy, Link2, Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
+import type { SurveyKind } from "@goinstall/core";
 import { Button } from "@/components/ui/button";
 import { createSurveyLinkAction, markSurveyCompleteAction, removePhotoAction, sendSurveyLinkAction } from "@/lib/actions/messaging";
 
@@ -22,7 +23,7 @@ function Feedback({ error, message }: { error?: string | null; message?: string 
 }
 
 /** Online survey card actions: email the link, or create one to paste into a text message. */
-export function SurveyLinkActions({ projectId, canEmail, sent }: { projectId: string; canEmail: boolean; sent: boolean }) {
+export function SurveyLinkActions({ projectId, kind, canEmail, sent }: { projectId: string; kind: SurveyKind; canEmail: boolean; sent: boolean }) {
   const [pending, start] = useTransition();
   const [result, setResult] = useState<{ error?: string | null; message?: string | null }>({});
   const [url, setUrl] = useState<string | null>(null);
@@ -33,7 +34,7 @@ export function SurveyLinkActions({ projectId, canEmail, sent }: { projectId: st
           variant={sent ? "outline" : "default"}
           disabled={pending || !canEmail}
           title={canEmail ? undefined : "Add an email address to the contact first"}
-          onClick={() => start(async () => setResult(await sendSurveyLinkAction(projectId)))}
+          onClick={() => start(async () => setResult(await sendSurveyLinkAction(projectId, kind)))}
         >
           {sent ? "Resend link" : "Email survey link"}
         </Button>
@@ -42,7 +43,7 @@ export function SurveyLinkActions({ projectId, canEmail, sent }: { projectId: st
           disabled={pending}
           onClick={() =>
             start(async () => {
-              const r = await createSurveyLinkAction(projectId);
+              const r = await createSurveyLinkAction(projectId, kind);
               setUrl(r.url ?? null);
               setResult({ error: r.error });
             })
@@ -69,7 +70,7 @@ export function SurveyLinkActions({ projectId, canEmail, sent }: { projectId: st
 }
 
 /** Header action: warn, but allow, when required answers or photos are missing. */
-export function MarkCompleteButton({ projectId, missing }: { projectId: string; missing: string[] }) {
+export function MarkCompleteButton({ projectId, kind, label, missing }: { projectId: string; kind: SurveyKind; label?: string; missing: string[] }) {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   return (
@@ -77,11 +78,11 @@ export function MarkCompleteButton({ projectId, missing }: { projectId: string; 
       <Button
         disabled={pending}
         onClick={() => {
-          if (missing.length && !window.confirm(`Still missing: ${missing.join(", ")}.\n\nMark the survey complete and move to Design anyway?`)) return;
-          start(async () => setError((await markSurveyCompleteAction(projectId)).error ?? null));
+          if (missing.length && !window.confirm(`Still missing: ${missing.join(", ")}.\n\nMark the survey complete anyway?`)) return;
+          start(async () => setError((await markSurveyCompleteAction(projectId, kind)).error ?? null));
         }}
       >
-        Mark complete and design <ArrowRight aria-hidden />
+        {label ?? "Mark complete and design"} <ArrowRight aria-hidden />
       </Button>
       {error && (
         <p role="alert" className="text-sm text-red-800">

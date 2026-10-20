@@ -4,7 +4,7 @@ import { extensionFor, fileStore, IMAGE_TYPES, MAX_UPLOAD_BYTES } from "@/lib/fi
 
 export const OPTIONS = preflight;
 
-const meta = z.object({ id: z.uuid(), bookingId: z.uuid(), kind: z.enum(["photo", "signature"]), category: z.union([z.literal(""), z.string().regex(/^[a-z][a-z0-9_]{1,62}$/)]).optional() });
+const meta = z.object({ id: z.uuid(), bookingId: z.uuid(), kind: z.enum(["photo", "signature"]), category: z.union([z.literal(""), z.string().regex(/^[a-z][a-z0-9_]{1,62}$/)]).optional(), surveyKind: z.enum(["", "solar_battery", "ev"]).optional() });
 
 /** Upload a photo or signature captured in the app. The id is made on the device, so retries don't duplicate. */
 export async function POST(request: Request) {
@@ -29,6 +29,7 @@ export async function POST(request: Request) {
         project_id: b.project_id,
         kind: parsed.data.kind,
         category: parsed.data.category || null,
+        survey_kind: parsed.data.surveyKind || null,
         path,
         content_type: file.type,
         size_bytes: file.size,

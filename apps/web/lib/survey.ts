@@ -1,6 +1,6 @@
 import "server-only";
 import { createHash, randomBytes } from "node:crypto";
-import { photoCategoriesFor, questionsFor, type PhotoCategory, type Product, type SurveyField, type SurveyQuestion } from "@goinstall/core";
+import { photoCategoriesFor, questionsFor, SURVEY_KINDS, type PhotoCategory, type Product, type SurveyField, type SurveyKind, type SurveyQuestion } from "@goinstall/core";
 import { sql, type Tx } from "@goinstall/db";
 import { env } from "./env";
 
@@ -28,13 +28,19 @@ export function isWellFormedToken(token: string) {
 export type QuestionRow = SurveyQuestion & { id: string };
 export type CategoryRow = PhotoCategory & { id: string };
 
-/** The company's active questions and photo categories, filtered to the project's products. */
-export async function surveyConfig(tx: Tx, products: Product[], opts: { online?: boolean; companyId?: string } = {}) {
+/**
+ * One survey's active questions and photo categories, filtered to the
+ * project's products within that survey (e.g. battery questions only when a
+ * battery is wanted).
+ */
+export async function surveyConfig(tx: Tx, kind: SurveyKind, products: Product[], opts: { online?: boolean; companyId?: string } = {}) {
   let qq = tx
     .selectFrom("survey_questions")
     .select(["id", "key", "label", "help", "type", "options", "products", "section", "position", "required", "ask_online"])
-    .where("archived_at", "is", null);
-  let cq = tx.selectFrom("photo_categories").select(["id", "key", "label", "help", "products", "required", "position"]).where("archived_at", "is", null);
+    .where("archived_at", "is", null)
+    .where("survey_kind", "=", kind);
+  let cq = tx.selectFrom("photo_categories").select(["id", "key", "label", "help", "products", "required", "position"]).where("archived_at", "is", null).where("survey_kind", "=", kind);
+  const inKind = products.filter((p) => SURVEY_KINDS[kind].products.includes(p));
   // The public page runs as the service role, so scope to the company explicitly.
   if (opts.companyId) {
     qq = qq.where("company_id", "=", opts.companyId);
@@ -44,10 +50,10 @@ export async function surveyConfig(tx: Tx, products: Product[], opts: { online?:
   return {
     questions: questionsFor(
       questions.map(({ ask_online, ...q }) => ({ ...q, askOnline: ask_online })),
-      products,
+      inKind,
       { online: opts.online },
     ),
-    categories: photoCategoriesFor(categories, products),
+    categories: photoCategoriesFor(categories, inKind),
   };
 }
 
@@ -60,7 +66,8 @@ export interface SurveyPhoto {
   created_at: Date;
 }
 
-export async function surveyPhotos(tx: Tx, projectId: string, companyId?: string): Promise<SurveyPhoto[]> {
+/** Project photos; with a kind, those taken for that survey plus staff and app photos (no kind). */
+export async function surveyPhotos(tx: Tx, projectId: string, companyId?: string, kind?: SurveyKind): Promise<SurveyPhoto[]> {
   let q = tx
     .selectFrom("files")
     .select(["id", "category", "path", "source", "original_name", "created_at"])
@@ -69,6 +76,7 @@ export async function surveyPhotos(tx: Tx, projectId: string, companyId?: string
     .where("deleted_at", "is", null)
     .orderBy("created_at");
   if (companyId) q = q.where("company_id", "=", companyId);
+  if (kind) q = q.where((eb) => eb.or([eb("survey_kind", "=", kind), eb("survey_kind", "is", null)]));
   return q.execute();
 }
 
@@ -80,6 +88,7 @@ export function photoCounts(photos: { category: string | null }[]) {
 
 export interface PublicSurvey {
   surveyId: string;
+  kind: SurveyKind;
   companyId: string;
   projectId: string;
   contactId: string;
@@ -105,6 +114,7 @@ export async function findPublicSurvey(tx: Tx, token: string): Promise<PublicSur
     .innerJoin("companies as co", "co.id", "s.company_id")
     .select([
       "s.id",
+      "s.kind",
       "s.company_id",
       "s.project_id",
       "s.online_status",
@@ -133,6 +143,7 @@ export async function findPublicSurvey(tx: Tx, token: string): Promise<PublicSur
     .execute();
   return {
     surveyId: row.id,
+    kind: row.kind,
     companyId: row.company_id,
     projectId: row.project_id,
     contactId: row.contact_id,

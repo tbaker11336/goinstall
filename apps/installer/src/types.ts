@@ -18,7 +18,11 @@ export interface ChecklistStep {
   readings: ReadingField[];
 }
 
+export type SurveyKind = "solar_battery" | "ev";
+export const SURVEY_LABELS: Record<SurveyKind, string> = { solar_battery: "Solar & battery survey", ev: "EV charger survey" };
+
 export interface SurveyQuestion {
+  survey_kind: SurveyKind;
   key: string;
   label: string;
   help: string | null;
@@ -31,6 +35,7 @@ export interface SurveyQuestion {
 }
 
 export interface PhotoCategory {
+  survey_kind: SurveyKind;
   key: string;
   label: string;
   products: string[];
@@ -74,7 +79,7 @@ export interface Job {
     ev: { routeLengthM: number | null; cableSizeMm2: number | null; route: unknown } | null;
   };
   kit: { id: string; description: string; quantity: number; issue: string | null; issueNote: string | null }[];
-  survey: { id: string; fields: Record<string, { value: string | null; source: string; updatedAt: string }> } | null;
+  surveys: { id: string; kind: SurveyKind; fields: Record<string, { value: string | null; source: string; updatedAt: string }> }[];
   captured: Captured[];
 }
 
@@ -112,5 +117,6 @@ export interface PendingFile {
   bookingId: string;
   kind: "photo";
   category: string | null;
+  surveyKind: SurveyKind | null;
   contentType: string;
 }

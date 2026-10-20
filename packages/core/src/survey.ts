@@ -8,6 +8,24 @@ export type Product = "solar" | "battery" | "ev";
 
 export type FieldSource = "online" | "in_person" | "photo" | "staff_edit";
 
+/** Each project gets one survey per kind it needs: EV chargers and solar & battery are surveyed separately. */
+export type SurveyKind = "solar_battery" | "ev";
+
+export const SURVEY_KINDS: Record<SurveyKind, { label: string; short: string; products: Product[] }> = {
+  solar_battery: { label: "Solar & battery survey", short: "Solar & battery", products: ["solar", "battery"] },
+  ev: { label: "EV charger survey", short: "EV charger", products: ["ev"] },
+};
+
+/** The surveys a project needs. A project with no products yet gets the solar & battery survey. */
+export function surveyKindsFor(products: readonly Product[]): SurveyKind[] {
+  const kinds = (Object.keys(SURVEY_KINDS) as SurveyKind[]).filter((k) => SURVEY_KINDS[k].products.some((p) => products.includes(p)));
+  return kinds.length ? kinds : ["solar_battery"];
+}
+
+export function isSurveyKind(v: unknown): v is SurveyKind {
+  return v === "solar_battery" || v === "ev";
+}
+
 export interface SurveyQuestion {
   key: string;
   label: string;
@@ -127,7 +145,7 @@ export function normaliseAnswer(q: Pick<SurveyQuestion, "type" | "options" | "la
   }
 }
 
-export type TemplateVars = Partial<Record<"first_name" | "name" | "company_name" | "survey_link" | "sender_name" | "site_address", string>>;
+export type TemplateVars = Partial<Record<"first_name" | "name" | "company_name" | "survey_link" | "survey_name" | "sender_name" | "site_address", string>>;
 
 /**
  * Fill {{placeholders}} in a template. Unknown or empty placeholders become

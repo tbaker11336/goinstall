@@ -111,3 +111,13 @@ describe("templates", () => {
     expect(firstName("Cher")).toBe("Cher");
   });
 });
+
+describe("survey kinds", () => {
+  it("gives a project one survey per kind it needs", async () => {
+    const { surveyKindsFor } = await import("./survey");
+    expect(surveyKindsFor(["solar", "battery", "ev"])).toEqual(["solar_battery", "ev"]);
+    expect(surveyKindsFor(["ev"])).toEqual(["ev"]);
+    expect(surveyKindsFor(["battery"])).toEqual(["solar_battery"]);
+    expect(surveyKindsFor([])).toEqual(["solar_battery"]);
+  });
+});

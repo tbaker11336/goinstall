@@ -63,6 +63,8 @@ export type SiteVisitStatus = "booked" | "completed" | "not_needed" | "recommend
 
 export type SupplierConnection = "api" | "email" | "price_file";
 
+export type SurveyKind = "ev" | "solar_battery";
+
 export type SurveyQuestionType = "long_text" | "number" | "select" | "text" | "yes_no";
 
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
@@ -291,6 +293,7 @@ export interface Files {
   project_id: string | null;
   size_bytes: number;
   source: string;
+  survey_kind: SurveyKind | null;
   updated_at: Generated<Timestamp>;
   uploaded_by: string | null;
 }
@@ -408,6 +411,7 @@ export interface PhotoCategories {
   position: Generated<number>;
   products: Generated<ArrayType<ProductType>>;
   required: Generated<boolean>;
+  survey_kind: SurveyKind;
   updated_at: Generated<Timestamp>;
 }
 
@@ -686,6 +690,7 @@ export interface SurveyQuestions {
   products: Generated<ArrayType<ProductType>>;
   required: Generated<boolean>;
   section: Generated<string>;
+  survey_kind: SurveyKind;
   type: Generated<SurveyQuestionType>;
   updated_at: Generated<Timestamp>;
 }
@@ -696,6 +701,7 @@ export interface Surveys {
   created_at: Generated<Timestamp>;
   created_by: Generated<string | null>;
   id: Generated<string>;
+  kind: Generated<SurveyKind>;
   last_opened_at: Timestamp | null;
   online_completed_at: Timestamp | null;
   online_status: Generated<OnlineSurveyStatus>;

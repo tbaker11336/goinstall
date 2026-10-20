@@ -1,6 +1,6 @@
 "use server";
 
-import { allDaySpan, BOOKING_TYPE_LABELS, bookingDates, firstName } from "@goinstall/core";
+import { allDaySpan, BOOKING_TYPE_LABELS, bookingDates, firstName, surveyKindsFor } from "@goinstall/core";
 import { sql, type Tx } from "@goinstall/db";
 import { textToHtml } from "@goinstall/integrations";
 import { revalidatePath } from "next/cache";
@@ -78,6 +78,13 @@ export async function saveBookingAction(projectId: string, bookingId: string | n
       await setAssignment(tx, id, "electrician", { userId: d.electrician_id });
     } else if (d.type === "survey") {
       await setAssignment(tx, id, "surveyor", { userId: d.surveyor_id });
+      // The installer app fills in each survey the project needs, so make sure they exist.
+      const p = await tx.selectFrom("projects").select("products").where("id", "=", projectId).executeTakeFirstOrThrow();
+      await tx
+        .insertInto("surveys")
+        .values(surveyKindsFor(p.products).map((kind) => ({ project_id: projectId, kind, site_visit_status: "booked" as const, site_visit_at: new Date(span.startsAt), surveyor_id: d.surveyor_id })))
+        .onConflict((oc) => oc.columns(["company_id", "project_id", "kind"]).doUpdateSet({ site_visit_status: "booked", site_visit_at: new Date(span.startsAt), surveyor_id: d.surveyor_id }))
+        .execute();
     } else {
       await setAssignment(tx, id, "scaffolder", { userId: d.scaffolder_id });
     }

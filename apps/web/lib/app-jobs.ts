@@ -51,15 +51,15 @@ export async function jobsFor(tx: Tx, session: Session, range: { from: Date; to:
 
   const [kit, surveys, solar, ev, items, templates, questions, categories] = await Promise.all([
     projectIds.length ? tx.selectFrom("kit_items").select(["id", "project_id", "description", "quantity", "issue", "issue_note"]).where("project_id", "in", projectIds).orderBy("position").execute() : [],
-    projectIds.length ? tx.selectFrom("surveys").select(["id", "project_id"]).where("project_id", "in", projectIds).execute() : [],
+    projectIds.length ? tx.selectFrom("surveys").select(["id", "project_id", "kind"]).where("project_id", "in", projectIds).execute() : [],
     projectIds.length ? tx.selectFrom("solar_designs").select(["project_id", "panel_count", "kwp", "segments", "battery_count", "connection_form"]).where("project_id", "in", projectIds).where("is_active", "=", true).execute() : [],
     session.role !== "subcontractor" && projectIds.length
       ? tx.selectFrom("ev_designs").select(["project_id", "route_length_m", "cable_size_mm2", "route"]).where("project_id", "in", projectIds).where("is_active", "=", true).execute()
       : [],
     bookingIds.length ? tx.selectFrom("checklist_items").selectAll().where("booking_id", "in", bookingIds).execute() : [],
     tx.selectFrom("checklist_templates").selectAll().where("archived_at", "is", null).orderBy("position").execute(),
-    tx.selectFrom("survey_questions").select(["key", "label", "help", "type", "options", "products", "section", "position", "required"]).where("archived_at", "is", null).orderBy("position").execute(),
-    tx.selectFrom("photo_categories").select(["key", "label", "products", "required", "position"]).where("archived_at", "is", null).orderBy("position").execute(),
+    tx.selectFrom("survey_questions").select(["survey_kind", "key", "label", "help", "type", "options", "products", "section", "position", "required"]).where("archived_at", "is", null).orderBy("position").execute(),
+    tx.selectFrom("photo_categories").select(["survey_kind", "key", "label", "products", "required", "position"]).where("archived_at", "is", null).orderBy("position").execute(),
   ]);
   const surveyIds = surveys.map((s) => s.id);
   const fields = surveyIds.length ? await tx.selectFrom("survey_fields").select(["survey_id", "key", "value", "source", "updated_at"]).where("survey_id", "in", surveyIds).execute() : [];
@@ -83,7 +83,7 @@ export async function jobsFor(tx: Tx, session: Session, range: { from: Date; to:
     surveyQuestions: questions,
     photoCategories: categories,
     jobs: unique.map((b) => {
-      const survey = surveys.find((s) => s.project_id === b.project_id);
+      const projectSurveys = surveys.filter((s) => s.project_id === b.project_id);
       const s = solar.find((x) => x.project_id === b.project_id);
       const e = ev.find((x) => x.project_id === b.project_id);
       return {
@@ -111,7 +111,7 @@ export async function jobsFor(tx: Tx, session: Session, range: { from: Date; to:
           ev: e ? { routeLengthM: e.route_length_m === null ? null : Number(e.route_length_m), cableSizeMm2: e.cable_size_mm2 === null ? null : Number(e.cable_size_mm2), route: e.route } : null,
         },
         kit: kit.filter((k) => k.project_id === b.project_id).map((k) => ({ id: k.id, description: k.description, quantity: Number(k.quantity), issue: k.issue, issueNote: k.issue_note })),
-        survey: survey ? { id: survey.id, fields: Object.fromEntries(fields.filter((f) => f.survey_id === survey.id).map((f) => [f.key, { value: f.value, source: f.source, updatedAt: f.updated_at }])) } : null,
+        surveys: projectSurveys.map((sv) => ({ id: sv.id, kind: sv.kind, fields: Object.fromEntries(fields.filter((f) => f.survey_id === sv.id).map((f) => [f.key, { value: f.value, source: f.source, updatedAt: f.updated_at }])) })),
         captured: items
           .filter((i) => i.booking_id === b.id)
           .map((i) => ({ id: i.id, templateId: i.template_id, done: i.done, serial: i.serial, readings: i.readings, note: i.note, photoFileIds: i.photo_file_ids, capturedAt: i.captured_at })),

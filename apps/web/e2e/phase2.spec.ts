@@ -47,7 +47,7 @@ test("solar and battery: email the survey link, customer completes it on a phone
   expect(link).toBeTruthy();
 
   await onPhone(browser, link!, async (phone) => {
-    await expect(phone.getByRole("heading", { name: "Your online survey" })).toBeVisible();
+    await expect(phone.getByRole("heading", { name: "Your solar & battery survey" })).toBeVisible();
     // Solar and battery questions, no EV charger questions.
     await expect(phone.getByText("Where would you like the charger?")).toHaveCount(0);
 
@@ -78,7 +78,7 @@ test("solar and battery: email the survey link, customer completes it on a phone
 
   // Back in the console: the thread shows completion, the Survey tab shows answers with sources.
   await page.reload();
-  await expect(page.getByText(/Online survey completed · \d+ answers, 1 photo/)).toBeVisible();
+  await expect(page.getByText(/Solar & battery survey completed online · \d+ answers, 1 photo/)).toBeVisible();
   await page.getByRole("link", { name: /14 Cotham Road/ }).click();
   await page.waitForURL(/\/projects\/[0-9a-f-]{36}$/);
   await page.getByRole("navigation", { name: "Project sections" }).getByRole("link", { name: "Survey", exact: true }).click();
@@ -139,6 +139,36 @@ test("EV only: a copied link asks the charger questions and rejects bad answers"
   await expect(page.getByLabel("Survey link")).not.toHaveValue(link);
   await onPhone(browser, link, async (phone) => {
     await expect(phone.getByRole("heading", { name: "This link isn't working" })).toBeVisible();
+  });
+});
+
+test("solar and EV: two separate surveys, each with its own link and questions", async ({ page, browser }) => {
+  await signInAs(page, "Priya Shah");
+  await page.goto("/contacts");
+  await page.getByRole("link", { name: "Grace Okafor" }).click();
+  await page.getByRole("link", { name: /Henleaze/ }).click();
+  await page.waitForURL(/\/projects\/[0-9a-f-]{36}$/);
+  await page.getByRole("navigation", { name: "Project sections" }).getByRole("link", { name: "Survey", exact: true }).click();
+  const surveys = page.getByRole("navigation", { name: "Surveys" });
+  await expect(surveys.getByRole("link", { name: "Solar & battery survey" })).toHaveAttribute("aria-current", "page");
+  await page.getByRole("button", { name: "Create link to copy" }).click();
+  const solarLink = await page.getByLabel("Survey link").inputValue();
+
+  await surveys.getByRole("link", { name: "EV charger survey" }).click();
+  await page.waitForURL(/kind=ev/);
+  await expect(page.getByRole("heading", { name: "Online ev charger survey" })).toBeVisible();
+  await page.getByRole("button", { name: "Create link to copy" }).click();
+  const evLink = await page.getByLabel("Survey link").inputValue();
+  expect(evLink).not.toBe(solarLink);
+
+  await onPhone(browser, evLink, async (phone) => {
+    await expect(phone.getByRole("heading", { name: "Your ev charger survey" })).toBeVisible();
+    await expect(phone.getByText("Roof covering")).toHaveCount(0);
+  });
+  // The EV link didn't replace the solar one.
+  await onPhone(browser, solarLink, async (phone) => {
+    await expect(phone.getByRole("heading", { name: "Your solar & battery survey" })).toBeVisible();
+    await expect(phone.getByText("Where would you like the charger?")).toHaveCount(0);
   });
 });
 

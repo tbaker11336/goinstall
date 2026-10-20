@@ -1,4 +1,4 @@
-import { groupBySection } from "@goinstall/core";
+import { groupBySection, SURVEY_KINDS } from "@goinstall/core";
 import { withService } from "@goinstall/db";
 import type { Metadata } from "next";
 import { Logo } from "@/components/sidebar";
@@ -23,8 +23,8 @@ export default async function PublicSurveyPage({ params }: { params: Promise<{ t
     if (!survey) return null;
     await touchSurvey(tx, survey);
     const [{ questions, categories }, photos] = await Promise.all([
-      surveyConfig(tx, survey.products, { online: true, companyId: survey.companyId }),
-      surveyPhotos(tx, survey.projectId, survey.companyId),
+      surveyConfig(tx, survey.kind, survey.products, { online: true, companyId: survey.companyId }),
+      surveyPhotos(tx, survey.projectId, survey.companyId, survey.kind),
     ]);
     return { survey, questions, categories, photos };
   });
@@ -48,7 +48,7 @@ export default async function PublicSurveyPage({ params }: { params: Promise<{ t
   return (
     <Shell companyName={survey.company.name} accent={accent}>
       <header className="flex flex-col gap-1.5">
-        <h1 className="text-2xl font-bold tracking-[-0.02em]">Your online survey</h1>
+        <h1 className="text-2xl font-bold tracking-[-0.02em]">Your {SURVEY_KINDS[survey.kind].label.toLowerCase()}</h1>
         <p className="text-ink-3">
           Hi {survey.customerName}. A few questions about {survey.siteAddress ?? "your home"} so {survey.company.name} can design your system. It takes about 10
           minutes.

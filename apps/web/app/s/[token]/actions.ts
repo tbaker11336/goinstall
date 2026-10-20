@@ -1,6 +1,6 @@
 "use server";
 
-import { normaliseAnswer, surveyProgress } from "@goinstall/core";
+import { normaliseAnswer, SURVEY_KINDS, surveyProgress } from "@goinstall/core";
 import { sql, withService, type Tx } from "@goinstall/db";
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
@@ -31,7 +31,7 @@ async function withSurvey<T>(token: string, fn: (tx: Tx, s: PublicSurvey) => Pro
  * changed are left alone, so staff edits keep their source.
  */
 async function saveAnswers(tx: Tx, s: PublicSurvey, form: FormData): Promise<SurveyActionResult> {
-  const { questions } = await surveyConfig(tx, s.products, { online: true, companyId: s.companyId });
+  const { questions } = await surveyConfig(tx, s.kind, s.products, { online: true, companyId: s.companyId });
   const current = new Map(s.fields.map((f) => [f.key, f.value]));
   const fieldErrors: Record<string, string> = {};
   const writes: { key: string; value: string | null }[] = [];
@@ -67,9 +67,9 @@ export async function uploadSurveyPhotoAction(token: string, form: FormData): Pr
   if (!IMAGE_TYPES.includes(file.type)) return { error: "Photos must be JPEG, PNG, WebP or HEIC." };
   if (file.size > MAX_UPLOAD_BYTES) return { error: "That photo is too large." };
   const result = await withSurvey(token, async (tx, s) => {
-    const { categories } = await surveyConfig(tx, s.products, { companyId: s.companyId });
+    const { categories } = await surveyConfig(tx, s.kind, s.products, { companyId: s.companyId });
     if (!categories.some((c) => c.key === category.data)) return { error: "Choose what the photo shows." };
-    const existing = await surveyPhotos(tx, s.projectId, s.companyId);
+    const existing = await surveyPhotos(tx, s.projectId, s.companyId, s.kind);
     if (existing.filter((p) => p.source === "online_survey").length >= 40) return { error: "You've added the maximum number of photos." };
     const id = randomUUID();
     const path = `${s.companyId}/${s.projectId}/${id}.${extensionFor(file.type)}`;
@@ -81,6 +81,7 @@ export async function uploadSurveyPhotoAction(token: string, form: FormData): Pr
         company_id: s.companyId,
         project_id: s.projectId,
         kind: "photo",
+        survey_kind: s.kind,
         category: category.data,
         path,
         content_type: file.type,
@@ -120,9 +121,9 @@ export async function submitSurveyAction(token: string, _: SurveyActionResult, f
   const result = await withSurvey(token, async (tx, s): Promise<SurveyActionResult> => {
     const saved = await saveAnswers(tx, s, form);
     if (saved.error) return saved;
-    const { questions, categories } = await surveyConfig(tx, s.products, { online: true, companyId: s.companyId });
+    const { questions, categories } = await surveyConfig(tx, s.kind, s.products, { online: true, companyId: s.companyId });
     const fields = await tx.selectFrom("survey_fields").select(["key", "value", "source"]).where("company_id", "=", s.companyId).where("survey_id", "=", s.surveyId).execute();
-    const photos = await surveyPhotos(tx, s.projectId, s.companyId);
+    const photos = await surveyPhotos(tx, s.projectId, s.companyId, s.kind);
     const progress = surveyProgress(questions, fields, categories, photoCounts(photos));
     if (progress.missingRequired.length) {
       const labels = new Map(questions.map((q) => [q.key, q.label]));
@@ -147,7 +148,7 @@ export async function submitSurveyAction(token: string, _: SurveyActionResult, f
         project_id: s.projectId,
         channel: "system",
         direction: "internal",
-        body: `${first ? "Online survey completed" : "Online survey updated"} · ${progress.answered} answers, ${photoTotal} ${photoTotal === 1 ? "photo" : "photos"}`,
+        body: `${SURVEY_KINDS[s.kind].label} ${first ? "completed online" : "updated online"} · ${progress.answered} answers, ${photoTotal} ${photoTotal === 1 ? "photo" : "photos"}`,
         created_by: null,
       })
       .execute();
@@ -159,7 +160,7 @@ export async function submitSurveyAction(token: string, _: SurveyActionResult, f
         contact_id: s.contactId,
         actor_id: null,
         event: first ? "online_survey_completed" : "online_survey_updated",
-        payload: { answers: progress.answered, photos: photoTotal, missing_photos: progress.missingPhotos },
+        payload: { kind: s.kind, answers: progress.answered, photos: photoTotal, missing_photos: progress.missingPhotos },
       })
       .execute();
     await tx.updateTable("contacts").set({ last_activity_at: sql<Date>`now()` }).where("id", "=", s.contactId).where("company_id", "=", s.companyId).execute();

@@ -6,7 +6,7 @@ import { FormMessage, SubmitButton, type FormState } from "@/components/forms";
 import { Button } from "@/components/ui/button";
 import { Input, Select, Textarea } from "@/components/ui/input";
 import { addNoteAction } from "@/lib/actions/crm";
-import { sendEmailAction, sendSurveyLinkAction } from "@/lib/actions/messaging";
+import { sendEmailAction, sendProjectSurveysAction } from "@/lib/actions/messaging";
 
 type Channel = "note" | "email";
 
@@ -103,7 +103,7 @@ export function Composer({
               className="h-[34px]"
               disabled={sendingSurvey || !contactEmail || !projectId}
               title={!contactEmail ? "Add an email address first" : !projectId ? "Choose a project" : undefined}
-              onClick={() => startSurvey(async () => setSurveyState(await sendSurveyLinkAction(projectId)))}
+              onClick={() => startSurvey(async () => setSurveyState(await sendProjectSurveysAction(projectId)))}
             >
               <ClipboardList aria-hidden /> {sendingSurvey ? "Sending…" : "Send survey link"}
             </Button>

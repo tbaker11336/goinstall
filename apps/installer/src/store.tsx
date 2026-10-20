@@ -4,7 +4,7 @@ import { randomUUID } from "expo-crypto";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { saveBlob, formPart, removeBlob } from "./blobs";
 import { API_URL } from "./config";
-import type { Bundle, Captured, Op, PendingFile } from "./types";
+import type { Bundle, Captured, Op, PendingFile, SurveyKind } from "./types";
 
 /**
  * Offline-first state. Everything the installer captures is saved on the
@@ -18,7 +18,7 @@ export type SyncStatus = "synced" | "pending" | "syncing" | "offline" | "error";
 interface Local {
   checklist: Record<string, Record<string, Captured>>; // bookingId → stepId → capture
   survey: Record<string, Record<string, string | null>>; // surveyId → key → value
-  photos: Record<string, { contentType: string; bookingId: string; category: string | null }>;
+  photos: Record<string, { contentType: string; bookingId: string; category: string | null; surveyKind?: SurveyKind | null }>;
   status: Record<string, "in_progress" | "completed">;
   signoff: Record<string, { name: string; signatureFileId: string | null }>;
   kitChecked: Record<string, boolean>;
@@ -52,7 +52,7 @@ interface Store extends Persisted {
   signOut(): Promise<void>;
   sync(): Promise<void>;
   capture(bookingId: string, stepId: string, patch: Partial<Omit<Captured, "id" | "templateId" | "capturedAt">>): void;
-  addPhoto(bookingId: string, source: { uri: string; base64?: string | null }, contentType: string, category: string | null): Promise<string>;
+  addPhoto(bookingId: string, source: { uri: string; base64?: string | null }, contentType: string, category: string | null, surveyKind?: SurveyKind | null): Promise<string>;
   setSurveyField(surveyId: string, key: string, value: string | null): void;
   setStatus(bookingId: string, status: "in_progress" | "completed"): void;
   signOff(bookingId: string, name: string, signaturePaths: string[]): Promise<void>;
@@ -117,6 +117,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         body.append("bookingId", f.bookingId);
         body.append("kind", f.kind);
         body.append("category", f.category ?? "");
+        body.append("surveyKind", f.surveyKind ?? "");
         body.append("file", part as Blob, `${f.id}.${f.contentType === "image/png" ? "png" : "jpg"}`);
         const res = await fetch(`${API_URL}/api/app/files`, { method: "POST", headers: auth, body });
         if (res.status === 401) throw new Error("signed_out");
@@ -214,13 +215,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       },
       sync,
       capture,
-      async addPhoto(bookingId, source, contentType, category) {
+      async addPhoto(bookingId, source, contentType, category, surveyKind = null) {
         const id = randomUUID();
         await saveBlob(id, source, contentType);
         update((s) => ({
           ...s,
-          local: { ...s.local, photos: { ...s.local.photos, [id]: { contentType, bookingId, category } } },
-          files: [...s.files, { id, bookingId, kind: "photo", category, contentType }],
+          local: { ...s.local, photos: { ...s.local.photos, [id]: { contentType, bookingId, category, surveyKind } } },
+          files: [...s.files, { id, bookingId, kind: "photo", category, surveyKind, contentType }],
         }));
         return id;
       },
