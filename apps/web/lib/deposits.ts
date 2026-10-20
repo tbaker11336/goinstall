@@ -7,7 +7,7 @@ import { sql, type Tx } from "@goinstall/db";
  * the company row (admin only), so they allocate through next_document_number;
  * the service role (public page, webhook) updates the counter directly.
  */
-async function nextInvoiceNumber(tx: Tx, companyId: string) {
+export async function nextInvoiceNumber(tx: Tx, companyId: string) {
   const { rows } = await sql<{ u: string }>`select current_user as u`.execute(tx);
   let n: number;
   if (rows[0]?.u === "authenticated") {
@@ -49,11 +49,11 @@ export async function ensureDepositInvoice(tx: Tx, p: { companyId: string; proje
 }
 
 /**
- * Mark a deposit paid: record the payment (idempotent on provider ref), close
+ * Mark a deposit or balance invoice paid: record the payment (idempotent on provider ref), close
  * the invoice, move the project to Deposit paid and tell the team.
  * Spec: Deposit paid → draft purchase orders (phase 5) and Xero sync.
  */
-export async function recordDepositPayment(
+export async function recordInvoicePayment(
   tx: Tx,
   p: { companyId: string; invoiceId: string; amountPence: number; method: "card" | "bank_transfer"; provider: string | null; providerRef: string | null; actorId: string | null },
 ): Promise<{ alreadyRecorded: boolean }> {
@@ -64,7 +64,7 @@ export async function recordDepositPayment(
   const invoice = await tx
     .selectFrom("invoices as i")
     .innerJoin("projects as pj", (j) => j.onRef("pj.id", "=", "i.project_id").onRef("pj.company_id", "=", "i.company_id"))
-    .select(["i.id", "i.project_id", "i.status", "pj.contact_id", "pj.stage"])
+    .select(["i.id", "i.kind", "i.project_id", "i.status", "pj.contact_id", "pj.stage"])
     .where("i.id", "=", p.invoiceId)
     .where("i.company_id", "=", p.companyId)
     .executeTakeFirstOrThrow();
@@ -73,17 +73,17 @@ export async function recordDepositPayment(
     .values({ company_id: p.companyId, invoice_id: p.invoiceId, amount_pence: p.amountPence, method: p.method, provider: p.provider, provider_ref: p.providerRef, status: "succeeded", paid_at: sql<Date>`now()`, created_by: p.actorId })
     .execute();
   await tx.updateTable("invoices").set({ status: "paid", paid_at: sql<Date>`now()` }).where("id", "=", p.invoiceId).where("company_id", "=", p.companyId).execute();
-  if (["enquiry", "survey", "design", "proposal_sent", "accepted"].includes(invoice.stage)) {
+  if (invoice.kind === "deposit" && ["enquiry", "survey", "design", "proposal_sent", "accepted"].includes(invoice.stage)) {
     await tx.updateTable("projects").set({ stage: "deposit_paid" }).where("id", "=", invoice.project_id).where("company_id", "=", p.companyId).execute();
   }
   const how = p.method === "card" ? "by card" : "by bank transfer";
   await tx
     .insertInto("messages")
-    .values({ company_id: p.companyId, contact_id: invoice.contact_id, project_id: invoice.project_id, channel: "system", direction: "internal", body: `Deposit of ${formatPence(p.amountPence)} paid ${how}`, created_by: p.actorId })
+    .values({ company_id: p.companyId, contact_id: invoice.contact_id, project_id: invoice.project_id, channel: "system", direction: "internal", body: `${invoice.kind === "balance" ? "Balance" : "Deposit"} of ${formatPence(p.amountPence)} paid ${how}`, created_by: p.actorId })
     .execute();
   await tx
     .insertInto("activity_log")
-    .values({ company_id: p.companyId, project_id: invoice.project_id, contact_id: invoice.contact_id, actor_id: p.actorId, event: "deposit_paid", payload: { amount_pence: p.amountPence, method: p.method } })
+    .values({ company_id: p.companyId, project_id: invoice.project_id, contact_id: invoice.contact_id, actor_id: p.actorId, event: invoice.kind === "balance" ? "balance_paid" : "deposit_paid", payload: { amount_pence: p.amountPence, method: p.method } })
     .execute();
   return { alreadyRecorded: false };
 }

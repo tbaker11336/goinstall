@@ -7,6 +7,7 @@ import { ProposalDocument } from "@/components/proposal-document";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/input";
+import { recordBalanceTransferAction } from "@/lib/actions/invoices";
 import { recordBankTransferAction } from "@/lib/actions/proposals";
 import { asUser } from "@/lib/auth";
 import { proposalContent, proposalViewWithLayout } from "@/lib/proposals";
@@ -14,6 +15,7 @@ import { cn, formatDateTime } from "@/lib/utils";
 import {
   CopyLinkButton,
   CreateProposalButton,
+  ResendBalanceButton,
   ProposalEditor,
   SendButton,
   VersionSelect,
@@ -134,6 +136,7 @@ export default async function ProposalPage({
         content: null,
         proposal: null,
         invoice: null,
+        balance: null,
       };
     const [content, proposal, invoice] = await Promise.all([
       proposalContent(tx, selected.id),
@@ -163,6 +166,13 @@ export default async function ProposalPage({
         .where("status", "!=", "void")
         .executeTakeFirst(),
     ]);
+    const balance = await tx
+      .selectFrom("invoices")
+      .select(["id", "number", "status", "paid_at", "amount_pence", "issued_at"])
+      .where("proposal_id", "=", selected.id)
+      .where("kind", "=", "balance")
+      .where("status", "!=", "void")
+      .executeTakeFirst();
     return {
       project,
       versions,
@@ -171,10 +181,11 @@ export default async function ProposalPage({
       content,
       proposal,
       invoice,
+      balance,
     };
   });
   if (!data) notFound();
-  const { project, versions, hasDesign, company, content, proposal, invoice } =
+  const { project, versions, hasDesign, company, content, proposal, invoice, balance } =
     data;
 
   if (!content || !proposal) {
@@ -390,6 +401,43 @@ export default async function ProposalPage({
               )}
             </CardContent>
           </Card>
+
+          {balance && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Balance</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <dl className="divide-y text-sm">
+                  <div className="flex justify-between gap-3 py-2.5">
+                    <dt className="text-ink-3">Invoice</dt>
+                    <dd className="font-semibold">{balance.number}</dd>
+                  </div>
+                  <div className="flex justify-between gap-3 py-2.5">
+                    <dt className="text-ink-3">Amount</dt>
+                    <dd className="font-semibold">{formatPence(Number(balance.amount_pence))}</dd>
+                  </div>
+                  <div className="flex justify-between gap-3 py-2.5">
+                    <dt className="text-ink-3">Status</dt>
+                    <dd className="font-semibold">{balance.status === "paid" ? `Paid ${balance.paid_at ? formatDateTime(balance.paid_at) : ""}` : `Sent ${formatDateTime(balance.issued_at)}`}</dd>
+                  </div>
+                </dl>
+                {balance.status !== "paid" && (
+                  <div className="mt-4 flex flex-col gap-3 border-t pt-4">
+                    <ResendBalanceButton invoiceId={balance.id} />
+                    <ActionForm action={recordBalanceTransferAction.bind(null, balance.id)} className="flex flex-col gap-3">
+                      <Field label="Balance received by bank transfer (£)" htmlFor="bal-amount">
+                        <Input id="bal-amount" name="amount" inputMode="decimal" defaultValue={(Number(balance.amount_pence) / 100).toFixed(2)} required />
+                      </Field>
+                      <SubmitButton variant="outline" pendingText="Recording…">
+                        Record bank transfer
+                      </SubmitButton>
+                    </ActionForm>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </aside>
       </div>
     </div>

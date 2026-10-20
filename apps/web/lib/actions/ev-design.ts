@@ -4,6 +4,7 @@ import { evaluateEvDesign, type Specs } from "@goinstall/core";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { asUser } from "@/lib/auth";
+import { syncPaperwork } from "@/lib/paperwork";
 import { loadDesignRules } from "@/lib/design-rules";
 
 const point = z.object({ x: z.number().finite(), y: z.number().finite() });
@@ -35,7 +36,7 @@ export async function saveEvDesignAction(projectId: string, payload: EvDesignPay
   const parsed = evSchema.safeParse(payload);
   if (!parsed.success) return { error: `Design not saved: ${parsed.error.issues[0]?.path.join(".")} ${parsed.error.issues[0]?.message}` };
   const d = parsed.data;
-  return asUser(async (tx) => {
+  return asUser(async (tx, session) => {
     const project = await tx.selectFrom("projects").select("id").where("id", "=", projectId).executeTakeFirst();
     if (!project) return { error: "Project not found" };
     const [rules, charger, previous] = await Promise.all([
@@ -88,6 +89,8 @@ export async function saveEvDesignAction(projectId: string, payload: EvDesignPay
         calc_notes: JSON.stringify(r.notes),
       })
       .execute();
+    // The design decides the DNO and MCS paperwork.
+    await syncPaperwork(tx, session.companyId, projectId);
     revalidatePath(`/projects/${projectId}/design`);
     return { version, savedAt: new Date().toISOString() };
   });

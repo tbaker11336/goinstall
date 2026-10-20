@@ -6,6 +6,7 @@ import { createPvgisClient, googleYearlyEstimateKwh } from "@goinstall/integrati
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { asUser } from "@/lib/auth";
+import { syncPaperwork } from "@/lib/paperwork";
 import { loadDesignRules } from "@/lib/design-rules";
 import { loadEnergy } from "@/lib/energy";
 import { roofData } from "@/lib/site";
@@ -66,7 +67,7 @@ export async function saveSolarDesignAction(projectId: string, payload: SolarDes
   const parsed = designSchema.safeParse(payload);
   if (!parsed.success) return { error: `Design not saved: ${parsed.error.issues[0]?.path.join(".")} ${parsed.error.issues[0]?.message}` };
   const d = parsed.data;
-  return asUser(async (tx) => {
+  return asUser(async (tx, session) => {
     const project = await tx.selectFrom("projects").select(["id", "site_postcode", "products", "lat", "lng"]).where("id", "=", projectId).executeTakeFirst();
     if (!project) return { error: "Project not found" };
     const [rules, panel, inverter, battery, answers, previous, energy] = await Promise.all([
@@ -158,6 +159,8 @@ export async function saveSolarDesignAction(projectId: string, payload: SolarDes
         imagery_date: roof.insights?.imageryDate ?? null,
       })
       .execute();
+    // The design decides the DNO and MCS paperwork.
+    await syncPaperwork(tx, session.companyId, projectId);
     revalidatePath(`/projects/${projectId}/design`);
     return { version, savedAt: new Date().toISOString() };
   });

@@ -51,7 +51,11 @@ async function booking(tx: Tx, id: string) {
   return tx.selectFrom("bookings").select(["id", "project_id", "company_id", "type", "status", "started_at", "completed_at"]).where("id", "=", id).executeTakeFirst();
 }
 
-export async function applyOp(tx: Tx, session: Session, op: SyncOp): Promise<OpResult> {
+/**
+ * Apply one queued capture. `completed` collects projects whose install was
+ * just finished, for the follow-up work that runs once the sync commits.
+ */
+export async function applyOp(tx: Tx, session: Session, op: SyncOp, completed: Set<string> = new Set()): Promise<OpResult> {
   const ok = (note?: string): OpResult => ({ opId: op.opId, ok: true, note });
   const fail = (error: string): OpResult => ({ opId: op.opId, ok: false, error });
   const when = new Date(op.capturedAt);
@@ -94,7 +98,7 @@ export async function applyOp(tx: Tx, session: Session, op: SyncOp): Promise<OpR
       const b = await booking(tx, op.bookingId);
       if (!b) return fail("Job not found");
       if (op.status === "in_progress" && !b.started_at) await tx.updateTable("bookings").set({ status: "in_progress", started_at: when }).where("id", "=", b.id).execute();
-      if (op.status === "completed" && !b.completed_at) await finishJob(tx, session, b, when, null);
+      if (op.status === "completed" && !b.completed_at) await finishJob(tx, session, b, when, null, completed);
       return ok();
     }
     case "signoff": {
@@ -114,7 +118,7 @@ export async function applyOp(tx: Tx, session: Session, op: SyncOp): Promise<OpR
           .execute();
       }
       await tx.updateTable("bookings").set({ signoff_name: op.name, signoff_signature_file_id: fileId }).where("id", "=", b.id).execute();
-      if (!b.completed_at) await finishJob(tx, session, b, when, op.name);
+      if (!b.completed_at) await finishJob(tx, session, b, when, op.name, completed);
       return ok();
     }
     case "kit_issue": {
@@ -165,14 +169,15 @@ async function serviceNote(companyId: string, projectId: string, body: string, e
   });
 }
 
-/** Job completed in the app (balance invoice, certificates and handover pack follow in phase 6). */
-async function finishJob(tx: Tx, session: Session, b: { id: string; project_id: string | null; company_id: string; type: string }, when: Date, signedBy: string | null) {
+/** Job completed in the app. For installs, paperwork and the balance invoice follow after commit (lib/completion.ts). */
+async function finishJob(tx: Tx, session: Session, b: { id: string; project_id: string | null; company_id: string; type: string }, when: Date, signedBy: string | null, completed: Set<string>) {
   await tx.updateTable("bookings").set({ status: "completed", completed_at: when }).where("id", "=", b.id).execute();
   if (b.project_id) {
     const label = b.type === "install" ? "Install" : b.type === "survey" ? "Site survey" : "Job";
     if (b.type === "survey") {
       await withService(db(), (s) => s.updateTable("surveys").set({ site_visit_status: "completed", site_visit_at: when }).where("project_id", "=", b.project_id!).where("company_id", "=", b.company_id).execute());
     }
+    if (b.type === "install") completed.add(b.project_id);
     await serviceNote(b.company_id, b.project_id, `${label} completed by ${session.fullName}${signedBy ? `, signed off by ${signedBy}` : ""}`, `${b.type}_completed`);
   }
 }

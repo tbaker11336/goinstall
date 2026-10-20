@@ -49,6 +49,10 @@ export type Numeric = ColumnType<string, number | string, number | string>;
 
 export type OnlineSurveyStatus = "completed" | "in_progress" | "not_sent" | "sent";
 
+export type PaperworkKind = "eic" | "ev_dno_notification" | "g98_notification" | "g99_application" | "handover_pack" | "mcs_certificate" | "warranty_registration";
+
+export type PaperworkStatus = "approved" | "awaiting_response" | "done" | "submitted" | "to_do";
+
 export type PoStatus = "cancelled" | "confirmed" | "delivered" | "draft" | "sent";
 
 export type ProductCategory = "battery" | "cable" | "electrical" | "ev_charger" | "inverter" | "labour" | "mounting" | "other" | "panel";
@@ -319,6 +323,7 @@ export interface Files {
   id: Generated<string>;
   kind: Generated<string>;
   original_name: string | null;
+  paperwork_item_id: string | null;
   path: string;
   project_id: string | null;
   size_bytes: number;
@@ -352,6 +357,7 @@ export interface Invoices {
   kind: string;
   number: string;
   paid_at: Timestamp | null;
+  pay_token_hash: string | null;
   project_id: string;
   proposal_id: string | null;
   status: Generated<string>;
@@ -412,6 +418,29 @@ export interface MessageTemplates {
   updated_at: Generated<Timestamp>;
   whatsapp_status: string | null;
   whatsapp_template_name: string | null;
+}
+
+export interface PaperworkItems {
+  company_id: Generated<string>;
+  completed_at: Timestamp | null;
+  created_at: Generated<Timestamp>;
+  created_by: Generated<string | null>;
+  due_auto: Generated<boolean>;
+  due_date: Timestamp | null;
+  due_note: string | null;
+  fields: Generated<Json>;
+  id: Generated<string>;
+  kind: PaperworkKind;
+  notes: string | null;
+  portal_url: string | null;
+  product_id: string | null;
+  project_id: string;
+  reference: string | null;
+  status: Generated<PaperworkStatus>;
+  submitted_at: Timestamp | null;
+  timing: string;
+  title: string;
+  updated_at: Generated<Timestamp>;
 }
 
 export interface Payments {
@@ -505,6 +534,7 @@ export interface Projects {
   lng: number | null;
   lost_from_stage: ProjectStage | null;
   lost_reason: string | null;
+  mpan: string | null;
   owner_id: string | null;
   products: Generated<ArrayType<ProductType>>;
   site_address_line1: string | null;
@@ -817,6 +847,7 @@ export interface DB {
   kit_items: KitItems;
   message_templates: MessageTemplates;
   messages: Messages;
+  paperwork_items: PaperworkItems;
   payments: Payments;
   photo_categories: PhotoCategories;
   price_file_imports: PriceFileImports;

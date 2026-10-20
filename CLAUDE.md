@@ -19,6 +19,12 @@ design rules: never invent rule values).
 - Surveys: EV chargers and solar & battery are separate surveys, each with
   its own questions, photos, link and status (`survey_kind`); a project with
   both gets two.
+- Paperwork (phase 6): DNO forms follow the ENA standard forms (G98 Form A,
+  G99, Connect Direct EV/heat pump); store the DNO reference and portal link,
+  no automated submission. MCS: a pre-filled summary to copy into the MCS
+  Installation Database, then store the certificate number and PDF. EIC: a
+  test-readings sheet for the electrician's certificate software, then upload
+  the signed EIC. No supplier API adapter until access is agreed.
 - Calendar sync: a private iCal feed link per team (Google, Outlook and
   Apple subscribe to it); no account connections for now.
 

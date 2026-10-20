@@ -28,6 +28,9 @@ function diskStore(root: string): FileStore {
       const bytes = await readFile(resolve(p));
       return `data:${types[path.extname(p)] ?? "application/octet-stream"};base64,${bytes.toString("base64")}`;
     },
+    async get(p) {
+      return new Uint8Array(await readFile(resolve(p)));
+    },
     async remove(p) {
       await rm(resolve(p), { force: true });
     },

@@ -46,6 +46,7 @@ wins.
 | 5 | `booking_assignments` | Team, electrician and scaffolder per booking; drives installer and subcontractor access |
 | 5 | `checklist_templates`, `checklist_items` | Per-company steps; completed items carry photo, readings and serials. Item ids are made on the device so offline sync is idempotent |
 | 5 | `checklist_item_history` | Overwritten checklist values (last write wins, history kept) (added in build) |
+| 6 | `paperwork_items` | One row per paperwork item per project (one per product for warranty registrations), generated from the design and install by `packages/core/src/paperwork.ts`; status, due date (rule-set until staff change it), DNO/scheme reference, portal link, staff-entered form values. Files attach via `files.paperwork_item_id`. `projects.mpan` holds the site MPAN. Balance invoices carry a hashed pay link (`invoices.pay_token_hash`) (added in build) |
 | 6 | `paperwork` | Type, status, due date, reference, generated file |
 
 ## Access rules

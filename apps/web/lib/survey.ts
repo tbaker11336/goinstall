@@ -163,12 +163,14 @@ export async function touchSurvey(tx: Tx, s: Pick<PublicSurvey, "surveyId" | "co
 }
 
 /** Survey answers the design uses, by key. */
-export async function surveyAnswers(tx: Tx, projectId: string) {
-  const rows = await tx
+export async function surveyAnswers(tx: Tx, projectId: string, companyId?: string) {
+  let q = tx
     .selectFrom("survey_fields as f")
     .innerJoin("surveys as s", "s.id", "f.survey_id")
     .select(["f.key", "f.value"])
-    .where("s.project_id", "=", projectId)
-    .execute();
+    .where("s.project_id", "=", projectId);
+  // Named when running as the service role.
+  if (companyId) q = q.where("s.company_id", "=", companyId);
+  const rows = await q.execute();
   return Object.fromEntries(rows.map((r) => [r.key, r.value])) as Record<string, string | null>;
 }

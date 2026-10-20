@@ -8,6 +8,8 @@ export interface FileStore {
   put(path: string, bytes: Uint8Array, contentType: string): Promise<void>;
   /** A URL the browser can use to view the file for `expiresIn` seconds. */
   signedUrl(path: string, expiresIn?: number): Promise<string>;
+  /** The file's bytes, server-side (e.g. to merge certificates into a handover pack). */
+  get(path: string): Promise<Uint8Array>;
   remove(path: string): Promise<void>;
 }
 
@@ -53,6 +55,11 @@ export function createSupabaseFileStore({ url, serviceKey, bucket, fetch: fetchI
       const { signedURL } = (await res.json()) as { signedURL: string };
       return `${base}${signedURL}`;
     },
+    async get(path) {
+      const res = await fetchImpl(`${base}/object/${bucket}/${encodePath(path)}`, { headers });
+      await check(res, "download");
+      return new Uint8Array(await res.arrayBuffer());
+    },
     async remove(path) {
       const res = await fetchImpl(`${base}/object/${bucket}/${encodePath(path)}`, { method: "DELETE", headers });
       if (res.status !== 404) await check(res, "delete");
@@ -77,6 +84,11 @@ export function createMemoryFileStore(): FileStore & { files: Map<string, { byte
       const f = files.get(path);
       if (!f) throw new Error(`No such file: ${path}`);
       return `data:${f.contentType};base64,${Buffer.from(f.bytes).toString("base64")}`;
+    },
+    async get(path) {
+      const f = files.get(path);
+      if (!f) throw new Error(`No such file: ${path}`);
+      return f.bytes;
     },
     async remove(path) {
       files.delete(path);

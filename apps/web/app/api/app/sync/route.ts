@@ -2,6 +2,7 @@ import { sql } from "@goinstall/db";
 import { z } from "zod";
 import { preflight, withAppUser } from "@/lib/app-auth";
 import { applyOp, opSchema, type OpResult } from "@/lib/app-sync";
+import { completeInstall } from "@/lib/completion";
 
 export const OPTIONS = preflight;
 
@@ -9,7 +10,10 @@ export const OPTIONS = preflight;
 export async function POST(request: Request) {
   const body = z.object({ ops: z.array(z.unknown()).max(500) }).safeParse(await request.json().catch(() => null));
   if (!body.success) return Response.json({ error: "Bad request" }, { status: 400 });
-  return withAppUser(request, async (tx, session) => {
+  const completed = new Set<string>();
+  let companyId: string | null = null;
+  const response = await withAppUser(request, async (tx, session) => {
+    companyId = session.companyId;
     const results: OpResult[] = [];
     for (const raw of body.data.ops) {
       const op = opSchema.safeParse(raw);
@@ -20,7 +24,7 @@ export async function POST(request: Request) {
       }
       await sql`savepoint app_op`.execute(tx);
       try {
-        results.push(await applyOp(tx, session, op.data));
+        results.push(await applyOp(tx, session, op.data, completed));
         await sql`release savepoint app_op`.execute(tx);
       } catch (err) {
         await sql`rollback to savepoint app_op`.execute(tx);
@@ -29,4 +33,11 @@ export async function POST(request: Request) {
     }
     return Response.json({ results });
   });
+  // Committed: now the paperwork, stage and balance invoice that follow an install.
+  if (response.ok && companyId) {
+    for (const projectId of completed) {
+      await completeInstall(companyId, projectId).catch((err) => console.error("completeInstall failed", projectId, err));
+    }
+  }
+  return response;
 }

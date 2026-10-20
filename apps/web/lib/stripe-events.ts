@@ -3,7 +3,7 @@ import type { StripeEvent } from "@goinstall/integrations";
 import { withService } from "@goinstall/db";
 import { z } from "zod";
 import { db } from "./db";
-import { recordDepositPayment } from "./deposits";
+import { recordInvoicePayment } from "./deposits";
 
 const meta = z.object({ invoice_id: z.uuid(), company_id: z.uuid() });
 
@@ -30,7 +30,7 @@ export async function handleStripeEvent(event: StripeEvent): Promise<{ status: s
     if (!event.account || event.account !== inv.stripe_account_id) return { status: "wrong_account" };
     if (Number(s.amount_total) !== Number(inv.amount_pence)) return { status: "amount_mismatch" };
     if (inv.status === "paid") return { status: "already_paid" };
-    const r = await recordDepositPayment(tx, {
+    const r = await recordInvoicePayment(tx, {
       companyId: m.data.company_id,
       invoiceId: inv.id,
       amountPence: Number(s.amount_total),

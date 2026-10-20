@@ -6,7 +6,7 @@ import { textToHtml } from "@goinstall/integrations";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { asUser, type Session } from "@/lib/auth";
-import { ensureDepositInvoice, recordDepositPayment } from "@/lib/deposits";
+import { ensureDepositInvoice, recordInvoicePayment } from "@/lib/deposits";
 import { emailConfigured, emailSender, fromAddress } from "@/lib/email";
 import { captureLayout } from "@/lib/proposal-layout";
 import { designInputs, hashToken, newLinkNonce, PROPOSAL_LINK_DAYS, proposalToken, proposalUrl, refreshProposalFinance } from "@/lib/proposals";
@@ -259,7 +259,7 @@ export async function recordBankTransferAction(proposalId: string, _: ActionResu
     if (p.status !== "accepted") return { error: "Record the deposit once the customer has accepted the proposal." };
     const invoice = await ensureDepositInvoice(tx, { companyId: p.company_id, projectId: p.project_id, proposalId: p.id, depositPence: Number(p.deposit_pence) });
     if (invoice.status === "paid") return { error: "The deposit is already recorded as paid." };
-    await recordDepositPayment(tx, { companyId: p.company_id, invoiceId: invoice.id, amountPence: amount, method: "bank_transfer", provider: null, providerRef: null, actorId: session.userId });
+    await recordInvoicePayment(tx, { companyId: p.company_id, invoiceId: invoice.id, amountPence: amount, method: "bank_transfer", provider: null, providerRef: null, actorId: session.userId });
     revalidatePath(`/projects/${p.project_id}`, "layout");
     return { message: `Deposit of ${formatPence(amount)} recorded. The project is now at Deposit paid.` };
   });

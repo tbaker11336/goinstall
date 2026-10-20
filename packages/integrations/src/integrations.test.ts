@@ -52,6 +52,7 @@ describe("file stores", () => {
     await store.put("a.png", new Uint8Array([137, 80]), "image/png");
     await expect(store.put("a.png", new Uint8Array([1]), "image/png")).rejects.toThrow();
     expect(await store.signedUrl("a.png")).toBe("data:image/png;base64,iVA=");
+    expect(await store.get("a.png")).toEqual(new Uint8Array([137, 80]));
   });
 });
 

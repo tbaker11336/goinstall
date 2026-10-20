@@ -56,6 +56,7 @@ export const SPEC_FIELDS: Partial<Record<ProductCategory, SpecField[]>> = {
     { key: "phases", label: "Phases", type: "number" },
     { key: "efficiency_pct", label: "Max efficiency", unit: "%", type: "number" },
     { key: "warranty_years", label: "Product warranty", unit: "years", type: "number" },
+    { key: "ena_type_test_ref", label: "ENA type test register Product ID", type: "text" },
   ],
   battery: [
     { key: "capacity_kwh", label: "Capacity", unit: "kWh", type: "number" },
@@ -63,6 +64,7 @@ export const SPEC_FIELDS: Partial<Record<ProductCategory, SpecField[]>> = {
     { key: "power_kw", label: "Continuous power", unit: "kW", type: "number" },
     { key: "round_trip_efficiency_pct", label: "Round-trip efficiency", unit: "%", type: "number" },
     { key: "warranty_years", label: "Product warranty", unit: "years", type: "number" },
+    { key: "ena_type_test_ref", label: "ENA type test register Product ID", type: "text" },
   ],
   ev_charger: [
     { key: "rated_kw", label: "Rated power", unit: "kW", type: "number" },
@@ -72,6 +74,7 @@ export const SPEC_FIELDS: Partial<Record<ProductCategory, SpecField[]>> = {
     { key: "solar_divert", label: "Solar divert mode", type: "boolean" },
     { key: "pen_protection", label: "Built-in PEN fault protection", type: "boolean" },
     { key: "warranty_years", label: "Product warranty", unit: "years", type: "number" },
+    { key: "ena_type_test_ref", label: "ENA type test register Product ID", type: "text" },
   ],
 };
 

@@ -1,4 +1,4 @@
-import { addDays, BOOKING_TYPE_LABELS, bookingDates, ukDate, weekStart } from "@goinstall/core";
+import { addDays, BOOKING_TYPE_LABELS, bookingDates, PAPERWORK_STATUS_LABELS, TIMING_LABELS, ukDate, weekStart, type PaperworkStatus, type PaperworkTiming } from "@goinstall/core";
 import { Check, FileText } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -10,7 +10,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, Input, Select } from "@/components/ui/input";
 import { WeekGrid } from "@/components/week-grid";
 import { saveBookingAction } from "@/lib/actions/bookings";
+import { GenerateAllButton } from "@/components/paperwork-client";
 import { asUser } from "@/lib/auth";
+import { syncPaperwork } from "@/lib/paperwork";
 import { signedUrls } from "@/lib/files";
 import { loadBookings, loadPeople, type ScheduleBooking } from "@/lib/schedule";
 import { gridFor, weekColumns } from "@/lib/schedule-grid";
@@ -157,9 +159,12 @@ export default async function InstallPage({ params, searchParams }: { params: Pr
   const { week } = await searchParams;
   if (!z.uuid().safeParse(id).success) notFound();
 
-  const data = await asUser(async (tx) => {
+  const data = await asUser(async (tx, session) => {
     const project = await tx.selectFrom("projects").select(["id", "products", "stage"]).where("id", "=", id).executeTakeFirst();
     if (!project) return null;
+    // Keep the paperwork list in step with the design and bookings.
+    await syncPaperwork(tx, session.companyId, id);
+    const paperwork = await tx.selectFrom("paperwork_items").select(["id", "kind", "title", "timing", "status", "due_date", "due_note"]).where("project_id", "=", id).orderBy("kind").orderBy("title").execute();
     const mine = await loadBookings(tx, { from: "", to: "", projectId: id });
     const install = mine.find((b) => b.type === "install");
     const monday = week && z.iso.date().safeParse(week).success ? weekStart(week) : weekStart(install ? ukDate(install.startsAt) : ukDate(new Date()));
@@ -189,10 +194,12 @@ export default async function InstallPage({ params, searchParams }: { params: Pr
     ]);
     const photoIds = items.flatMap((i) => i.photo_file_ids);
     const photos = photoIds.length ? await tx.selectFrom("files").select(["id", "path"]).where("id", "in", photoIds).execute() : [];
-    return { project, mine, monday, all, people, invoice, orders, solar, items, signoff, photos };
+    return { project, mine, monday, all, people, invoice, orders, solar, items, signoff, photos, paperwork };
   });
   if (!data) notFound();
-  const { project, mine, monday, all, people, invoice, orders, solar, items, signoff, photos } = data;
+  const { project, mine, monday, all, people, invoice, orders, solar, items, signoff, photos, paperwork } = data;
+  const g99 = paperwork.find((p) => p.kind === "g99_application");
+  const started = paperwork.filter((p) => p.status !== "to_do").length;
 
   const install = mine.find((b) => b.type === "install");
   const { rows, items: gridItems } = gridFor(monday, all, people.teams, { highlightProjectId: id });
@@ -266,7 +273,13 @@ export default async function InstallPage({ params, searchParams }: { params: Pr
                   title="Kit delivered"
                   detail={orders.length ? `${delivered} of ${orders.length} orders${lastArrives ? ` · last arrives ${formatDate(lastArrives, { weekday: "short", day: "numeric", month: "short" })}` : ""}` : "Nothing ordered yet"}
                 />
-                {solar?.connection_form === "G99" && <Ready done={false} title="G99 approval from DNO" detail="Tracked with paperwork (next phase)" />}
+                {solar?.connection_form === "G99" && g99 && (
+                  <Ready
+                    done={g99.status === "approved" || g99.status === "done"}
+                    title="G99 approval from DNO"
+                    detail={g99.status === "to_do" ? "Not applied for yet" : g99.status === "approved" || g99.status === "done" ? "Approved" : `${PAPERWORK_STATUS_LABELS[g99.status as PaperworkStatus]}`}
+                  />
+                )}
               </ul>
             </CardContent>
           </Card>
@@ -329,31 +342,41 @@ export default async function InstallPage({ params, searchParams }: { params: Pr
 
         <Card>
           <CardHeader className="flex-col items-start">
-            <CardTitle>Paperwork</CardTitle>
-            <p className="text-sm text-ink-3">Pre-filled from the survey, design and install. Generated forms arrive in the next phase.</p>
+            <div className="flex w-full items-baseline justify-between gap-2">
+              <CardTitle>Paperwork</CardTitle>
+              {paperwork.length > 0 && <span className="text-[13px] text-ink-3">{started} of {paperwork.length} started</span>}
+            </div>
+            <p className="text-sm text-ink-3">Pre-filled from the survey, design and install.</p>
           </CardHeader>
-          <CardContent>
-            <ul className="divide-y">
-              {[
-                ...(solar?.connection_form ? [[`${solar.connection_form} application`, solar.connection_form === "G99" ? "Needed before install" : "Within 28 days of commissioning"]] : []),
-                ...(project.products.includes("ev") ? [["EV charger DNO notification", "After install"]] : []),
-                ["MCS certificate", "After commissioning"],
-                ["Electrical certificate", "From installer test readings"],
-                ["Warranty registrations", "Serials from the app"],
-                ["Customer handover pack", "Emailed on completion"],
-              ].map(([t, d]) => (
-                <li key={t} className="flex items-center gap-3 py-3">
-                  <span aria-hidden className="grid size-10 place-items-center rounded-[9px] bg-surface-subtle">
-                    <FileText className="size-4" />
-                  </span>
-                  <span className="flex-1">
-                    <span className="block font-semibold">{t}</span>
-                    <span className="text-[13px] text-ink-3">{d}</span>
-                  </span>
-                  <Badge>To do</Badge>
-                </li>
-              ))}
-            </ul>
+          <CardContent className="flex flex-col gap-4">
+            {paperwork.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Items appear once the design is saved and the install is booked.</p>
+            ) : (
+              <ul className="divide-y" aria-label="Paperwork items">
+                {paperwork.map((p) => {
+                  const status = p.status as PaperworkStatus;
+                  const overdue = p.due_date && status === "to_do" && p.due_date.getTime() < Date.now() - 86_400_000;
+                  return (
+                    <li key={p.id}>
+                      <Link href={`/projects/${id}/install/paperwork/${p.id}`} className="flex items-center gap-3 py-3 hover:bg-surface-subtle">
+                        <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-[9px] bg-surface-subtle">
+                          <FileText className="size-4" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block font-semibold">{p.title}</span>
+                          <span className={cn("text-[13px]", overdue ? "font-semibold text-red-700" : "text-ink-3")}>
+                            {p.due_date ? `Due ${formatDate(p.due_date, { day: "numeric", month: "short" })}` : TIMING_LABELS[p.timing as PaperworkTiming]}
+                            {overdue && " · overdue"}
+                          </span>
+                        </span>
+                        <Badge variant={status === "done" || status === "approved" ? "success" : status === "to_do" ? "default" : "warning"}>{PAPERWORK_STATUS_LABELS[status]}</Badge>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            {paperwork.length > 0 && <GenerateAllButton projectId={id} />}
           </CardContent>
         </Card>
       </div>

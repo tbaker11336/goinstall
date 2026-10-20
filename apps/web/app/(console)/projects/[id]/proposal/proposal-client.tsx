@@ -5,6 +5,7 @@ import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { FormMessage, type FormState } from "@/components/forms";
+import { resendBalanceInvoiceAction } from "@/lib/actions/invoices";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select, Textarea } from "@/components/ui/input";
 import {
@@ -307,5 +308,17 @@ export function ProposalEditor({
       </div>
       <FormMessage state={state} />
     </section>
+  );
+}
+
+export function ResendBalanceButton({ invoiceId }: { invoiceId: string }) {
+  const { pending, state, run } = useRun();
+  return (
+    <div className="flex flex-col">
+      <Button variant="outline" disabled={pending} onClick={() => run(() => resendBalanceInvoiceAction(invoiceId))}>
+        {pending ? "Sending…" : "Email invoice again"}
+      </Button>
+      <FormMessage state={state} />
+    </div>
   );
 }
