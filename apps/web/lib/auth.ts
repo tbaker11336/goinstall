@@ -52,12 +52,17 @@ export interface Session {
 export const getSession = cache(async (): Promise<Session | null> => {
   const authUser = await getAuthUser();
   if (!authUser) return null;
+  return getSessionForUser(authUser.id);
+});
+
+/** Profile for a verified auth user id (also used for the installer app's bearer tokens). */
+export async function getSessionForUser(userId: string): Promise<Session | null> {
   const row = await withService(db(), (tx) =>
     tx
       .selectFrom("users")
       .innerJoin("companies", "companies.id", "users.company_id")
       .select(["users.id", "users.full_name", "users.email", "users.role", "users.company_id", "companies.name as company_name"])
-      .where("users.id", "=", authUser.id)
+      .where("users.id", "=", userId)
       .where("users.is_active", "=", true)
       .executeTakeFirst(),
   );
@@ -70,7 +75,7 @@ export const getSession = cache(async (): Promise<Session | null> => {
     companyId: row.company_id,
     companyName: row.company_name,
   };
-});
+}
 
 const CONSOLE_ROLES: AppRole[] = ["admin", "office"];
 

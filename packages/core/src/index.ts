@@ -8,3 +8,4 @@ export * from "./solar-design";
 export * from "./proposal";
 export * from "./kit";
 export * from "./schedule";
+export * from "./checklist";
