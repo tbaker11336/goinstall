@@ -23,6 +23,8 @@ export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
   ? ColumnType<S, I | undefined, U>
   : ColumnType<T, T | undefined, T>;
 
+export type Int8 = ColumnType<string, bigint | number | string, bigint | number | string>;
+
 export type Json = JsonValue;
 
 export type JsonArray = JsonValue[];
@@ -43,11 +45,15 @@ export type Numeric = ColumnType<string, number | string, number | string>;
 
 export type OnlineSurveyStatus = "completed" | "in_progress" | "not_sent" | "sent";
 
+export type ProductCategory = "battery" | "cable" | "electrical" | "ev_charger" | "inverter" | "labour" | "mounting" | "other" | "panel";
+
 export type ProductType = "battery" | "ev" | "solar";
 
 export type ProjectStage = "accepted" | "complete" | "deposit_paid" | "design" | "enquiry" | "kit_ordered" | "lost" | "proposal_sent" | "scheduled" | "survey";
 
 export type SiteVisitStatus = "booked" | "completed" | "not_needed" | "recommended";
+
+export type SupplierConnection = "api" | "email" | "price_file";
 
 export type SurveyQuestionType = "long_text" | "number" | "select" | "text" | "yes_no";
 
@@ -203,6 +209,40 @@ export interface PhotoCategories {
   updated_at: Generated<Timestamp>;
 }
 
+export interface PriceFileImports {
+  company_id: Generated<string>;
+  created_at: Generated<Timestamp>;
+  created_by: Generated<string | null>;
+  file_name: string | null;
+  id: Generated<string>;
+  mapping: Json;
+  prices_updated: Generated<number>;
+  products_created: Generated<number>;
+  products_updated: Generated<number>;
+  rows_skipped: Generated<number>;
+  rows_total: number;
+  supplier_id: string | null;
+}
+
+export interface Products {
+  archived_at: Timestamp | null;
+  category: ProductCategory;
+  company_id: Generated<string>;
+  created_at: Generated<Timestamp>;
+  created_by: Generated<string | null>;
+  datasheet_file_id: string | null;
+  id: Generated<string>;
+  legacy_id: string | null;
+  make: string | null;
+  model: string;
+  name: string;
+  sell_price_pence: Int8 | null;
+  sku: string | null;
+  specs: Generated<Json>;
+  unit: Generated<string>;
+  updated_at: Generated<Timestamp>;
+}
+
 export interface Projects {
   company_id: Generated<string>;
   contact_id: string;
@@ -226,6 +266,38 @@ export interface Projects {
   target_install_month: Timestamp | null;
   updated_at: Generated<Timestamp>;
   value: Numeric | null;
+}
+
+export interface SupplierProducts {
+  company_id: Generated<string>;
+  cost_pence: Int8 | null;
+  created_at: Generated<Timestamp>;
+  created_by: Generated<string | null>;
+  id: Generated<string>;
+  lead_time_days: number | null;
+  priced_at: Generated<Timestamp>;
+  product_id: string;
+  source: Generated<string>;
+  stock_qty: number | null;
+  supplier_id: string;
+  supplier_sku: string | null;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface Suppliers {
+  account_number: string | null;
+  archived_at: Timestamp | null;
+  company_id: Generated<string>;
+  connection: Generated<SupplierConnection>;
+  created_at: Generated<Timestamp>;
+  created_by: Generated<string | null>;
+  credentials_ref: string | null;
+  id: Generated<string>;
+  last_sync_at: Timestamp | null;
+  name: string;
+  notes: string | null;
+  order_email: string | null;
+  updated_at: Generated<Timestamp>;
 }
 
 export interface SurveyFieldHistory {
@@ -326,7 +398,11 @@ export interface DB {
   message_templates: MessageTemplates;
   messages: Messages;
   photo_categories: PhotoCategories;
+  price_file_imports: PriceFileImports;
+  products: Products;
   projects: Projects;
+  supplier_products: SupplierProducts;
+  suppliers: Suppliers;
   survey_field_history: SurveyFieldHistory;
   survey_fields: SurveyFields;
   survey_questions: SurveyQuestions;

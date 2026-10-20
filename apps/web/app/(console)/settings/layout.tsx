@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/auth";
 const SECTIONS = [
   { href: "/settings/company", label: "Company details" },
   { href: "/settings/team", label: "Team & permissions" },
+  { href: "/settings/products", label: "Products & suppliers" },
   { href: "/settings/surveys", label: "Surveys & templates" },
 ];
 
@@ -18,7 +19,7 @@ export default async function SettingsLayout({ children }: { children: React.Rea
         <div className="flex min-w-0 max-w-[860px] flex-[999_1_560px] flex-col gap-6">
           {children}
           <p className="text-xs text-muted-foreground">
-            Invoices &amp; quotes, integrations, products &amp; suppliers and install checklists arrive with the phases that use them.
+            Invoices &amp; quotes, integrations and install checklists arrive with the phases that use them.
           </p>
         </div>
       </div>

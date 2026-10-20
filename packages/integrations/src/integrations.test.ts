@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createMemoryFileStore, createResendSender, createSupabaseFileStore, textToHtml } from "./index";
+import { createMemoryFileStore, createOfflineSupplier, createRecordingSender, createResendSender, createSupabaseFileStore, textToHtml } from "./index";
 
 describe("textToHtml", () => {
   it("escapes HTML, keeps paragraphs and links URLs", () => {
@@ -52,5 +52,33 @@ describe("file stores", () => {
     await store.put("a.png", new Uint8Array([137, 80]), "image/png");
     await expect(store.put("a.png", new Uint8Array([1]), "image/png")).rejects.toThrow();
     expect(await store.signedUrl("a.png")).toBe("data:image/png;base64,iVA=");
+  });
+});
+
+describe("offline supplier", () => {
+  const po = {
+    reference: "PO-0311",
+    companyName: "Brightside",
+    deliveryAddress: "14 Elm Close, Banbury",
+    requiredBy: new Date("2026-11-02T12:00:00Z"),
+    lines: [
+      { supplierSku: "A-445", description: "445 W panel", quantity: 18, unitCostPence: 9600 },
+      { supplierSku: null, description: "Rails", quantity: 1, unitCostPence: 34000 },
+    ],
+  };
+
+  it("emails the purchase order to the supplier", async () => {
+    const sender = createRecordingSender();
+    const supplier = createOfflineSupplier({ connection: "email", lookup: async () => [], sender, from: "a@x.test", orderEmail: "orders@s.test" });
+    expect(await supplier.placeOrder(po)).toMatchObject({ ok: true });
+    expect(sender.sent[0]).toMatchObject({ to: "orders@s.test", subject: "Purchase order PO-0311 from Brightside" });
+    expect(sender.sent[0]!.text).toContain("18 × 445 W panel [A-445] @ £96.00");
+    expect(sender.sent[0]!.text).toContain("Total (ex VAT): £2068.00");
+    expect(sender.sent[0]!.text).toContain("Required by: 2 November 2026");
+  });
+
+  it("refuses to order without an order email", async () => {
+    const supplier = createOfflineSupplier({ connection: "price_file", lookup: async () => [], sender: createRecordingSender(), from: "a@x", orderEmail: null });
+    expect(await supplier.placeOrder(po)).toMatchObject({ ok: false });
   });
 });

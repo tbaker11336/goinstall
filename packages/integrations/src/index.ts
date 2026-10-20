@@ -2,3 +2,4 @@
 // an interface here so the app never depends on a provider directly.
 export * from "./email";
 export * from "./storage";
+export * from "./suppliers";
