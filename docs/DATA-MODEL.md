@@ -35,12 +35,12 @@ wins.
 | 3 | `solar_designs`, `ev_designs` | Append-only versions; one active per project (partial unique index); geometry as JSON |
 | 3 | `calc_tables` | Versioned MCS lookup and EV rule tables supplied by the business |
 | 4 | `proposals` | Versioned; locked once sent (edits create a new version); status, totals, deposit, signature, hashed public token |
-| 4 | `proposal_lines` | One row per line (replaces line-item JSON in the spec), for price-edit audit and kit generation |
+| 4 | `proposal_lines` | One row per line (replaces line-item JSON in the spec), for price-edit audit and kit generation. Each line has its own `vat_rate`: the proposal design charges VAT on EV lines only (0% solar and battery), so one rate per proposal is not enough. Rates come from company settings, not hard-coded (VAT treatment is an open question) |
 | 4 | `proposal_views` | Each customer view |
 | 4 | `invoices` | Deposit and balance invoices with Xero reference (not in the spec) |
 | 4 | `payments` | Stripe payments against an invoice |
 | 5 | `purchase_orders`, `purchase_order_lines` | One order per supplier |
-| 5 | `bookings` | Survey, install, scaffold up/down |
+| 5 | `bookings` | Survey, install, scaffold up/down, and a general `task` type (the My jobs design shows "Collect from depot") |
 | 5 | `booking_assignments` | Team, electrician and scaffolder per booking; drives installer and subcontractor access |
 | 5 | `checklist_templates`, `checklist_items` | Per-company steps; completed items carry photo, readings and serials |
 | 6 | `paperwork` | Type, status, due date, reference, generated file |

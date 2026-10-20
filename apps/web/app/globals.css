@@ -3,25 +3,44 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: oklch(0.985 0.002 247);
-  --foreground: oklch(0.21 0.02 257);
-  --card: oklch(1 0 0);
+  /* GoInstall design tokens: docs/design/DESIGN.md */
+  --background: #f5f6f8;
+  --foreground: #101828;
+  --card: #ffffff;
   --card-foreground: var(--foreground);
-  --muted: oklch(0.965 0.004 247);
-  --muted-foreground: oklch(0.5 0.02 257);
-  --border: oklch(0.91 0.006 247);
-  --input: oklch(0.88 0.008 247);
-  --ring: oklch(0.55 0.12 175);
-  --primary: oklch(0.5 0.1 180);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.955 0.01 180);
-  --secondary-foreground: oklch(0.3 0.06 180);
-  --destructive: oklch(0.55 0.2 27);
-  --destructive-foreground: oklch(0.99 0 0);
-  --warning: oklch(0.75 0.15 75);
-  --sidebar: oklch(0.22 0.025 240);
-  --sidebar-foreground: oklch(0.86 0.01 240);
-  --sidebar-active: oklch(0.32 0.03 240);
+  --surface-subtle: #f9fafb;
+  --muted: #f2f4f7;
+  --muted-foreground: #667085;
+  --ink-2: #344054;
+  --ink-3: #475467;
+  --border: #e4e7ec;
+  --input: #d0d5dd;
+  --divider: #eef0f3;
+  --ring: #0b7a62;
+  --primary: #0b7a62;
+  --primary-hover: #08654f;
+  --primary-foreground: #ffffff;
+  --accent-strong: #075c4a;
+  --accent-tint: #e6f4ef;
+  --accent-deep: #0b4f41;
+  --secondary: #e6f4ef;
+  --secondary-foreground: #075c4a;
+  --destructive: #d92d20;
+  --destructive-foreground: #ffffff;
+  --warning: #dc6803;
+  --warning-text: #93370d;
+  --warning-tint: #fffcf5;
+  --warning-pill: #fef0c7;
+  --warning-border: #f5c67a;
+  --success: #17b26a;
+  --success-text: #067647;
+  --success-tint: #dcfae6;
+  --info: #2e6be6;
+  --info-text: #1849a9;
+  --info-tint: #eff4ff;
+  --violet: #6941c6;
+  --violet-text: #4a1fb8;
+  --violet-tint: #f4f3ff;
   --radius: 0.5rem;
 }
 
@@ -30,25 +49,44 @@
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
+  --color-surface-subtle: var(--surface-subtle);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
   --color-border: var(--border);
   --color-input: var(--input);
+  --color-divider: var(--divider);
   --color-ring: var(--ring);
   --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
   --color-primary-foreground: var(--primary-foreground);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-tint: var(--accent-tint);
+  --color-accent-deep: var(--accent-deep);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-warning: var(--warning);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-active: var(--sidebar-active);
+  --color-warning-text: var(--warning-text);
+  --color-warning-tint: var(--warning-tint);
+  --color-warning-pill: var(--warning-pill);
+  --color-warning-border: var(--warning-border);
+  --color-success: var(--success);
+  --color-success-text: var(--success-text);
+  --color-success-tint: var(--success-tint);
+  --color-info: var(--info);
+  --color-info-text: var(--info-text);
+  --color-info-tint: var(--info-tint);
+  --color-violet: var(--violet);
+  --color-violet-text: var(--violet-text);
+  --color-violet-tint: var(--violet-tint);
   --radius-sm: calc(var(--radius) - 2px);
   --radius-md: var(--radius);
   --radius-lg: calc(var(--radius) + 4px);
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --radius-xl: 16px;
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 @layer base {
@@ -57,6 +95,9 @@
   }
   body {
     @apply bg-background text-foreground antialiased;
+  }
+  .tabular, td, .stat {
+    font-variant-numeric: tabular-nums;
   }
   :focus-visible {
     @apply outline-2 outline-offset-2 outline-ring;

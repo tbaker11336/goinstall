@@ -80,6 +80,8 @@ export interface ContactRow {
   owner_name: string | null;
   last_activity_at: Date;
   status: string | null;
+  /** Total value of the contact's open (not lost) projects. */
+  value: string | null;
 }
 
 export async function listContacts(tx: Tx, f: ContactFilters): Promise<ContactRow[]> {
@@ -103,6 +105,7 @@ export async function listContacts(tx: Tx, f: ContactFilters): Promise<ContactRo
         case when c.stage = 'lost' then 'Lost: ' || c.lost_reason end,
         (select m.body from messages m where m.contact_id = c.id and m.company_id = c.company_id order by m.created_at desc limit 1)
       )`.as("status"),
+      sql<string | null>`(select sum(p.value) from projects p where p.contact_id = c.id and p.company_id = c.company_id and p.stage <> 'lost')`.as("value"),
     ])
     .orderBy("c.last_activity_at", "desc")
     .limit(500);

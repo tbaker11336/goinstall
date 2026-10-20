@@ -1,5 +1,5 @@
 import { PageHeader } from "@/components/domain";
-import { ProjectTabLink } from "@/components/project-tab-link";
+import { SettingsNav } from "@/components/settings-nav";
 import { requireAdmin } from "@/lib/auth";
 
 const SECTIONS = [
@@ -11,18 +11,16 @@ export default async function SettingsLayout({ children }: { children: React.Rea
   await requireAdmin();
   return (
     <>
-      <PageHeader title="Settings" description="Only admins can change these." />
-      <nav aria-label="Settings sections" className="mb-6 flex gap-1 overflow-x-auto border-b">
-        {SECTIONS.map((s) => (
-          <ProjectTabLink key={s.href} href={s.href}>
-            {s.label}
-          </ProjectTabLink>
-        ))}
-      </nav>
-      {children}
-      <p className="mt-8 text-xs text-muted-foreground">
-        Invoices &amp; quotes, integrations, products &amp; suppliers and survey/checklist settings arrive with the phases that use them.
-      </p>
+      <PageHeader title="Settings" description="Used across proposals, invoices and paperwork. Only admins can change these." />
+      <div className="flex flex-wrap items-start gap-8 max-md:gap-5">
+        <SettingsNav sections={SECTIONS} />
+        <div className="flex min-w-0 max-w-[860px] flex-[999_1_560px] flex-col gap-6">
+          {children}
+          <p className="text-xs text-muted-foreground">
+            Invoices &amp; quotes, integrations, products &amp; suppliers and survey/checklist settings arrive with the phases that use them.
+          </p>
+        </div>
+      </div>
     </>
   );
 }

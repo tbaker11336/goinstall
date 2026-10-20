@@ -22,7 +22,7 @@ test("create an enquiry, move it across the Kanban and open the project", async 
 
   // Lands on the new project.
   await expect(page).toHaveURL(/\/projects\/[0-9a-f-]{36}$/);
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("41 Redland Grove, Bristol, BS6 6PH");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("41 Redland Grove, Bristol");
   await expect(page.getByText("Has a Tesla, wants solar to charge it.")).toBeVisible();
   await expect(page.getByText("Project created")).toBeVisible();
   const projectUrl = page.url();

@@ -1,4 +1,4 @@
-import { PROJECT_STAGES, stageLabel, type ProjectStage } from "@goinstall/core";
+import type { ProjectStage } from "@goinstall/core";
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import { EmptyState, PageHeader } from "@/components/domain";
@@ -7,21 +7,39 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { asUser } from "@/lib/auth";
 import { listProjects, projectStageCounts } from "@/lib/queries";
-import { cn, timeAgo } from "@/lib/utils";
+import { Avatar } from "@/components/domain";
+import { cn, formatMoney, timeAgo } from "@/lib/utils";
 
 export const metadata = { title: "Dashboard" };
 
-const TILES: { label: string; href: string; count: (c: Partial<Record<ProjectStage, number>>, newContacts: number) => number; hint?: string }[] = [
-  { label: "New enquiries", href: "/contacts?stage=new_enquiry", count: (_, n) => n },
-  { label: "Surveys due", href: "/projects?stage=survey", count: (c) => c.survey ?? 0 },
-  { label: "Proposals awaiting acceptance", href: "/projects?stage=proposal_sent", count: (c) => c.proposal_sent ?? 0 },
-  { label: "Kit to order", href: "/projects?stage=deposit_paid", count: (c) => c.deposit_paid ?? 0 },
-  { label: "Installs scheduled", href: "/projects?stage=scheduled", count: (c) => c.scheduled ?? 0, hint: "Install dates arrive with scheduling" },
+type Counts = Partial<Record<ProjectStage, number>>;
+
+const TILES: { label: string; href: string; count: (c: Counts, newContacts: number) => number; sub: (c: Counts) => string; warn?: boolean }[] = [
+  { label: "New enquiries", href: "/contacts?stage=new_enquiry", count: (_, n) => n, sub: () => "Contacts not yet surveyed" },
+  { label: "Surveys due", href: "/projects?stage=survey", count: (c) => c.survey ?? 0, sub: () => "Projects at survey" },
+  { label: "Proposals awaiting", href: "/projects?stage=proposal_sent", count: (c) => c.proposal_sent ?? 0, sub: (c) => (c.accepted ? `${c.accepted} accepted, deposit due` : "Sent, not yet accepted") },
+  { label: "Kit to order", href: "/projects?stage=deposit_paid", count: (c) => c.deposit_paid ?? 0, sub: () => "Deposits paid, not ordered", warn: true },
+  { label: "Installs scheduled", href: "/projects?stage=scheduled", count: (c) => c.scheduled ?? 0, sub: () => "Dates arrive with scheduling" },
 ];
 
-export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ stage?: string }> }) {
-  const { stage: stageParam } = await searchParams;
-  const stage = (PROJECT_STAGES as readonly string[]).includes(stageParam ?? "") || stageParam === "lost" ? (stageParam as ProjectStage) : undefined;
+/** Filter chips group the nine stages the way the office thinks about them. */
+const GROUPS: { key: string; label: string; stages: ProjectStage[] }[] = [
+  { key: "enquiry", label: "Enquiry", stages: ["enquiry"] },
+  { key: "survey", label: "Survey", stages: ["survey"] },
+  { key: "design", label: "Design", stages: ["design"] },
+  { key: "proposal", label: "Proposal", stages: ["proposal_sent", "accepted"] },
+  { key: "delivery", label: "Delivery", stages: ["deposit_paid", "kit_ordered", "scheduled", "complete"] },
+  { key: "lost", label: "Lost", stages: ["lost"] },
+];
+
+function greeting(now: Date) {
+  const hour = Number(new Intl.DateTimeFormat("en-GB", { hour: "numeric", hourCycle: "h23", timeZone: "Europe/London" }).format(now));
+  return hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+}
+
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ group?: string }> }) {
+  const { group: groupParam } = await searchParams;
+  const group = GROUPS.find((g) => g.key === groupParam);
 
   const { counts, newContacts, projects, actions, unread, firstName } = await asUser(async (tx, session) => {
     const [counts, newContacts, projects, actions, unread] = await Promise.all([
@@ -31,7 +49,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         .select((eb) => eb.fn.countAll<number>().as("n"))
         .where("stage", "=", "new_enquiry")
         .executeTakeFirstOrThrow(),
-      listProjects(tx, { stage, limit: 25 }),
+      listProjects(tx, { stage: group?.stages, limit: 25 }),
       // Events needing action today. Bookings (surveys, installs) join this
       // list in phase 5.
       listProjects(tx, { stage: ["accepted", "deposit_paid"], limit: 10 }),
@@ -48,88 +66,106 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     return { counts, newContacts: Number(newContacts.n), projects, actions, unread, firstName: session.fullName.split(" ")[0] };
   });
 
+  const now = new Date();
+  const today = new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/London" }).format(now);
+  const groupCount = (g: (typeof GROUPS)[number]) => g.stages.reduce((n, st) => n + (counts[st] ?? 0), 0);
+  const total = GROUPS.filter((g) => g.key !== "lost").reduce((n, g) => n + groupCount(g), 0);
+
   return (
     <>
       <PageHeader
-        title={`Hello, ${firstName}`}
-        description="What needs doing across your jobs."
+        title={`${greeting(now)}, ${firstName}`}
+        description={`${today} · ${actions.length ? `${actions.length} ${actions.length === 1 ? "job needs" : "jobs need"} action` : "nothing urgent"}`}
         actions={
           <Link href="/contacts/new" className={buttonVariants()}>
-            <Plus aria-hidden /> New enquiry
+            <Plus className="size-[18px]" strokeWidth={2} aria-hidden /> New enquiry
           </Link>
         }
       />
 
-      <ul className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-        {TILES.map((t) => (
-          <li key={t.label}>
-            <Link href={t.href} className="block rounded-lg border bg-card p-4 transition-colors hover:border-primary">
-              <span className="block text-2xl font-semibold tabular-nums">{t.count(counts, newContacts)}</span>
-              <span className="block text-sm text-muted-foreground">{t.label}</span>
-              {t.hint && <span className="mt-1 block text-xs text-muted-foreground/80">{t.hint}</span>}
-            </Link>
-          </li>
-        ))}
+      <ul className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
+        {TILES.map((t) => {
+          const n = t.count(counts, newContacts);
+          const warn = t.warn && n > 0;
+          return (
+            <li key={t.label}>
+              <Link
+                href={t.href}
+                className={cn(
+                  "flex h-full flex-col gap-1.5 rounded-lg border bg-card px-5 py-[18px] transition-colors hover:border-primary",
+                  warn && "border-warning-border bg-warning-tint hover:border-warning",
+                )}
+              >
+                <span className={cn("text-sm font-medium text-ink-3", warn && "text-warning-text")}>{t.label}</span>
+                <span className="stat text-[28px] leading-tight font-bold">{n}</span>
+                <span className={cn("text-[12.5px] text-muted-foreground", warn && "text-warning-text")}>{t.sub(counts)}</span>
+              </Link>
+            </li>
+          );
+        })}
       </ul>
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_20rem]">
-        <Card>
-          <CardHeader>
-            <CardTitle>Projects</CardTitle>
-            <Link href="/projects" className="text-xs text-primary hover:underline">
-              View all
-            </Link>
-          </CardHeader>
-          <nav aria-label="Filter by stage" className="flex flex-wrap gap-2 border-b px-4 py-3">
-            <StageFilterChip href="/dashboard" active={!stage} label="All" />
-            {[...PROJECT_STAGES, "lost" as const].map((s) => (
-              <StageFilterChip key={s} href={`/dashboard?stage=${s}`} active={stage === s} label={stageLabel(s)} count={counts[s]} />
-            ))}
-          </nav>
-          <ProjectsTable projects={projects} empty={stage ? `No projects at ${stageLabel(stage)}.` : "No projects yet. Create an enquiry to start."} />
+      <div className="grid items-start gap-6 xl:grid-cols-[1fr_minmax(20rem,26rem)]">
+        <Card className="overflow-hidden">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-5 pt-[18px] pb-4">
+            <h2 className="text-[17px] font-bold">Projects</h2>
+            <nav aria-label="Filter by stage" className="flex flex-wrap gap-2">
+              <StageFilterChip href="/dashboard" active={!group} label="All" count={total} />
+              {GROUPS.map((g) => (
+                <StageFilterChip key={g.key} href={`/dashboard?group=${g.key}`} active={group?.key === g.key} label={g.label} count={groupCount(g)} />
+              ))}
+            </nav>
+          </div>
+          <ProjectsTable projects={projects} empty={group ? `No projects at ${group.label}.` : "No projects yet. Create an enquiry to start."} />
         </Card>
 
-        <div className="grid content-start gap-6">
+        <div className="flex flex-col gap-6">
           <Card>
             <CardHeader>
-              <CardTitle>Today</CardTitle>
+              <CardTitle className="text-[17px]">Today</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex flex-col gap-3">
               {actions.length ? (
-                <ul className="grid gap-3 text-sm">
-                  {actions.map((a) => (
-                    <li key={a.id}>
-                      <Link href={`/projects/${a.id}`} className="font-medium hover:underline">
-                        {a.stage === "deposit_paid" ? "Deposit received → order kit" : "Accepted → chase deposit"}
-                      </Link>
-                      <span className="block text-xs text-muted-foreground">
-                        {a.contact_name} · {a.site_postcode}
+                actions.map((a) => (
+                  <div key={a.id} className="flex items-center justify-between gap-3 rounded-[10px] border border-warning-border bg-warning-tint px-4 py-3">
+                    <div className="flex min-w-0 flex-col">
+                      <span className="text-sm font-semibold">{a.stage === "deposit_paid" ? "Deposit received" : "Proposal accepted"}</span>
+                      <span className="truncate text-[13px] text-warning-text">
+                        {[a.site_address_line1, a.value ? formatMoney(a.value) : null].filter(Boolean).join(" · ")}
                       </span>
-                    </li>
-                  ))}
-                </ul>
+                    </div>
+                    <Link href={`/projects/${a.id}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
+                      {a.stage === "deposit_paid" ? "Order kit" : "Chase deposit"}
+                    </Link>
+                  </div>
+                ))
               ) : (
-                <EmptyState>Nothing needs action right now.</EmptyState>
+                <EmptyState>Nothing needs action right now. Surveys and installs appear here once scheduling arrives.</EmptyState>
               )}
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>Unread messages</CardTitle>
+              <CardTitle className="text-[17px]">Messages</CardTitle>
             </CardHeader>
             <CardContent>
               {unread.length ? (
-                <ul className="grid gap-3 text-sm">
+                <ul className="flex flex-col">
                   {unread.map((m) => (
-                    <li key={m.id}>
-                      <Link href={`/contacts/${m.contact_id}`} className="font-medium hover:underline">
-                        {m.name}
-                      </Link>
-                      <span className="ml-2 text-xs capitalize text-muted-foreground">
-                        {m.channel} · {timeAgo(m.created_at)}
-                      </span>
-                      <p className="line-clamp-2 text-muted-foreground">{m.body}</p>
+                    <li key={m.id} className="relative flex items-center gap-3 border-b border-divider py-3 last:border-0">
+                      <Avatar name={m.name} size="md" className="size-10" />
+                      <div className="flex min-w-0 flex-1 flex-col">
+                        <span className="flex justify-between gap-2">
+                          <Link href={`/contacts/${m.contact_id}`} className="text-sm font-semibold after:absolute after:inset-0">
+                            {m.name}
+                          </Link>
+                          <span className="text-xs text-muted-foreground">{timeAgo(m.created_at)}</span>
+                        </span>
+                        <span className="truncate text-[13px] text-ink-3">
+                          <span className="capitalize">{m.channel === "whatsapp" ? "WhatsApp" : m.channel}</span> · {m.body}
+                        </span>
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -150,12 +186,12 @@ function StageFilterChip({ href, active, label, count }: { href: string; active:
       href={href}
       aria-current={active ? "true" : undefined}
       className={cn(
-        "rounded-full border px-3 py-1 text-xs font-medium transition-colors hover:border-primary",
-        active ? "border-primary bg-primary text-primary-foreground" : "bg-card",
+        "inline-flex h-9 items-center rounded-full border border-input px-3.5 text-[13px] font-semibold text-ink-2 transition-colors hover:border-primary",
+        active ? "border-foreground bg-foreground text-white hover:border-foreground" : "bg-card",
       )}
     >
       {label}
-      {count ? <span className="ml-1 tabular-nums opacity-70">{count}</span> : null}
+      {count ? <span className="ml-1.5 tabular-nums">{count}</span> : null}
     </Link>
   );
 }

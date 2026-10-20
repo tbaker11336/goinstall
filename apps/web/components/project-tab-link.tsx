@@ -12,8 +12,8 @@ export function ProjectTabLink({ href, exact, children }: { href: string; exact?
       href={href}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "-mb-px inline-flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground",
-        active ? "border-primary text-foreground" : "border-transparent",
+        "-mb-px mr-6 inline-flex items-center gap-1.5 whitespace-nowrap border-b-2 px-0.5 py-3 text-sm font-medium text-ink-3 hover:text-foreground",
+        active ? "border-primary font-semibold text-foreground" : "border-transparent",
       )}
     >
       {children}

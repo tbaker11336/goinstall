@@ -3,11 +3,11 @@
 import { CONTACT_STAGE_LABELS, CONTACT_STAGES, type ContactStage } from "@goinstall/core";
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { ProductTags, type Product } from "@/components/domain";
+import { Avatar, ProductTags, stageDotClass, type Product } from "@/components/domain";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { moveContactAction } from "@/lib/actions/crm";
-import { cn } from "@/lib/utils";
+import { cn, formatMoney, timeAgo } from "@/lib/utils";
 
 export interface KanbanContact {
   id: string;
@@ -18,6 +18,20 @@ export interface KanbanContact {
   stage: ContactStage;
   interested_in: Product[];
   status: string | null;
+  value: string | null;
+  owner_name: string | null;
+  last_activity_at: Date;
+}
+
+/** "£42k" style column totals. */
+function compactMoney(total: number) {
+  if (!total) return "";
+  return total >= 1000 ? `£${Math.round(total / 1000)}k` : formatMoney(total);
+}
+
+/** Postcode district ("OX16") for the card's location line. */
+function district(postcode: string | null) {
+  return postcode?.trim().split(/\s+/)[0]?.toUpperCase() ?? null;
 }
 
 export function ContactsKanban({ contacts }: { contacts: KanbanContact[] }) {
@@ -62,13 +76,14 @@ export function ContactsKanban({ contacts }: { contacts: KanbanContact[] }) {
   return (
     <>
       {error && (
-        <p role="alert" className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-900">
+        <p role="alert" className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-800">
           {error}
         </p>
       )}
-      <div className="grid auto-cols-[minmax(13rem,1fr)] grid-flow-col gap-3 overflow-x-auto pb-4">
+      <div className="flex items-start gap-3.5 overflow-x-auto pb-2">
         {CONTACT_STAGES.map((stage) => {
           const cards = optimistic.filter((c) => c.stage === stage);
+          const total = stage === "lost" ? 0 : cards.reduce((n, c) => n + Number(c.value ?? 0), 0);
           return (
             <section
               key={stage}
@@ -84,13 +99,21 @@ export function ContactsKanban({ contacts }: { contacts: KanbanContact[] }) {
                 const contact = optimistic.find((c) => c.id === e.dataTransfer.getData("text/contact-id"));
                 if (contact) move(contact, stage);
               }}
-              className={cn("flex min-h-64 flex-col rounded-lg bg-muted p-2 transition-colors", dragOver === stage && "bg-secondary ring-2 ring-primary")}
+              className={cn(
+                "flex min-h-40 w-[272px] shrink-0 flex-col gap-2.5 rounded-lg p-3 transition-colors",
+                stage === "lost" ? "bg-muted" : "bg-divider",
+                dragOver === stage && "bg-accent-tint ring-2 ring-primary",
+              )}
             >
-              <h2 id={`col-${stage}`} className="mb-2 flex items-center justify-between px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                {CONTACT_STAGE_LABELS[stage]}
-                <span className="tabular-nums">{cards.length}</span>
-              </h2>
-              <ul className="grid gap-2">
+              <div className="flex items-center justify-between px-1 pt-0.5 pb-1.5">
+                <h2 id={`col-${stage}`} className={cn("flex items-center gap-2 text-sm font-bold", stage === "lost" && "text-ink-3")}>
+                  <span className={cn("size-2 rounded-full", stageDotClass(stage))} aria-hidden />
+                  {CONTACT_STAGE_LABELS[stage]}
+                  <span className="rounded-full bg-card px-2 py-px text-xs font-bold text-ink-3 tabular-nums">{cards.length}</span>
+                </h2>
+                {total > 0 && <span className="text-[12.5px] font-medium text-ink-3 tabular-nums">{compactMoney(total)}</span>}
+              </div>
+              <ul className="grid gap-2.5">
                 {cards.map((c) => (
                   <li
                     key={c.id}
@@ -99,23 +122,32 @@ export function ContactsKanban({ contacts }: { contacts: KanbanContact[] }) {
                       e.dataTransfer.setData("text/contact-id", c.id);
                       e.dataTransfer.effectAllowed = "move";
                     }}
-                    className="cursor-grab rounded-md border bg-card p-3 text-sm shadow-xs active:cursor-grabbing"
+                    className={cn(
+                      "flex cursor-grab flex-col gap-2 rounded-[10px] border bg-card p-3.5 shadow-[0_1px_2px_rgba(16,24,40,0.05)] transition-colors hover:border-primary active:cursor-grabbing",
+                      stage === "lost" && "bg-[#fcfcfd]",
+                    )}
                     data-testid="kanban-card"
                   >
-                    <Link href={`/contacts/${c.id}`} className="font-medium hover:underline">
+                    <Link href={`/contacts/${c.id}`} className={cn("text-sm font-semibold hover:text-primary", stage === "lost" && "text-ink-3")}>
                       {c.name}
                     </Link>
-                    <p className="text-xs text-muted-foreground">{[c.town, c.postcode].filter(Boolean).join(" · ") || "No address"}</p>
-                    <ProductTags products={c.interested_in} className="my-2" />
-                    {c.source && <p className="text-xs text-muted-foreground">Source: {c.source}</p>}
-                    {c.status && <p className="mt-1 line-clamp-2 text-xs">{c.status}</p>}
-                    <label className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                    <p className="text-[13px] text-ink-3">{[c.town, district(c.postcode)].filter(Boolean).join(" · ") || "No address"}</p>
+                    {stage !== "lost" && <ProductTags products={c.interested_in} />}
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="line-clamp-2 text-[12.5px] text-muted-foreground">
+                        {stage === "lost"
+                          ? (c.status ?? "Lost")
+                          : [c.value ? formatMoney(c.value) : c.source, c.value ? c.status : timeAgo(c.last_activity_at)].filter(Boolean).join(" · ")}
+                      </p>
+                      {c.owner_name && stage !== "lost" && <Avatar name={c.owner_name} />}
+                    </div>
+                    <label className="flex items-center gap-2 border-t border-divider pt-2 text-xs text-muted-foreground">
                       <span className="sr-only">Move {c.name} to</span>
                       <span aria-hidden>Move to</span>
                       <select
                         value={c.stage}
                         onChange={(e) => move(c, e.target.value as ContactStage)}
-                        className="h-7 flex-1 rounded border border-input bg-card px-1 text-xs text-foreground"
+                        className="h-7 flex-1 rounded-md border border-input bg-card px-1 text-xs text-foreground"
                       >
                         {CONTACT_STAGES.map((s) => (
                           <option key={s} value={s}>

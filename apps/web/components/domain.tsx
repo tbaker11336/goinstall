@@ -10,49 +10,93 @@ export function productLabel(p: Product) {
   return PRODUCT_LABELS[p];
 }
 
+const TAG_LABELS = { solar: "Solar", battery: "Battery", ev: "EV" } as const;
+
 export function ProductTags({ products, className }: { products: readonly Product[]; className?: string }) {
   if (!products.length) return <span className="text-xs text-muted-foreground">No products</span>;
   return (
     <span className={cn("flex flex-wrap gap-1", className)}>
       {products.map((p) => (
-        <Badge key={p} variant={p}>
-          {PRODUCT_LABELS[p]}
+        <Badge key={p} variant="tag" title={PRODUCT_LABELS[p]}>
+          {TAG_LABELS[p]}
         </Badge>
       ))}
     </span>
   );
 }
 
-const STAGE_STYLES: Record<ProjectStage, string> = {
-  enquiry: "bg-slate-100 text-slate-800",
-  survey: "bg-blue-100 text-blue-900",
-  design: "bg-indigo-100 text-indigo-900",
-  proposal_sent: "bg-amber-100 text-amber-900",
-  accepted: "bg-lime-100 text-lime-900",
-  deposit_paid: "bg-emerald-100 text-emerald-900",
-  kit_ordered: "bg-teal-100 text-teal-900",
-  scheduled: "bg-cyan-100 text-cyan-900",
-  complete: "bg-green-200 text-green-950",
-  lost: "bg-red-100 text-red-900",
+/** Stage pill tint, text and dot colours from docs/design/DESIGN.md. */
+const PILL = {
+  grey: { pill: "bg-muted text-ink-2", dot: "bg-[#98a2b3]" },
+  info: { pill: "bg-info-tint text-info-text", dot: "bg-info" },
+  violet: { pill: "bg-violet-tint text-violet-text", dot: "bg-violet" },
+  warn: { pill: "bg-warning-pill text-warning-text", dot: "bg-warning" },
+  success: { pill: "bg-success-tint text-success-text", dot: "bg-success" },
+  accent: { pill: "bg-accent-tint text-accent-strong", dot: "bg-primary" },
+  delivery: { pill: "bg-muted text-ink-2", dot: "bg-muted-foreground" },
+  lost: { pill: "bg-muted text-ink-3", dot: "bg-input" },
+} as const;
+type Tone = keyof typeof PILL;
+
+const STAGE_TONE: Record<ProjectStage, Tone> = {
+  enquiry: "grey",
+  survey: "info",
+  design: "violet",
+  proposal_sent: "warn",
+  accepted: "success",
+  deposit_paid: "success",
+  kit_ordered: "delivery",
+  scheduled: "accent",
+  complete: "delivery",
+  lost: "lost",
 };
 
-export function StageChip({ stage }: { stage: ProjectStage }) {
-  return <span className={cn("inline-flex rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap", STAGE_STYLES[stage])}>{stageLabel(stage)}</span>;
+const CONTACT_STAGE_TONE: Record<ContactStage, Tone> = {
+  new_enquiry: "grey",
+  survey: "info",
+  design: "violet",
+  proposal_sent: "warn",
+  won: "success",
+  lost: "lost",
+};
+
+export function stageDotClass(stage: ContactStage) {
+  return PILL[CONTACT_STAGE_TONE[stage]].dot;
 }
 
-const CONTACT_STAGE_STYLES: Record<ContactStage, string> = {
-  new_enquiry: STAGE_STYLES.enquiry,
-  survey: STAGE_STYLES.survey,
-  design: STAGE_STYLES.design,
-  proposal_sent: STAGE_STYLES.proposal_sent,
-  won: STAGE_STYLES.deposit_paid,
-  lost: STAGE_STYLES.lost,
-};
+function Pill({ tone, children }: { tone: Tone; children: React.ReactNode }) {
+  return (
+    <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[12.5px] font-semibold whitespace-nowrap", PILL[tone].pill)}>
+      <span className={cn("size-1.5 rounded-full", PILL[tone].dot)} aria-hidden />
+      {children}
+    </span>
+  );
+}
+
+export function StageChip({ stage }: { stage: ProjectStage }) {
+  return <Pill tone={STAGE_TONE[stage]}>{stageLabel(stage)}</Pill>;
+}
 
 export function ContactStageChip({ stage }: { stage: ContactStage }) {
+  return <Pill tone={CONTACT_STAGE_TONE[stage]}>{CONTACT_STAGE_LABELS[stage]}</Pill>;
+}
+
+/** Initials avatar; tone alternates so owners are easy to tell apart. */
+export function Avatar({ name, size = "sm", className }: { name: string; size?: "sm" | "md" | "lg"; className?: string }) {
+  const initials = name
+    .split(/\s+/)
+    .filter((w) => /^\p{L}/u.test(w))
+    .slice(0, 2)
+    .map((w) => w[0]!.toUpperCase())
+    .join("");
+  const blue = [...name].reduce((n, c) => n + c.charCodeAt(0), 0) % 2 === 1;
+  const sizes = { sm: "size-6 text-[10.5px]", md: "size-[34px] text-[11.5px]", lg: "size-14 text-lg" };
   return (
-    <span className={cn("inline-flex rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap", CONTACT_STAGE_STYLES[stage])}>
-      {CONTACT_STAGE_LABELS[stage]}
+    <span
+      title={name}
+      className={cn("inline-flex shrink-0 items-center justify-center rounded-full font-bold", blue ? "bg-info-tint text-info-text" : "bg-accent-tint text-accent-strong", sizes[size], className)}
+    >
+      {initials}
     </span>
   );
 }
@@ -61,10 +105,10 @@ export const SOURCES = ["Website", "Referral", "Google Ads", "Facebook", "Phone"
 
 export function PageHeader({ title, description, actions }: { title: string; description?: React.ReactNode; actions?: React.ReactNode }) {
   return (
-    <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
-        {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
+    <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-col gap-1">
+        <h1 className="text-[26px] leading-tight font-bold tracking-[-0.02em]">{title}</h1>
+        {description && <p className="text-sm text-ink-3">{description}</p>}
       </div>
       {actions && <div className="flex items-center gap-2">{actions}</div>}
     </div>
@@ -72,5 +116,5 @@ export function PageHeader({ title, description, actions }: { title: string; des
 }
 
 export function EmptyState({ children }: { children: React.ReactNode }) {
-  return <p className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">{children}</p>;
+  return <p className="rounded-lg border border-dashed border-input p-6 text-center text-sm text-muted-foreground">{children}</p>;
 }

@@ -1,17 +1,18 @@
-import { ArrowLeft, Mail, Phone } from "lucide-react";
+import { Phone, Plus } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 import { ContactFields, ProductCheckboxes } from "@/components/contact-fields";
-import { ContactStageChip, EmptyState, ProductTags, StageChip } from "@/components/domain";
+import { Avatar, ContactStageChip, EmptyState, productLabel, ProductTags, StageChip } from "@/components/domain";
 import { ActionForm, SubmitButton } from "@/components/forms";
 import { Thread, THREAD_TABS, type ThreadTab } from "@/components/thread";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Field, Select, Textarea } from "@/components/ui/input";
+import { Select, Textarea } from "@/components/ui/input";
 import { addNoteAction, addProjectAction, updateContactAction } from "@/lib/actions/crm";
 import { asUser } from "@/lib/auth";
 import { contactTimeline, listSources, listStaff } from "@/lib/queries";
-import { addressLine, formatMoney } from "@/lib/utils";
+import { addressLine, cn, formatMoney } from "@/lib/utils";
 
 export default async function ContactPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string }> }) {
   const { id } = await params;
@@ -38,43 +39,70 @@ export default async function ContactPage({ params, searchParams }: { params: Pr
   if (!data) notFound();
   const { contact, projects, timeline, staff, sources } = data;
 
+  const owner = staff.find((u) => u.id === contact.owner_id)?.full_name;
+  const since = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "Europe/London" }).format(new Date(contact.created_at));
+  const address = addressLine(contact.address_line1, contact.address_line2, contact.town, contact.postcode);
+
   return (
     <>
-      <Link href="/contacts" className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="size-4" aria-hidden /> Contacts
-      </Link>
-      <div className="mb-6 flex flex-wrap items-center gap-3">
-        <h1 className="text-xl font-semibold tracking-tight">{contact.name}</h1>
-        <ContactStageChip stage={contact.stage} />
-        {contact.stage === "lost" && contact.lost_reason && <span className="text-sm text-muted-foreground">{contact.lost_reason}</span>}
+      <nav aria-label="Breadcrumb" className="mb-5 text-[13px] text-muted-foreground">
+        <Link href="/contacts" className="hover:text-foreground">
+          Contacts
+        </Link>{" "}
+        / {contact.name}
+      </nav>
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Avatar name={contact.name} size="lg" />
+          <div className="flex flex-col gap-1">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h1 className="text-2xl font-bold tracking-[-0.02em]">{contact.name}</h1>
+              <ContactStageChip stage={contact.stage} />
+            </div>
+            <span className="text-sm text-ink-3">
+              {contact.stage === "lost" && contact.lost_reason ? `Lost: ${contact.lost_reason}` : `Contact since ${since}`}
+              {owner && ` · Owner ${owner}`}
+            </span>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2.5">
+          {contact.phone && (
+            <a href={`tel:${contact.phone}`} className={buttonVariants({ variant: "outline" })}>
+              <Phone aria-hidden /> Call
+            </a>
+          )}
+          <a href="#add-project" className={buttonVariants()}>
+            <Plus className="size-[18px]" strokeWidth={2} aria-hidden /> New project
+          </a>
+        </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[22rem_1fr]">
-        <div className="grid content-start gap-6">
+      <div className="flex flex-wrap items-start gap-5">
+        <aside className="flex max-w-[360px] flex-[1_1_300px] flex-col gap-5 max-md:max-w-none">
           <Card>
-            <CardHeader>
+            <CardHeader className="pb-1">
               <CardTitle>Details</CardTitle>
-              <span className="flex gap-1">
-                {contact.phone && (
-                  <a href={`tel:${contact.phone}`} className="rounded p-1.5 hover:bg-muted" aria-label={`Call ${contact.phone}`}>
-                    <Phone className="size-4" />
-                  </a>
-                )}
-                {contact.email && (
-                  <a href={`mailto:${contact.email}`} className="rounded p-1.5 hover:bg-muted" aria-label={`Email ${contact.email}`}>
-                    <Mail className="size-4" />
-                  </a>
-                )}
-              </span>
             </CardHeader>
-            <CardContent>
-              <ActionForm action={updateContactAction.bind(null, contact.id)} className="grid gap-4">
-                <ContactFields values={contact} staff={staff} extraSources={sources} />
-                <ProductCheckboxes selected={contact.interested_in} />
-                <div>
-                  <SubmitButton size="sm">Save details</SubmitButton>
-                </div>
-              </ActionForm>
+            <CardContent className="flex flex-col pt-0">
+              <Detail label="Mobile" value={contact.phone ? <a href={`tel:${contact.phone}`} className="hover:underline">{contact.phone}</a> : null} />
+              <Detail label="Email" value={contact.email ? <a href={`mailto:${contact.email}`} className="break-all hover:underline">{contact.email}</a> : null} />
+              <Detail label="Address" value={address || null} />
+              <Detail label="Source" value={contact.source} />
+              <Detail
+                label="Interested in"
+                value={contact.interested_in.length ? <ProductTags products={contact.interested_in} className="pt-1" /> : null}
+                last
+              />
+              <details className="mt-1">
+                <summary className="cursor-pointer text-sm font-semibold text-primary hover:text-accent-strong">Edit details</summary>
+                <ActionForm action={updateContactAction.bind(null, contact.id)} className="mt-4 grid gap-4">
+                  <ContactFields values={contact} staff={staff} extraSources={sources} />
+                  <ProductCheckboxes selected={contact.interested_in} />
+                  <div>
+                    <SubmitButton size="sm">Save details</SubmitButton>
+                  </div>
+                </ActionForm>
+              </details>
             </CardContent>
           </Card>
 
@@ -82,20 +110,19 @@ export default async function ContactPage({ params, searchParams }: { params: Pr
             <CardHeader>
               <CardTitle>Projects</CardTitle>
             </CardHeader>
-            <CardContent className="grid gap-4">
+            <CardContent className="flex flex-col gap-2.5">
               {projects.length ? (
-                <ul className="grid gap-2">
+                <ul className="flex flex-col gap-2.5">
                   {projects.map((p) => (
                     <li key={p.id}>
-                      <Link href={`/projects/${p.id}`} className="block rounded-md border p-3 text-sm hover:border-primary">
-                        <span className="flex items-center justify-between gap-2">
-                          <span className="font-medium">{addressLine(p.site_address_line1, p.site_postcode) || "No site address"}</span>
-                          <StageChip stage={p.stage} />
+                      <Link href={`/projects/${p.id}`} className="flex items-center justify-between gap-3 rounded-[10px] border p-3 hover:border-primary">
+                        <span className="flex min-w-0 flex-col gap-0.5">
+                          <span className="text-sm font-semibold">{p.products.map(productLabel).join(", ") || "No products"}</span>
+                          <span className="truncate text-[12.5px] text-muted-foreground">
+                            {[p.value ? formatMoney(p.value) : null, p.site_address_line1].filter(Boolean).join(" · ") || "No site address"}
+                          </span>
                         </span>
-                        <span className="mt-2 flex items-center justify-between gap-2">
-                          <ProductTags products={p.products} />
-                          <span className="text-xs text-muted-foreground">{formatMoney(p.value)}</span>
-                        </span>
+                        <StageChip stage={p.stage} />
                       </Link>
                     </li>
                   ))}
@@ -103,11 +130,11 @@ export default async function ContactPage({ params, searchParams }: { params: Pr
               ) : (
                 <EmptyState>No projects yet.</EmptyState>
               )}
-              <details className="text-sm">
-                <summary className="cursor-pointer font-medium text-primary">Add a project</summary>
+              <details id="add-project" className="text-sm">
+                <summary className="cursor-pointer font-semibold text-primary hover:text-accent-strong">Add a project</summary>
                 <ActionForm action={addProjectAction.bind(null, contact.id)} className="mt-3 grid gap-3">
                   <ProductCheckboxes legend="Products" selected={contact.interested_in} />
-                  <p className="text-xs text-muted-foreground">Uses the contact's address as the site address; you can change it on the project.</p>
+                  <p className="text-xs text-muted-foreground">Uses the contact&apos;s address as the site address; you can change it on the project.</p>
                   <div>
                     <SubmitButton size="sm" variant="outline">
                       Create project
@@ -117,54 +144,63 @@ export default async function ContactPage({ params, searchParams }: { params: Pr
               </details>
             </CardContent>
           </Card>
-        </div>
+        </aside>
 
-        <Card className="min-w-0">
-          <CardHeader>
-            <CardTitle>Conversation</CardTitle>
-          </CardHeader>
-          <div className="border-b p-4">
-            <ActionForm action={addNoteAction.bind(null, contact.id)} className="grid gap-3" resetOnSuccess>
-              <div className="flex flex-wrap gap-3">
-                <Field label="Channel" htmlFor="channel" className="w-40">
-                  <Select id="channel" name="channel" defaultValue="note" aria-describedby="channel-hint">
-                    <option value="note">Note</option>
-                    <option value="email" disabled>
-                      Email (phase 2)
-                    </option>
-                    <option value="whatsapp" disabled>
-                      WhatsApp (phase 2)
-                    </option>
-                  </Select>
-                </Field>
-                {projects.length > 1 && (
-                  <Field label="Project" htmlFor="project_id" className="min-w-48 flex-1">
-                    <Select id="project_id" name="project_id" defaultValue="">
-                      <option value="">Not about one project</option>
-                      {projects.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {addressLine(p.site_address_line1, p.site_postcode) || "Project"}
-                        </option>
-                      ))}
-                    </Select>
-                  </Field>
-                )}
-                {projects.length === 1 && <input type="hidden" name="project_id" value={projects[0]!.id} />}
-              </div>
-              <Field label="Note" htmlFor="body">
-                <Textarea id="body" name="body" required placeholder="Add a note for the team…" />
-              </Field>
-              <p id="channel-hint" className="sr-only">
-                Email and WhatsApp sending arrives in phase 2.
-              </p>
-              <div>
-                <SubmitButton size="sm">Add note</SubmitButton>
-              </div>
-            </ActionForm>
-          </div>
+        <Card className="flex min-w-0 flex-[999_1_520px] flex-col overflow-hidden" aria-label="Conversation">
           <Thread messages={timeline.messages} events={timeline.events} tab={tab} tabHref={(t) => `/contacts/${contact.id}${t === "all" ? "" : `?tab=${t}`}`} />
+          <ActionForm action={addNoteAction.bind(null, contact.id)} className="flex flex-col gap-2.5 border-t px-4 py-3.5" resetOnSuccess>
+            <div className="flex flex-wrap items-center gap-2">
+              <label htmlFor="channel" className="sr-only">
+                Send via
+              </label>
+              <Select id="channel" name="channel" defaultValue="note" aria-describedby="channel-hint" className="h-[34px] w-auto text-[13px] font-semibold">
+                <option value="note">Internal note</option>
+                <option value="whatsapp" disabled>
+                  WhatsApp (phase 2)
+                </option>
+                <option value="email" disabled>
+                  Email (phase 2)
+                </option>
+              </Select>
+              {projects.length > 1 && (
+                <>
+                  <label htmlFor="project_id" className="sr-only">
+                    Project
+                  </label>
+                  <Select id="project_id" name="project_id" defaultValue="" className="h-[34px] w-auto text-[13px]">
+                    <option value="">Not about one project</option>
+                    {projects.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {addressLine(p.site_address_line1, p.site_postcode) || "Project"}
+                      </option>
+                    ))}
+                  </Select>
+                </>
+              )}
+              {projects.length === 1 && <input type="hidden" name="project_id" value={projects[0]!.id} />}
+              <span id="channel-hint" className="ml-auto text-[12.5px] text-muted-foreground">
+                Email and WhatsApp sending arrive in phase 2
+              </span>
+            </div>
+            <div className="flex items-end gap-2.5">
+              <label htmlFor="body" className="sr-only">
+                Note
+              </label>
+              <Textarea id="body" name="body" required placeholder="Write a note for the team…" className="min-h-[72px] flex-1 rounded-[10px]" />
+              <SubmitButton>Add note</SubmitButton>
+            </div>
+          </ActionForm>
         </Card>
       </div>
     </>
+  );
+}
+
+function Detail({ label, value, last }: { label: string; value: React.ReactNode; last?: boolean }) {
+  return (
+    <div className={cn("flex flex-col gap-0.5 py-2.5", !last && "border-b border-divider")}>
+      <span className="text-[12.5px] font-medium text-muted-foreground">{label}</span>
+      <span className="text-sm font-medium">{value ?? <span className="text-muted-foreground">Not set</span>}</span>
+    </div>
   );
 }
