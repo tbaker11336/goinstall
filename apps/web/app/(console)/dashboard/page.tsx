@@ -41,7 +41,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const { group: groupParam } = await searchParams;
   const group = GROUPS.find((g) => g.key === groupParam);
 
-  const { counts, newContacts, projects, actions, unread, firstName } = await asUser(async (tx, session) => {
+  const { counts, newContacts, projects, actions, unread, firstName, emailSetup } = await asUser(async (tx, session) => {
     const [counts, newContacts, projects, actions, unread] = await Promise.all([
       projectStageCounts(tx),
       tx
@@ -63,7 +63,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         .limit(6)
         .execute(),
     ]);
-    return { counts, newContacts: Number(newContacts.n), projects, actions, unread, firstName: session.fullName.split(" ")[0] };
+    const company = await tx.selectFrom("companies").select("email_sender").where("id", "=", session.companyId).executeTakeFirstOrThrow();
+    // Admins are reminded until email goes from the company's own domain.
+    const emailSetup = session.role === "admin" && !company.email_sender;
+    return { counts, newContacts: Number(newContacts.n), projects, actions, unread, firstName: session.fullName.split(" ")[0], emailSetup };
   });
 
   const now = new Date();
@@ -82,6 +85,15 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           </Link>
         }
       />
+
+      {emailSetup && (
+        <p className="mb-6 rounded-[10px] border bg-card px-4 py-3 text-sm">
+          Customers get emails from the GoInstall address until you connect your own domain.{" "}
+          <Link href="/settings/email" className="font-semibold text-primary">
+            Set up email sending
+          </Link>
+        </p>
+      )}
 
       <ul className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
         {TILES.map((t) => {

@@ -197,6 +197,13 @@ export interface Companies {
   design_settings: Generated<Json>;
   document_prefix: string | null;
   email: string | null;
+  email_domain: string | null;
+  email_domain_checked_at: Timestamp | null;
+  email_domain_provider_id: string | null;
+  email_domain_records: Generated<Json>;
+  email_domain_status: Generated<string>;
+  email_from_local: Generated<string>;
+  email_sender: string | null;
   enquiry_form_key: Generated<string>;
   id: Generated<string>;
   logo_path: string | null;

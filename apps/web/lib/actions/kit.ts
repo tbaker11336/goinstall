@@ -44,7 +44,7 @@ export async function placeOrdersAction(projectId: string, _: ActionResult, form
   const res = await asUser(async (tx, session) => {
     const project = await tx.selectFrom("projects").select(["id", "stage", "site_address_line1", "site_address_line2", "site_town", "site_postcode"]).where("id", "=", projectId).executeTakeFirst();
     if (!project) return { error: "Project not found" };
-    const company = await tx.selectFrom("companies").select(["name", "email", "phone", "document_prefix", "depot_address"]).executeTakeFirstOrThrow();
+    const company = await tx.selectFrom("companies").select(["name", "email", "phone", "document_prefix", "depot_address", "email_sender"]).executeTakeFirstOrThrow();
     const { rows } = await loadKit(tx, projectId);
     const ordered = new Set(
       (
@@ -104,7 +104,7 @@ export async function placeOrdersAction(projectId: string, _: ActionResult, form
       await tx.updateTable("purchase_orders").set({ file_id: fileId }).where("id", "=", po.id).execute();
 
       // API suppliers arrive with their adapters (phase 6); until then every order is emailed.
-      const adapter = createOfflineSupplier({ connection: "email", lookup: async () => [], sender: emailSender(), from: fromAddress(company.name), orderEmail: supplier.order_email });
+      const adapter = createOfflineSupplier({ connection: "email", lookup: async () => [], sender: emailSender(), from: fromAddress(company.name, company.email_sender), orderEmail: supplier.order_email });
       const placed = await adapter.placeOrder({
         reference,
         companyName: company.name,

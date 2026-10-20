@@ -7,3 +7,4 @@ export * from "./pvgis";
 export * from "./google";
 export * from "./payments";
 export * from "./accounting";
+export * from "./email-domains";

@@ -94,7 +94,8 @@ export async function createCompanyAction(_: FormState, form: FormData): Promise
       })
       .execute();
   });
-  redirect("/settings/company");
+  // First step after sign-up: connect the company's own email domain (skippable).
+  redirect("/settings/email?welcome=1");
 }
 
 export async function setPasswordAction(_: FormState, form: FormData): Promise<FormState> {

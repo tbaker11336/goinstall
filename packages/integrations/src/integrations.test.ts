@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createStripePayments, signStripePayload, verifyStripeWebhook, createGoogleMapsClient, createMemoryFileStore, createOfflineSupplier, createPvgisClient, metresPerPixel, parseBuildingInsights, toLocalMetres, createRecordingSender, pvgisAspect, createResendSender, createSupabaseFileStore, textToHtml } from "./index";
+import { createResendDomains, createStripePayments, signStripePayload, verifyStripeWebhook, createGoogleMapsClient, createMemoryFileStore, createOfflineSupplier, createPvgisClient, metresPerPixel, parseBuildingInsights, toLocalMetres, createRecordingSender, pvgisAspect, createResendSender, createSupabaseFileStore, textToHtml } from "./index";
 
 describe("textToHtml", () => {
   it("escapes HTML, keeps paragraphs and links URLs", () => {
@@ -161,5 +161,23 @@ describe("Stripe", () => {
     expect(() => verifyStripeWebhook(payload, header, "whsec_other", { now: 1_000_010 })).toThrow(/mismatch/);
     expect(() => verifyStripeWebhook(payload, header, "whsec_x", { now: 1_001_000 })).toThrow(/tolerance/);
     expect(() => verifyStripeWebhook(payload, null, "whsec_x")).toThrow();
+  });
+});
+
+describe("Resend domains", () => {
+  it("creates a domain in the EU region and maps its DNS records", async () => {
+    const calls: { url: string; body: unknown }[] = [];
+    const fake = (async (url: string, init: RequestInit) => {
+      calls.push({ url, body: init.body ? JSON.parse(String(init.body)) : null });
+      return new Response(JSON.stringify({ id: "d_1", name: "mail.example.co.uk", status: "not_started", records: [{ record: "DKIM", name: "resend._domainkey.mail", type: "TXT", value: "p=abc", ttl: "Auto", status: "not_started" }] }), { status: 201 });
+    }) as unknown as typeof fetch;
+    const d = await createResendDomains({ apiKey: "k", fetch: fake }).create("mail.example.co.uk");
+    expect(calls[0]).toEqual({ url: "https://api.resend.com/domains", body: { name: "mail.example.co.uk", region: "eu-west-1" } });
+    expect(d).toEqual({ id: "d_1", name: "mail.example.co.uk", status: "not_started", records: [{ purpose: "DKIM", type: "TXT", name: "resend._domainkey.mail", value: "p=abc", priority: undefined, ttl: "Auto", status: "not_started" }] });
+  });
+
+  it("surfaces provider errors", async () => {
+    const fake = (async () => new Response(JSON.stringify({ message: "This API key is restricted to only send emails" }), { status: 401 })) as unknown as typeof fetch;
+    await expect(createResendDomains({ apiKey: "k", fetch: fake }).get("d_1")).rejects.toThrow(/restricted to only send/);
   });
 });

@@ -160,7 +160,7 @@ async function emailProposal(tx: Tx, session: Session, proposalId: string, kind:
     .innerJoin("projects as pj", "pj.id", "pr.project_id")
     .innerJoin("contacts as c", "c.id", "pj.contact_id")
     .innerJoin("companies as co", "co.id", "pr.company_id")
-    .select(["pr.id", "pr.status", "pr.number", "pr.version", "pr.total_pence", "pr.link_nonce", "pr.project_id", "pr.valid_until", "pj.stage", "pj.contact_id", "c.name", "c.email", "co.name as company_name", "co.email as company_email", "co.document_prefix"])
+    .select(["pr.id", "pr.status", "pr.number", "pr.version", "pr.total_pence", "pr.link_nonce", "pr.project_id", "pr.valid_until", "pj.stage", "pj.contact_id", "c.name", "c.email", "co.name as company_name", "co.email as company_email", "co.email_sender", "co.document_prefix"])
     .where("pr.id", "=", proposalId)
     .executeTakeFirst();
   if (!p) return { error: "Proposal not found" };
@@ -204,7 +204,7 @@ async function emailProposal(tx: Tx, session: Session, proposalId: string, kind:
     .executeTakeFirstOrThrow();
   await tx.insertInto("activity_log").values({ project_id: p.project_id, contact_id: p.contact_id, event: kind === "send" ? "proposal_sent" : "proposal_reminder", payload: { reference: proposalReference(p.document_prefix, p.number, p.version) } }).execute();
 
-  const result = await emailSender().send({ from: fromAddress(p.company_name), to: p.email, replyTo: session.email || p.company_email || undefined, subject, text: body, html: textToHtml(body), idempotencyKey: m.id, tags: { kind: `proposal_${kind}` } });
+  const result = await emailSender().send({ from: fromAddress(p.company_name, p.email_sender), to: p.email, replyTo: session.email || p.company_email || undefined, subject, text: body, html: textToHtml(body), idempotencyKey: m.id, tags: { kind: `proposal_${kind}` } });
   await tx
     .updateTable("messages")
     .set(result.ok ? { delivery_status: "sent", provider_message_id: result.providerId } : { delivery_status: "failed", delivery_error: result.error })

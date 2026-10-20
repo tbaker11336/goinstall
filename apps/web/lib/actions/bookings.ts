@@ -161,7 +161,7 @@ export async function confirmAndNotifyAction(projectId: string): Promise<ActionR
       .selectFrom("projects as p")
       .innerJoin("contacts as c", "c.id", "p.contact_id")
       .innerJoin("companies as co", "co.id", "p.company_id")
-      .select(["p.id", "p.stage", "p.site_address_line1", "c.id as contact_id", "c.name", "c.email", "co.name as company_name", "co.email as company_email"])
+      .select(["p.id", "p.stage", "p.site_address_line1", "c.id as contact_id", "c.name", "c.email", "co.name as company_name", "co.email as company_email", "co.email_sender"])
       .where("p.id", "=", projectId)
       .executeTakeFirst();
     if (!p) return { error: "Project not found" };
@@ -193,7 +193,7 @@ export async function confirmAndNotifyAction(projectId: string): Promise<ActionR
       .values({ contact_id: p.contact_id, project_id: projectId, channel: "email", direction: "outbound", subject, body, sent_by: session.userId, to_address: p.email, delivery_status: "queued" })
       .returning("id")
       .executeTakeFirstOrThrow();
-    const r = await emailSender().send({ from: fromAddress(p.company_name), to: p.email, replyTo: session.email || p.company_email || undefined, subject, text: body, html: textToHtml(body), idempotencyKey: m.id, tags: { kind: "booking_confirmation" } });
+    const r = await emailSender().send({ from: fromAddress(p.company_name, p.email_sender), to: p.email, replyTo: session.email || p.company_email || undefined, subject, text: body, html: textToHtml(body), idempotencyKey: m.id, tags: { kind: "booking_confirmation" } });
     await tx
       .updateTable("messages")
       .set(r.ok ? { delivery_status: "sent", provider_message_id: r.providerId } : { delivery_status: "failed", delivery_error: r.error })

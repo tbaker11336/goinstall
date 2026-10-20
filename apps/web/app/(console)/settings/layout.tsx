@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/auth";
 const SECTIONS = [
   { href: "/settings/company", label: "Company details" },
   { href: "/settings/team", label: "Team & permissions" },
+  { href: "/settings/email", label: "Email sending" },
   { href: "/settings/products", label: "Products & suppliers" },
   { href: "/settings/design", label: "Design rules" },
   { href: "/settings/surveys", label: "Surveys & templates" },

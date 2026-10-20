@@ -136,7 +136,7 @@ export async function applyOp(tx: Tx, session: Session, op: SyncOp): Promise<OpR
           .selectFrom("projects as p")
           .innerJoin("contacts as c", (j) => j.onRef("c.id", "=", "p.contact_id").onRef("c.company_id", "=", "p.company_id"))
           .innerJoin("companies as co", "co.id", "p.company_id")
-          .select(["p.id", "c.id as contact_id", "c.name", "c.email", "co.name as company_name", "co.email as company_email"])
+          .select(["p.id", "c.id as contact_id", "c.name", "c.email", "co.name as company_name", "co.email as company_email", "co.email_sender"])
           .where("p.id", "=", b.project_id!)
           .where("p.company_id", "=", b.company_id)
           .executeTakeFirstOrThrow();
@@ -149,7 +149,7 @@ export async function applyOp(tx: Tx, session: Session, op: SyncOp): Promise<OpR
           .values({ company_id: b.company_id, contact_id: p.contact_id, project_id: p.id, channel: "email", direction: "outbound", subject, body, sent_by: session.userId, to_address: p.email, delivery_status: "queued", created_by: session.userId })
           .returning("id")
           .executeTakeFirstOrThrow();
-        const r = await emailSender().send({ from: fromAddress(p.company_name), to: p.email, replyTo: p.company_email ?? undefined, subject, text: body, html: textToHtml(body), idempotencyKey: `omw-${op.opId}`, tags: { kind: "on_my_way" } });
+        const r = await emailSender().send({ from: fromAddress(p.company_name, p.email_sender), to: p.email, replyTo: p.company_email ?? undefined, subject, text: body, html: textToHtml(body), idempotencyKey: `omw-${op.opId}`, tags: { kind: "on_my_way" } });
         await s.updateTable("messages").set(r.ok ? { delivery_status: "sent", provider_message_id: r.providerId } : { delivery_status: "failed", delivery_error: r.error }).where("id", "=", m.id).execute();
       });
       return ok();

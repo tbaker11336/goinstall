@@ -21,13 +21,14 @@ interface ContactForEmail {
   email: string | null;
   company_name: string;
   company_email: string | null;
+  email_sender: string | null;
 }
 
 async function contactForEmail(tx: Tx, contactId: string): Promise<ContactForEmail | undefined> {
   return tx
     .selectFrom("contacts as c")
     .innerJoin("companies as co", "co.id", "c.company_id")
-    .select(["c.id", "c.name", "c.email", "co.name as company_name", "co.email as company_email"])
+    .select(["c.id", "c.name", "c.email", "co.name as company_name", "co.email as company_email", "co.email_sender"])
     .where("c.id", "=", contactId)
     .executeTakeFirst();
 }
@@ -63,7 +64,7 @@ async function sendAndRecord(
   });
 
   const result = await emailSender().send({
-    from: fromAddress(contact.company_name),
+    from: fromAddress(contact.company_name, contact.email_sender),
     to: contact.email,
     replyTo: session.email || contact.company_email || undefined,
     subject: email.subject,

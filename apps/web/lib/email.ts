@@ -1,8 +1,8 @@
 import "server-only";
 import { appendFile } from "node:fs/promises";
-import { createRecordingSender, createResendSender, type EmailSender } from "@goinstall/integrations";
+import { createFakeDomains, createRecordingSender, createResendDomains, createResendSender, type EmailDomains, type EmailSender } from "@goinstall/integrations";
 
-const g = globalThis as unknown as { goinstallEmail?: EmailSender };
+const g = globalThis as unknown as { goinstallEmail?: EmailSender; goinstallDomains?: EmailDomains };
 
 /**
  * Resend when RESEND_API_KEY and EMAIL_FROM are set; otherwise emails are
@@ -32,13 +32,24 @@ export function emailConfigured() {
 }
 
 /**
- * From address for a company: its name with the platform's verified sending
- * address (EMAIL_FROM), e.g. "Brightside Solar <hello@mail.goinstall.co.uk>".
- * Per-company verified domains replace this later.
+ * From address for a company. Once the company has verified its own domain,
+ * email goes from that address (`sender`, e.g. hello@brightside.co.uk);
+ * until then, the platform's verified address (EMAIL_FROM) with the
+ * company's name.
  */
-export function fromAddress(companyName: string) {
+export function fromAddress(companyName: string, sender?: string | null) {
   const configured = process.env.EMAIL_FROM ?? "GoInstall <no-reply@localhost>";
-  const address = configured.match(/<([^>]+)>/)?.[1] ?? configured.trim();
+  const address = sender || (configured.match(/<([^>]+)>/)?.[1] ?? configured.trim());
   const name = companyName.replace(/["<>]/g, "").trim();
   return `"${name}" <${address}>`;
+}
+
+/** Sending-domain management: Resend when configured, otherwise a stand-in for development. */
+export function emailDomains(): EmailDomains | null {
+  if (g.goinstallDomains) return g.goinstallDomains;
+  const apiKey = process.env.RESEND_API_KEY;
+  if (apiKey) g.goinstallDomains = createResendDomains({ apiKey });
+  else if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) g.goinstallDomains = createFakeDomains();
+  else return null;
+  return g.goinstallDomains;
 }
