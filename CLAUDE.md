@@ -13,6 +13,11 @@ design rules: never invent rule values).
   The `whatsapp` message channel stays in the schema for later.
 - Email sends through Resend from `EMAIL_FROM` with the company's name;
   replies go to the sending staff member (reply-to). Inbound email later.
+- Install checklists: GoInstall drafts starter steps (marked as drafts,
+  editable in Settings); test readings have no default values.
+- Installer app: iOS and Android from launch (one Expo codebase).
+- Calendar sync: a private iCal feed link per team (Google, Outlook and
+  Apple subscribe to it); no account connections for now.
 
 ## Conventions
 

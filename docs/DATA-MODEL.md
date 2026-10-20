@@ -39,10 +39,12 @@ wins.
 | 4 | `proposal_views` | Each customer view |
 | 4 | `invoices` | Deposit and balance invoices with Xero reference (not in the spec) |
 | 4 | `payments` | Stripe payments against an invoice |
+| 5 | `kit_items` | Kit list per project from the accepted proposal; per-line supplier override (null = cheapest in stock); no prices, so installers can check kit (added in build) |
 | 5 | `purchase_orders`, `purchase_order_lines` | One order per supplier |
 | 5 | `bookings` | Survey, install, scaffold up/down, and a general `task` type (the My jobs design shows "Collect from depot") |
 | 5 | `booking_assignments` | Team, electrician and scaffolder per booking; drives installer and subcontractor access |
-| 5 | `checklist_templates`, `checklist_items` | Per-company steps; completed items carry photo, readings and serials |
+| 5 | `checklist_templates`, `checklist_items` | Per-company steps; completed items carry photo, readings and serials. Item ids are made on the device so offline sync is idempotent |
+| 5 | `checklist_item_history` | Overwritten checklist values (last write wins, history kept) (added in build) |
 | 6 | `paperwork` | Type, status, due date, reference, generated file |
 
 ## Access rules

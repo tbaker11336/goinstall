@@ -15,6 +15,10 @@ export type ArrayTypeImpl<T> = T extends ColumnType<infer S, infer I, infer U>
   ? ColumnType<S[], I[], U[]>
   : T[];
 
+export type BookingStatus = "cancelled" | "completed" | "confirmed" | "in_progress" | "tentative";
+
+export type BookingType = "install" | "scaffold_down" | "scaffold_up" | "survey" | "task";
+
 export type ContactStage = "design" | "lost" | "new_enquiry" | "proposal_sent" | "survey" | "won";
 
 export type FieldSource = "in_person" | "online" | "photo" | "staff_edit";
@@ -45,6 +49,8 @@ export type Numeric = ColumnType<string, number | string, number | string>;
 
 export type OnlineSurveyStatus = "completed" | "in_progress" | "not_sent" | "sent";
 
+export type PoStatus = "cancelled" | "confirmed" | "delivered" | "draft" | "sent";
+
 export type ProductCategory = "battery" | "cable" | "electrical" | "ev_charger" | "inverter" | "labour" | "mounting" | "other" | "panel";
 
 export type ProductType = "battery" | "ev" | "solar";
@@ -72,6 +78,40 @@ export interface ActivityLog {
   project_id: string | null;
 }
 
+export interface BookingAssignments {
+  booking_id: string;
+  company_id: Generated<string>;
+  created_at: Generated<Timestamp>;
+  created_by: Generated<string | null>;
+  id: Generated<string>;
+  role: string;
+  team_id: string | null;
+  updated_at: Generated<Timestamp>;
+  user_id: string | null;
+}
+
+export interface Bookings {
+  all_day: Generated<boolean>;
+  company_id: Generated<string>;
+  completed_at: Timestamp | null;
+  created_at: Generated<Timestamp>;
+  created_by: Generated<string | null>;
+  customer_confirmed_at: Timestamp | null;
+  customer_notified_at: Timestamp | null;
+  ends_at: Timestamp;
+  id: Generated<string>;
+  notes: string | null;
+  project_id: string | null;
+  signoff_name: string | null;
+  signoff_signature_file_id: string | null;
+  started_at: Timestamp | null;
+  starts_at: Timestamp;
+  status: Generated<BookingStatus>;
+  title: string | null;
+  type: BookingType;
+  updated_at: Generated<Timestamp>;
+}
+
 export interface CalcTables {
   company_id: Generated<string>;
   created_at: Generated<Timestamp>;
@@ -83,6 +123,58 @@ export interface CalcTables {
   rows: Json;
   source_note: string;
   version: number;
+}
+
+export interface ChecklistItemHistory {
+  captured_at: Timestamp | null;
+  checklist_item_id: string;
+  company_id: string;
+  completed_by: string | null;
+  done: boolean | null;
+  id: Generated<string>;
+  note: string | null;
+  readings: Json | null;
+  replaced_at: Generated<Timestamp>;
+  serial: string | null;
+}
+
+export interface ChecklistItems {
+  booking_id: string;
+  captured_at: Generated<Timestamp>;
+  company_id: Generated<string>;
+  completed_by: string | null;
+  created_at: Generated<Timestamp>;
+  created_by: Generated<string | null>;
+  done: Generated<boolean>;
+  id: string;
+  kind: Generated<string>;
+  note: string | null;
+  photo_file_ids: Generated<string[]>;
+  product: string;
+  project_id: string;
+  readings: Generated<Json>;
+  serial: string | null;
+  template_id: string | null;
+  title: string;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface ChecklistTemplates {
+  archived_at: Timestamp | null;
+  company_id: Generated<string>;
+  created_at: Generated<Timestamp>;
+  created_by: Generated<string | null>;
+  help: string | null;
+  id: Generated<string>;
+  is_draft: Generated<boolean>;
+  kind: Generated<string>;
+  position: Generated<number>;
+  product: string;
+  readings: Generated<Json>;
+  requires_photo: Generated<boolean>;
+  requires_serial: Generated<boolean>;
+  title: string;
+  updated_at: Generated<Timestamp>;
 }
 
 export interface Companies {
@@ -99,6 +191,7 @@ export interface Companies {
   created_at: Generated<Timestamp>;
   created_by: Generated<string | null>;
   default_deposit_pct: Numeric | null;
+  depot_address: string | null;
   design_settings: Generated<Json>;
   document_prefix: string | null;
   email: string | null;
@@ -108,6 +201,7 @@ export interface Companies {
   mcs_number: string | null;
   name: string;
   next_invoice_number: Generated<number>;
+  next_po_number: Generated<number>;
   next_proposal_number: Generated<number>;
   payment_terms: string | null;
   phone: string | null;
@@ -232,6 +326,22 @@ export interface Invoices {
   vat_pence: Generated<Int8>;
   xero_invoice_id: string | null;
   xero_synced_at: Timestamp | null;
+}
+
+export interface KitItems {
+  company_id: Generated<string>;
+  created_at: Generated<Timestamp>;
+  created_by: Generated<string | null>;
+  description: string;
+  id: Generated<string>;
+  issue: string | null;
+  issue_note: string | null;
+  position: Generated<number>;
+  product_id: string;
+  project_id: string;
+  quantity: Numeric;
+  supplier_id: string | null;
+  updated_at: Generated<Timestamp>;
 }
 
 export interface Messages {
@@ -426,6 +536,42 @@ export interface ProposalViews {
   viewed_at: Generated<Timestamp>;
 }
 
+export interface PurchaseOrderLines {
+  company_id: Generated<string>;
+  created_at: Generated<Timestamp>;
+  created_by: Generated<string | null>;
+  description: string;
+  id: Generated<string>;
+  line_total_pence: Int8;
+  position: Generated<number>;
+  product_id: string | null;
+  purchase_order_id: string;
+  quantity: Numeric;
+  supplier_sku: string | null;
+  unit_cost_pence: Int8;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface PurchaseOrders {
+  company_id: Generated<string>;
+  created_at: Generated<Timestamp>;
+  created_by: Generated<string | null>;
+  deliver_to: Generated<string>;
+  delivered_at: Timestamp | null;
+  delivery_address: string | null;
+  expected_date: Timestamp | null;
+  file_id: string | null;
+  id: Generated<string>;
+  notes: string | null;
+  number: string;
+  project_id: string;
+  sent_at: Timestamp | null;
+  status: Generated<PoStatus>;
+  supplier_id: string;
+  total_pence: Generated<Int8>;
+  updated_at: Generated<Timestamp>;
+}
+
 export interface RoofDataCache {
   company_id: Generated<string>;
   created_by: Generated<string | null>;
@@ -565,6 +711,7 @@ export interface Surveys {
 }
 
 export interface Teams {
+  calendar_nonce: string | null;
   colour: string | null;
   company_id: Generated<string>;
   created_at: Generated<Timestamp>;
@@ -591,13 +738,19 @@ export interface Users {
 
 export interface DB {
   activity_log: ActivityLog;
+  booking_assignments: BookingAssignments;
+  bookings: Bookings;
   calc_tables: CalcTables;
+  checklist_item_history: ChecklistItemHistory;
+  checklist_items: ChecklistItems;
+  checklist_templates: ChecklistTemplates;
   companies: Companies;
   contacts: Contacts;
   ev_designs: EvDesigns;
   files: Files;
   integrations: Integrations;
   invoices: Invoices;
+  kit_items: KitItems;
   message_templates: MessageTemplates;
   messages: Messages;
   payments: Payments;
@@ -608,6 +761,8 @@ export interface DB {
   proposal_lines: ProposalLines;
   proposal_views: ProposalViews;
   proposals: Proposals;
+  purchase_order_lines: PurchaseOrderLines;
+  purchase_orders: PurchaseOrders;
   roof_data_cache: RoofDataCache;
   solar_designs: SolarDesigns;
   supplier_products: SupplierProducts;
