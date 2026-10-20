@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createMemoryFileStore, createOfflineSupplier, createRecordingSender, createResendSender, createSupabaseFileStore, textToHtml } from "./index";
+import { createMemoryFileStore, createOfflineSupplier, createPvgisClient, createRecordingSender, pvgisAspect, createResendSender, createSupabaseFileStore, textToHtml } from "./index";
 
 describe("textToHtml", () => {
   it("escapes HTML, keeps paragraphs and links URLs", () => {
@@ -80,5 +80,23 @@ describe("offline supplier", () => {
   it("refuses to order without an order email", async () => {
     const supplier = createOfflineSupplier({ connection: "price_file", lookup: async () => [], sender: createRecordingSender(), from: "a@x", orderEmail: null });
     expect(await supplier.placeOrder(po)).toMatchObject({ ok: false });
+  });
+});
+
+describe("PVGIS", () => {
+  it("converts azimuth to PVGIS aspect", () => {
+    expect([180, 90, 270, 135, 0].map(pvgisAspect)).toEqual([0, -90, 90, -45, -180]);
+  });
+  it("requests PVcalc and reads monthly and annual totals", async () => {
+    let url = "";
+    const fetchMock = (async (u: string) => {
+      url = u;
+      return new Response(JSON.stringify({ outputs: { monthly: { fixed: [{ month: 2, E_m: 200.4 }, { month: 1, E_m: 100.6 }] }, totals: { fixed: { E_y: 7010.2 } } } }));
+    }) as unknown as typeof fetch;
+    const r = await createPvgisClient({ fetch: fetchMock }).pvcalc({ lat: 52.06, lon: -1.34, kWp: 8.01, pitch: 35, azimuth: 180, lossPct: 14 });
+    expect(r).toEqual({ annualKwh: 7010, monthlyKwh: [101, 200] });
+    expect(url).toContain("peakpower=8.01");
+    expect(url).toContain("aspect=0");
+    expect(url).toContain("angle=35");
   });
 });

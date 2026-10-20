@@ -3,3 +3,4 @@
 export * from "./email";
 export * from "./storage";
 export * from "./suppliers";
+export * from "./pvgis";

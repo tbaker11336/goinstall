@@ -70,6 +70,19 @@ export interface ActivityLog {
   project_id: string | null;
 }
 
+export interface CalcTables {
+  company_id: Generated<string>;
+  created_at: Generated<Timestamp>;
+  created_by: Generated<string | null>;
+  file_name: string | null;
+  id: Generated<string>;
+  is_active: Generated<boolean>;
+  kind: string;
+  rows: Json;
+  source_note: string;
+  version: number;
+}
+
 export interface Companies {
   address_line1: string | null;
   address_line2: string | null;
@@ -84,6 +97,7 @@ export interface Companies {
   created_at: Generated<Timestamp>;
   created_by: Generated<string | null>;
   default_deposit_pct: Numeric | null;
+  design_settings: Generated<Json>;
   document_prefix: string | null;
   email: string | null;
   enquiry_form_key: Generated<string>;
@@ -123,6 +137,41 @@ export interface Contacts {
   tags: Generated<string[]>;
   town: string | null;
   updated_at: Generated<Timestamp>;
+}
+
+export interface EvDesigns {
+  background: Generated<string>;
+  background_file_id: string | null;
+  cable_size_mm2: Numeric | null;
+  calc_notes: Generated<Json>;
+  charger_label: string | null;
+  charger_point: Json | null;
+  charger_product_id: string | null;
+  company_id: Generated<string>;
+  created_at: Generated<Timestamp>;
+  created_by: Generated<string | null>;
+  dno_notification: Generated<boolean>;
+  earthing: string | null;
+  existing_demand_a: Numeric | null;
+  id: Generated<string>;
+  is_active: Generated<boolean>;
+  load_management: boolean | null;
+  main_fuse_a: number | null;
+  max_demand_a: Numeric | null;
+  mounting: Generated<string>;
+  phases: number | null;
+  project_id: string;
+  protection: string | null;
+  route: Generated<Json>;
+  route_length_m: Numeric | null;
+  route_length_measured: Generated<boolean>;
+  route_methods: Generated<Json>;
+  solar_divert: Generated<boolean>;
+  supply_label: string | null;
+  supply_point: Json | null;
+  tethered: boolean | null;
+  version: number;
+  volt_drop_pct: Numeric | null;
 }
 
 export interface Files {
@@ -268,6 +317,48 @@ export interface Projects {
   value: Numeric | null;
 }
 
+export interface RoofDataCache {
+  company_id: Generated<string>;
+  created_by: Generated<string | null>;
+  fetched_at: Generated<Timestamp>;
+  id: Generated<string>;
+  imagery_quality: string | null;
+  lat: number;
+  lng: number;
+  project_id: string;
+  provider: Generated<string>;
+  response: Json | null;
+  status: string;
+}
+
+export interface SolarDesigns {
+  annual_kwh_mcs: number | null;
+  battery_count: Generated<number>;
+  battery_product_id: string | null;
+  calc_notes: Generated<Json>;
+  company_id: Generated<string>;
+  connection_form: string | null;
+  created_at: Generated<Timestamp>;
+  created_by: Generated<string | null>;
+  dc_ac_ratio: Numeric | null;
+  export_kw: Numeric | null;
+  id: Generated<string>;
+  inverter_product_id: string | null;
+  is_active: Generated<boolean>;
+  kwp: Generated<Numeric>;
+  panel_count: Generated<number>;
+  panel_product_id: string | null;
+  project_id: string;
+  pvgis_kwh: number | null;
+  pvgis_monthly: number[] | null;
+  roof_source: Generated<string>;
+  segments: Generated<Json>;
+  self_consumption: Numeric | null;
+  self_consumption_with_battery: Numeric | null;
+  strings: Json | null;
+  version: number;
+}
+
 export interface SupplierProducts {
   company_id: Generated<string>;
   cost_pence: Int8 | null;
@@ -391,8 +482,10 @@ export interface Users {
 
 export interface DB {
   activity_log: ActivityLog;
+  calc_tables: CalcTables;
   companies: Companies;
   contacts: Contacts;
+  ev_designs: EvDesigns;
   files: Files;
   integrations: Integrations;
   message_templates: MessageTemplates;
@@ -401,6 +494,8 @@ export interface DB {
   price_file_imports: PriceFileImports;
   products: Products;
   projects: Projects;
+  roof_data_cache: RoofDataCache;
+  solar_designs: SolarDesigns;
   supplier_products: SupplierProducts;
   suppliers: Suppliers;
   survey_field_history: SurveyFieldHistory;
