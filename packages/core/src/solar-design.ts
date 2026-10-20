@@ -18,6 +18,7 @@ import {
   type PanelSpecs,
   type SelfConsumptionRow,
 } from "./solar";
+import { checkStrings, type DrawnString, type StringCheck } from "./site-plan";
 
 export interface DesignArray {
   id: string;
@@ -40,6 +41,8 @@ export interface SolarDesignInput {
   /** The customer's tariff, for the simple yearly saving shown while designing. */
   tariff?: { unitRatePence: number; exportRatePence: number } | null;
   hasEv: boolean;
+  /** Strings wired by hand on the plan; without them strings are split automatically. */
+  wired?: { strings: DrawnString[]; unassigned: number } | null;
   rules: { yields: McsYieldRow[] | null; zones: McsZoneRow[] | null; selfConsumption: SelfConsumptionRow[] | null; settings: DesignSettings };
 }
 
@@ -51,6 +54,8 @@ export interface SolarDesignResult {
   zone: string | null;
   perArray: { id: string; label: string; panels: number; kWp: number; pitch: number; azimuth: number; shadeFactor: number; kwhPerKwp: number | null; annualKwh: number | null }[];
   strings: number[] | null;
+  /** Checks of hand-wired strings against the datasheets; null for the automatic split. */
+  stringCheck: StringCheck | null;
   dcAc: number | null;
   exportKw: number | null;
   connection: { form: "G98" | "G99"; thresholdKw: number } | null;
@@ -87,6 +92,7 @@ export function evaluateSolarDesign(input: SolarDesignInput): SolarDesignResult 
   }
 
   let strings: number[] | null = null;
+  let stringCheck: StringCheck | null = null;
   let dcAc: number | null = null;
   let exportKw: number | null = null;
   let connection: SolarDesignResult["connection"] = null;
@@ -99,7 +105,13 @@ export function evaluateSolarDesign(input: SolarDesignInput): SolarDesignResult 
       connection = connectionApplication(exportKw, input.phases, { limitAPerPhase: input.rules.settings.g98LimitAPerPhase });
       if (input.inverter.specs.max_dc_kw && kWp > input.inverter.specs.max_dc_kw) notes.push(`The array (${kWp} kWp) is above the inverter's ${input.inverter.specs.max_dc_kw} kW maximum DC input.`);
     }
-    if (input.panel && panelCount) {
+    if (input.panel && panelCount && input.wired?.strings.length) {
+      stringCheck = checkStrings(input.panel.specs, input.inverter.specs, { minDesignTempC: input.rules.settings.minDesignTempC }, input.wired, input.arrays);
+      strings = input.wired.strings.map((s) => s.panels);
+      notes.push(...stringCheck.notes);
+      for (const s of stringCheck.strings) for (const issue of s.issues) notes.push(`String ${s.n}: ${issue}`);
+      for (const m of stringCheck.mppts) for (const issue of m.issues) notes.push(`MPPT ${m.mppt}: ${issue}`);
+    } else if (input.panel && panelCount) {
       const limits = stringLimits(input.panel.specs, input.inverter.specs, { minDesignTempC: input.rules.settings.minDesignTempC });
       if (!limits.ok) notes.push(limits.missing);
       else {
@@ -138,5 +150,5 @@ export function evaluateSolarDesign(input: SolarDesignInput): SolarDesignResult 
     else evMiles = Math.round((annualKwh * (1 - used) * evMilesPerKwh) / 100) * 100;
   }
 
-  return { panelCount, kWp, annualKwh, zone, perArray, strings, dcAc, exportKw, connection, selfUse, selfUseWithBattery, yearlySavingPence, evMiles, notes: [...new Set(notes)] };
+  return { panelCount, kWp, annualKwh, zone, perArray, strings, stringCheck, dcAc, exportKw, connection, selfUse, selfUseWithBattery, yearlySavingPence, evMiles, notes: [...new Set(notes)] };
 }

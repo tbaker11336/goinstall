@@ -5,6 +5,7 @@ export * from "./solar";
 export { routeLength, voltDropPercent, sizeCable, maxDemand, parseAmps, chargerCurrentA, evMilesFromSurplus, evaluateEvDesign, type CableRow, type CableSegment, type EvDesignInput, type EvDesignResult } from "./ev";
 export * from "./rules";
 export * from "./solar-design";
+export * from "./site-plan";
 export * from "./proposal";
 export * from "./kit";
 export * from "./schedule";

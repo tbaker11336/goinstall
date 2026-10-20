@@ -648,6 +648,14 @@ export interface SolarDesigns {
   segments: Generated<Json>;
   self_consumption: Numeric | null;
   self_consumption_with_battery: Numeric | null;
+  /**
+   * {markers:[{id,kind,x,y,note}], cables:[{id,kind,points:[{x,y}],extraM,label}], measurements:[{id,a,b}]}: plan metres from the site centre
+   */
+  site_markup: Generated<Json>;
+  /**
+   * {strings:[{mppt}]}: MPPT input per hand-wired string (index = string number - 1); null when strings are split automatically
+   */
+  string_plan: Json | null;
   strings: Json | null;
   version: number;
 }

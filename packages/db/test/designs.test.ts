@@ -45,6 +45,16 @@ describe("design versions", () => {
     const err = await errorCode(asUser(a.users.office, (c) => c.query("insert into ev_designs (project_id, version, charger_product_id) values ($1, 1, $2)", [a.projectId, pb])));
     expect(err).toBe("23503");
   });
+
+  it("store site markup and the string plan as objects, frozen with the version", async () => {
+    const row = await asUser(b.users.office, async (c) => {
+      await c.query("insert into solar_designs (project_id, version, string_plan) values ($1, 1, $2)", [b.projectId, { strings: [{ mppt: 1 }] }]);
+      return (await c.query("select site_markup, string_plan from solar_designs where project_id = $1", [b.projectId])).rows[0];
+    });
+    expect(row).toEqual({ site_markup: { markers: [], cables: [], measurements: [] }, string_plan: { strings: [{ mppt: 1 }] } });
+    const bad = asUser(b.users.office, (c) => c.query("insert into solar_designs (project_id, version, site_markup) values ($1, 1, '[]')", [b.projectId]));
+    expect(await errorCode(bad)).toBe("23514");
+  });
 });
 
 describe("rule tables", () => {

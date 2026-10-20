@@ -145,7 +145,11 @@ export default async function DesignPage({
     );
   const aerial =
     position && process.env.GOOGLE_MAPS_API_KEY
-      ? { url: `/api/maps/aerial/${id}`, widthM: aerialWidthM(position.lat) }
+      ? {
+          // The position in the URL so a moved site doesn't show the cached old image.
+          url: `/api/maps/aerial/${id}?at=${position.lat.toFixed(6)},${position.lng.toFixed(6)}`,
+          widthM: aerialWidthM(position.lat),
+        }
       : null;
   const byCat = (c: CatalogueProduct["category"]) =>
     catalogue.filter((p) => p.category === c).map(option);
@@ -165,6 +169,8 @@ export default async function DesignPage({
         inverterProductId: design.inverter_product_id,
         batteryProductId: design.battery_product_id,
         batteryCount: design.battery_count,
+        siteMarkup: design.site_markup as SolarDesignPayload["siteMarkup"],
+        stringPlan: design.string_plan as SolarDesignPayload["stringPlan"],
         version: design.version,
         savedAt: design.created_at.toISOString(),
       }
@@ -180,6 +186,8 @@ export default async function DesignPage({
           ? (byCat("battery")[0]?.id ?? null)
           : null,
         batteryCount: 1,
+        siteMarkup: { markers: [], cables: [], measurements: [] },
+        stringPlan: null,
         version: null,
         savedAt: null,
       };
@@ -221,7 +229,8 @@ export default async function DesignPage({
       </div>
       {view === "solar" ? (
         <SolarDesigner
-          key={design?.version ?? 0}
+          // Stable across autosaves: remounting would reset the map view mid-edit.
+          key="solar"
           projectId={id}
           initial={initial}
           saved={
@@ -242,6 +251,9 @@ export default async function DesignPage({
               : (roof?.status ?? "not_configured")
           }
           aerial={aerial}
+          position={position}
+          mapsBrowserKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY || null}
+          canSearch={Boolean(process.env.GOOGLE_MAPS_API_KEY)}
           panels={byCat("panel")}
           inverters={byCat("inverter")}
           batteries={byCat("battery")}

@@ -1,6 +1,6 @@
 "use server";
 
-import { evaluateSolarDesign, type Specs } from "@goinstall/core";
+import { CABLE_KINDS, drawnStrings, evaluateSolarDesign, MARKER_KINDS, type Specs } from "@goinstall/core";
 import type { Tx } from "@goinstall/db";
 import { createPvgisClient, googleYearlyEstimateKwh } from "@goinstall/integrations";
 import { revalidatePath } from "next/cache";
@@ -12,6 +12,13 @@ import { roofData } from "@/lib/site";
 import { surveyAnswers } from "@/lib/survey";
 
 const rect = z.object({ x: z.number().finite(), y: z.number().finite(), w: z.number().positive().max(10), h: z.number().positive().max(10) });
+const point = z.object({ x: z.number().finite().min(-500).max(500), y: z.number().finite().min(-500).max(500) });
+const markupId = z.string().min(1).max(40);
+const markupSchema = z.object({
+  markers: z.array(z.object({ id: markupId, kind: z.enum(MARKER_KINDS), x: point.shape.x, y: point.shape.y, note: z.string().max(300) })).max(60),
+  cables: z.array(z.object({ id: markupId, kind: z.enum(CABLE_KINDS), points: z.array(point).min(2).max(60), extraM: z.number().min(0).max(200), label: z.string().max(80) })).max(40),
+  measurements: z.array(z.object({ id: markupId, a: point, b: point })).max(40),
+});
 const segmentSchema = z.object({
   id: z.string().min(1).max(8),
   label: z.string().max(80),
@@ -22,7 +29,7 @@ const segmentSchema = z.object({
   depth: z.number().positive().max(30),
   insetLeft: z.number().min(0).max(30),
   insetRight: z.number().min(0).max(30),
-  panels: z.array(rect).max(200),
+  panels: z.array(rect.extend({ s: z.number().int().min(1).max(30).nullable().optional() })).max(200),
   obstructions: z.array(rect.extend({ label: z.string().max(40) })).max(30),
   landscape: z.boolean(),
   shadeFactor: z.number().gt(0).max(1),
@@ -37,6 +44,8 @@ const designSchema = z.object({
   inverterProductId: z.uuid().nullable(),
   batteryProductId: z.uuid().nullable(),
   batteryCount: z.number().int().min(0).max(10),
+  siteMarkup: markupSchema,
+  stringPlan: z.object({ strings: z.array(z.object({ mppt: z.number().int().min(1).max(12) })).max(30) }).nullable(),
 });
 export type SolarDesignPayload = z.infer<typeof designSchema>;
 
@@ -71,6 +80,7 @@ export async function saveSolarDesignAction(projectId: string, payload: SolarDes
     ]);
     // Google's own yearly estimate and imagery date (from the cached Solar API response) sit beside MCS as a cross-check.
     const roof = await roofData(tx, projectId, null);
+    const wired = drawnStrings(d.segments, d.stringPlan);
     const arrays = d.segments.filter((s) => s.used).map((s) => ({ id: s.id, label: s.label, pitch: s.pitch, azimuth: s.azimuth, panelCount: s.panels.length, shadeFactor: s.shadeFactor }));
     const result = evaluateSolarDesign({
       arrays,
@@ -83,6 +93,7 @@ export async function saveSolarDesignAction(projectId: string, payload: SolarDes
       survey: { occupancy: answers.occupancy ?? null, annualUsageKwh: energy.annualKwh },
       tariff: energy.unitRatePence !== null && energy.exportRatePence !== null ? { unitRatePence: energy.unitRatePence, exportRatePence: energy.exportRatePence } : null,
       hasEv: project.products.includes("ev"),
+      wired,
       rules: { yields: rules.yields, zones: rules.zones, selfConsumption: rules.selfConsumption, settings: rules.settings },
     });
 
@@ -122,6 +133,9 @@ export async function saveSolarDesignAction(projectId: string, payload: SolarDes
         version,
         roof_source: d.roofSource,
         segments: JSON.stringify(d.segments),
+        site_markup: JSON.stringify(d.siteMarkup),
+        // Only kept while strings are wired by hand.
+        string_plan: wired.strings.length && d.stringPlan ? JSON.stringify(d.stringPlan) : null,
         panel_product_id: d.panelProductId,
         inverter_product_id: d.inverterProductId,
         battery_product_id: d.batteryProductId,
@@ -161,6 +175,8 @@ export async function restoreSolarDesignAction(projectId: string, version: numbe
     inverterProductId: old.inverter_product_id,
     batteryProductId: old.battery_product_id,
     batteryCount: old.battery_count,
+    siteMarkup: old.site_markup as SolarDesignPayload["siteMarkup"],
+    stringPlan: old.string_plan as SolarDesignPayload["stringPlan"],
   });
 }
 

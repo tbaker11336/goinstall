@@ -59,7 +59,7 @@ export async function saveEnergyProfileAction(projectId: string, _: ActionResult
       .values({ project_id: projectId, ...values })
       .onConflict((oc) => oc.columns(["company_id", "project_id"]).doUpdateSet(values))
       .execute();
-    return (await tx.selectFrom("solar_designs").select(["roof_source", "segments", "panel_product_id", "inverter_product_id", "battery_product_id", "battery_count"]).where("project_id", "=", projectId).where("is_active", "=", true).executeTakeFirst()) ?? false;
+    return (await tx.selectFrom("solar_designs").select(["roof_source", "segments", "panel_product_id", "inverter_product_id", "battery_product_id", "battery_count", "site_markup", "string_plan"]).where("project_id", "=", projectId).where("is_active", "=", true).executeTakeFirst()) ?? false;
   });
   if (active === null) return { error: "Project not found" };
   // Self-consumption depends on use, so the active design is saved again (a new version) with the new figures.
@@ -71,6 +71,8 @@ export async function saveEnergyProfileAction(projectId: string, _: ActionResult
       inverterProductId: active.inverter_product_id,
       batteryProductId: active.battery_product_id,
       batteryCount: active.battery_count,
+      siteMarkup: active.site_markup as SolarDesignPayload["siteMarkup"],
+      stringPlan: active.string_plan as SolarDesignPayload["stringPlan"],
     });
     if (r.error) return { error: `Saved, but the design couldn't be recalculated: ${r.error}` };
   }
