@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>Dashboard</title>
+</head>
+<body>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F5F6F8}
+a{color:#0B7A62}a:hover{color:#075C4A}
+.nav{display:flex;align-items:center;gap:12px;min-height:40px;padding:0 12px;border-radius:8px;color:#475467;text-decoration:none;font-size:14px;font-weight:500}
+.nav:hover{background:#F2F4F7;color:#101828}
+.nav svg{width:20px;height:20px;flex:0 0 20px}
+.card{background:#FFFFFF;border:1px solid #E4E7EC;border-radius:12px;box-sizing:border-box}
+.kpi{padding:18px 20px;display:flex;flex-direction:column;gap:6px}
+.kl{font-size:13px;color:#475467;font-weight:500}
+.kv{font-size:28px;font-weight:700;color:#101828;letter-spacing:-0.02em;font-variant-numeric:tabular-nums}
+.ks{font-size:12.5px;color:#667085}
+.btn{font:inherit;font-size:14px;font-weight:600;min-height:40px;padding:0 16px;border-radius:8px;border:1px solid #D0D5DD;background:#FFFFFF;color:#344054;display:inline-flex;align-items:center;gap:8px;cursor:pointer;text-decoration:none;box-sizing:border-box}
+.btn-p{background:#0B7A62;border-color:#0B7A62;color:#FFFFFF}
+.btn-p:hover{background:#08654F;color:#FFFFFF}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:99px;font-size:12.5px;font-weight:600;white-space:nowrap}
+.dot{width:6px;height:6px;border-radius:99px;display:inline-block}
+.tag{display:inline-block;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:600;background:#F2F4F7;color:#344054;margin-right:4px}
+th{text-align:left;font-size:12.5px;font-weight:600;color:#475467;padding:10px 16px;background:#F9FAFB;border-bottom:1px solid #E4E7EC}
+td{padding:14px 16px;border-bottom:1px solid #EEF0F3;font-size:14px;color:#101828;vertical-align:middle}
+.av{width:28px;height:28px;border-radius:99px;display:inline-flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700}
+.sub{font-size:13px;color:#667085;margin-top:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.chip{font:inherit;font-size:13px;font-weight:600;min-height:32px;padding:0 12px;border-radius:99px;border:1px solid #E4E7EC;background:#FFFFFF;color:#475467;cursor:pointer}
+</style>
+<div style="font-family: 'Plus Jakarta Sans', system-ui, sans-serif; color: #101828; background: #F5F6F8; min-height: 1024px; display: flex; flex-wrap: wrap">
+  <nav aria-label="Main" style="flex: 1 1 220px; max-width: 248px; background: #FFFFFF; border-right: 1px solid #E4E7EC; padding: 20px 14px; display: flex; flex-direction: column; gap: 4px; box-sizing: border-box">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 4px 8px 24px">
+      <svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#0B7A62"></rect><circle cx="16" cy="17" r="5" fill="none" stroke="#FFFFFF" stroke-width="2"></circle><path d="M16 6.5v3M7.5 17h3M21.5 17h3M10 11l2 2M22 11l-2 2" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"></path></svg>
+      <span style="font-size: 16px; font-weight: 700; letter-spacing: -0.01em">GoInstall</span>
+    </div>
+    <a href="01-dashboard.html" class="nav" aria-current="page" style="background: #E6F4EF; color: #075C4A; font-weight: 600"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><rect x="3" y="3" width="6" height="6" rx="1.5"></rect><rect x="11" y="3" width="6" height="6" rx="1.5"></rect><rect x="3" y="11" width="6" height="6" rx="1.5"></rect><rect x="11" y="11" width="6" height="6" rx="1.5"></rect></svg>Dashboard</a>
+    <a href="02-contacts.html" class="nav"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="7.5" r="3.2"></circle><path d="M2.5 16.5c.8-2.8 3-4.2 5.5-4.2s4.7 1.4 5.5 4.2"></path><path d="M13 4.6a3 3 0 0 1 0 5.8M17.5 16.5c-.4-1.7-1.3-2.9-2.6-3.6"></path></svg><span style="flex: 1">Contacts</span><span style="font-size: 12px; font-weight: 700; color: #075C4A; background: #E6F4EF; padding: 1px 8px; border-radius: 99px">3</span></a>
+    <a href="05-project-overview.html" class="nav"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 6A1.5 1.5 0 0 1 4 4.5h3.5l2 2H16A1.5 1.5 0 0 1 17.5 8v7.5A1.5 1.5 0 0 1 16 17H4a1.5 1.5 0 0 1-1.5-1.5z"></path></svg>Projects</a>
+    <a href="09-project-proposal.html" class="nav"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M5 2.5h6.5L15.5 6.5v11H5z"></path><path d="M11 2.5v4.5h4.5M8 10.5h5M8 13.5h5"></path></svg>Proposals</a>
+    <a href="11-project-install-paperwork.html" class="nav"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4.5" width="14" height="12.5" rx="2"></rect><path d="M3 8.5h14M7 2.5v4M13 2.5v4"></path></svg>Schedule</a>
+    <div style="flex: 1"></div>
+    <a href="04-settings.html" class="nav"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M3 6h8.5M15.5 6H17M3 14h2.5M9.5 14H17"></path><circle cx="13.5" cy="6" r="2"></circle><circle cx="7.5" cy="14" r="2"></circle></svg>Settings</a>
+    <div style="display: flex; align-items: center; gap: 10px; padding: 14px 8px 0; margin-top: 8px; border-top: 1px solid #EEF0F3">
+      <span class="av" style="background: #E6F4EF; color: #075C4A; width: 34px; height: 34px">AM</span>
+      <div style="display: flex; flex-direction: column"><span style="font-size: 14px; font-weight: 600">Alex Morgan</span><span style="font-size: 12.5px; color: #667085">Admin</span></div>
+    </div>
+  </nav>
+  <main style="flex: 999 1 640px; min-width: 0; padding: 28px 32px 40px; box-sizing: border-box; display: flex; flex-direction: column; gap: 24px">
+    <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px">
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <h1 style="margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.02em">Good afternoon, Alex</h1>
+        <p style="margin: 0; font-size: 14px; color: #475467">Tuesday 20 October · 2 installs and 1 survey today</p>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px">
+        <div style="position: relative; display: flex; align-items: center">
+          <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#667085" stroke-width="1.75" stroke-linecap="round" aria-hidden="true" style="position: absolute; left: 12px"><circle cx="9" cy="9" r="5.5"></circle><path d="M13 13l4 4"></path></svg>
+          <label for="q" class="sr">Search</label>
+          <input id="q" type="search" placeholder="Search contacts, projects…" style="font: inherit; font-size: 14px; min-height: 40px; width: 300px; max-width: 100%; padding: 0 12px 0 38px; border: 1px solid #D0D5DD; border-radius: 8px; background: #FFFFFF; box-sizing: border-box">
+        </div>
+        <button type="button" class="btn" aria-label="Notifications" style="padding: 0 10px"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round" aria-hidden="true"><path d="M5 14V9a5 5 0 0 1 10 0v5l1.5 1.5h-13z"></path><path d="M8.5 17.5a1.6 1.6 0 0 0 3 0"></path></svg></button>
+        <button type="button" class="btn btn-p"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M10 4v12M4 10h12"></path></svg>New enquiry</button>
+      </div>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 16px">
+      <a href="02-contacts.html" class="card kpi" style="text-decoration: none; color: inherit"><span class="kl">New enquiries</span><span class="kv">12</span><span class="ks"><span style="color: #067647; font-weight: 600">+4</span> this week</span></a>
+      <div class="card kpi"><span class="kl">Surveys due</span><span class="kv">5</span><span class="ks">1 today · 2 online pending</span></div>
+      <div class="card kpi"><span class="kl">Proposals awaiting</span><span class="kv">8</span><span class="ks">£84.2k in pipeline</span></div>
+      <div class="card kpi" style="border-color: #F5C67A; background: #FFFCF5"><span class="kl" style="color: #93370D">Kit to order</span><span class="kv">3</span><span class="ks" style="color: #93370D">Deposits paid, not ordered</span></div>
+      <div class="card kpi"><span class="kl">Installs this week</span><span class="kv">4</span><span class="ks">Team A and Team B</span></div>
+    </div>
+    <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start">
+      <section class="card" aria-label="Projects" style="flex: 999 1 600px; min-width: 0; overflow: hidden">
+        <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; padding: 18px 20px">
+          <h2 style="margin: 0; font-size: 17px; font-weight: 700">Projects</h2>
+          <div role="group" aria-label="Filter by stage" style="display: flex; flex-wrap: wrap; gap: 6px">
+            <button type="button" class="chip" aria-pressed="true" style="background: #101828; border-color: #101828; color: #FFFFFF">All 24</button>
+            <button type="button" class="chip">Survey 5</button>
+            <button type="button" class="chip">Design 3</button>
+            <button type="button" class="chip">Proposal 8</button>
+            <button type="button" class="chip">Delivery 8</button>
+          </div>
+        </div>
+        <div style="overflow-x: auto">
+          <table style="width: 100%; min-width: 760px; border-collapse: collapse">
+            <thead><tr><th>Project</th><th>Products</th><th>Stage</th><th style="text-align: right">Value</th><th>Next step</th><th>Owner</th></tr></thead>
+            <tbody>
+              <tr><td><a href="07-project-solar-design.html" style="font-weight: 600; color: #101828; text-decoration: none">14 Elm Close, Banbury</a><div class="sub">Sarah Mitchell</div></td><td><span class="tag">Solar</span><span class="tag">Battery</span><span class="tag">EV</span></td><td><span class="pill" style="background: #F4F3FF; color: #4A1FB8"><span class="dot" style="background: #6941C6"></span>Design</span></td><td style="text-align: right; font-variant-numeric: tabular-nums">£14,850</td><td style="color: #475467">Finish panel layout</td><td><span class="av" style="background: #E6F4EF; color: #075C4A">AM</span></td></tr>
+              <tr><td><span style="font-weight: 600">3 Mill Lane, Bicester</span><div class="sub">James Okafor</div></td><td><span class="tag">EV</span></td><td><span class="pill" style="background: #EFF4FF; color: #1849A9"><span class="dot" style="background: #2E6BE6"></span>Survey</span></td><td style="text-align: right; font-variant-numeric: tabular-nums">£1,240</td><td style="color: #475467">Online survey sent</td><td><span class="av" style="background: #EFF4FF; color: #1849A9">JR</span></td></tr>
+              <tr><td><span style="font-weight: 600">27 Church Street, Witney</span><div class="sub">Priya Shah</div></td><td><span class="tag">Solar</span><span class="tag">EV</span></td><td><span class="pill" style="background: #FEF0C7; color: #93370D"><span class="dot" style="background: #DC6803"></span>Proposal sent</span></td><td style="text-align: right; font-variant-numeric: tabular-nums">£11,300</td><td style="color: #475467">Viewed twice · chase</td><td><span class="av" style="background: #E6F4EF; color: #075C4A">AM</span></td></tr>
+              <tr><td><span style="font-weight: 600">8 Orchard Way, Thame</span><div class="sub">David Hughes</div></td><td><span class="tag">Solar</span><span class="tag">Battery</span></td><td><span class="pill" style="background: #F2F4F7; color: #344054"><span class="dot" style="background: #667085"></span>Kit ordered</span></td><td style="text-align: right; font-variant-numeric: tabular-nums">£12,600</td><td style="color: #475467">Delivery Thu 22 Oct</td><td><span class="av" style="background: #EFF4FF; color: #1849A9">JR</span></td></tr>
+              <tr><td><span style="font-weight: 600">41 Station Road, Didcot</span><div class="sub">Emma Clarke</div></td><td><span class="tag">Solar</span></td><td><span class="pill" style="background: #DCFAE6; color: #067647"><span class="dot" style="background: #17B26A"></span>Installing</span></td><td style="text-align: right; font-variant-numeric: tabular-nums">£7,950</td><td style="color: #475467">Day 1 of 2 today</td><td><span class="av" style="background: #E6F4EF; color: #075C4A">AM</span></td></tr>
+              <tr><td style="border-bottom: 0"><span style="font-weight: 600">5 Hill View, Abingdon</span><div class="sub">Tom Reid</div></td><td style="border-bottom: 0"><span class="tag">EV</span></td><td style="border-bottom: 0"><span class="pill" style="background: #F2F4F7; color: #344054"><span class="dot" style="background: #667085"></span>Paperwork</span></td><td style="text-align: right; font-variant-numeric: tabular-nums; border-bottom: 0">£1,180</td><td style="color: #475467; border-bottom: 0">DNO notification due</td><td style="border-bottom: 0"><span class="av" style="background: #EFF4FF; color: #1849A9">JR</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <div style="flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 24px">
+        <section class="card" style="padding: 18px 20px; display: flex; flex-direction: column; gap: 14px">
+          <h2 style="margin: 0; font-size: 17px; font-weight: 700">Today</h2>
+          <div style="display: flex; gap: 12px">
+            <span style="font-size: 13px; font-weight: 600; color: #475467; width: 44px; padding-top: 2px; font-variant-numeric: tabular-nums">09:00</span>
+            <div style="flex: 1; border-left: 2px solid #2E6BE6; padding-left: 12px; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; font-weight: 600">Site survey</span><span style="font-size: 13px; color: #475467">18 Park Road, Wantage · Jake</span></div>
+          </div>
+          <div style="display: flex; gap: 12px">
+            <span style="font-size: 13px; font-weight: 600; color: #475467; width: 44px; padding-top: 2px; font-variant-numeric: tabular-nums">08:00</span>
+            <div style="flex: 1; border-left: 2px solid #17B26A; padding-left: 12px; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; font-weight: 600">Install · day 1 of 2</span><span style="font-size: 13px; color: #475467">41 Station Road, Didcot · Team A</span></div>
+          </div>
+          <div style="display: flex; gap: 12px; align-items: center; background: #FFFCF5; border: 1px solid #F5C67A; border-radius: 10px; padding: 12px">
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; font-weight: 600">Deposit received</span><span style="font-size: 13px; color: #93370D">22 Beech Avenue · £3,150</span></div>
+            <button type="button" class="btn" style="min-height: 36px; font-size: 13px">Order kit</button>
+          </div>
+        </section>
+        <section class="card" style="padding: 18px 20px; display: flex; flex-direction: column; gap: 4px">
+          <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px"><h2 style="margin: 0; font-size: 17px; font-weight: 700">Messages</h2><a href="02-contacts.html" style="font-size: 13px; font-weight: 600; text-decoration: none">View all</a></div>
+          <a href="03-contact.html" style="display: flex; gap: 12px; padding: 10px 0; text-decoration: none; color: inherit; border-bottom: 1px solid #EEF0F3">
+            <span class="av" style="background: #DCFAE6; color: #067647; width: 36px; height: 36px">PS</span>
+            <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><div style="display: flex; justify-content: space-between"><span style="font-size: 14px; font-weight: 600">Priya Shah</span><span style="font-size: 12.5px; color: #667085">2m</span></div><span style="font-size: 13px; color: #475467; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">WhatsApp · Could we move the install to the week after?</span></div>
+            <span class="dot" style="background: #0B7A62; margin-top: 8px" aria-label="Unread"></span>
+          </a>
+          <a href="03-contact.html" style="display: flex; gap: 12px; padding: 10px 0; text-decoration: none; color: inherit; border-bottom: 1px solid #EEF0F3">
+            <span class="av" style="background: #EFF4FF; color: #1849A9; width: 36px; height: 36px">SM</span>
+            <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><div style="display: flex; justify-content: space-between"><span style="font-size: 14px; font-weight: 600">Sarah Mitchell</span><span style="font-size: 12.5px; color: #667085">1h</span></div><span style="font-size: 13px; color: #475467; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Email · Photos of the meter attached</span></div>
+            <span class="dot" style="background: #0B7A62; margin-top: 8px" aria-label="Unread"></span>
+          </a>
+          <a href="03-contact.html" style="display: flex; gap: 12px; padding: 10px 0; text-decoration: none; color: inherit">
+            <span class="av" style="background: #F2F4F7; color: #344054; width: 36px; height: 36px">JO</span>
+            <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><div style="display: flex; justify-content: space-between"><span style="font-size: 14px; font-weight: 600">James Okafor</span><span style="font-size: 12.5px; color: #667085">3h</span></div><span style="font-size: 13px; color: #475467; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">WhatsApp · Survey done, thanks</span></div>
+          </a>
+        </section>
+      </div>
+    </div>
+  </main>
+</div>
+</body>
+</html>

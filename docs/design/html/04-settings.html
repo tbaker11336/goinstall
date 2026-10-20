@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>Settings</title>
+</head>
+<body>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F5F6F8}
+a{color:#0B7A62}a:hover{color:#075C4A}
+.nav{display:flex;align-items:center;gap:12px;min-height:40px;padding:0 12px;border-radius:8px;color:#475467;text-decoration:none;font-size:14px;font-weight:500}
+.nav:hover{background:#F2F4F7;color:#101828}
+.nav svg{width:20px;height:20px;flex:0 0 20px}
+.card{background:#FFFFFF;border:1px solid #E4E7EC;border-radius:12px;box-sizing:border-box;padding:24px;display:flex;flex-direction:column;gap:20px}
+.btn{font:inherit;font-size:14px;font-weight:600;min-height:40px;padding:0 16px;border-radius:8px;border:1px solid #D0D5DD;background:#FFFFFF;color:#344054;display:inline-flex;align-items:center;gap:8px;cursor:pointer;text-decoration:none;box-sizing:border-box}
+.btn-p{background:#0B7A62;border-color:#0B7A62;color:#FFFFFF}
+.btn-p:hover{background:#08654F;color:#FFFFFF}
+.input{font:inherit;font-size:14px;min-height:40px;padding:0 12px;border:1px solid #D0D5DD;border-radius:8px;background:#FFFFFF;box-sizing:border-box;color:#101828;width:100%}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:13px;font-weight:600;color:#344054}
+.hint{font-size:12.5px;color:#667085}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.sub{display:block;text-decoration:none;color:#475467;font-size:14px;font-weight:500;padding:9px 12px;border-radius:8px}
+.sub:hover{background:#FFFFFF;color:#101828}
+.h2{margin:0;font-size:17px;font-weight:700}
+.desc{margin:4px 0 0;font-size:14px;color:#475467}
+.int{display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid #EEF0F3}
+.logo{width:40px;height:40px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex:0 0 40px}
+.ok{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:99px;font-size:12.5px;font-weight:600;background:#DCFAE6;color:#067647}
+.sw{width:40px;height:40px;border-radius:10px;border:1px solid #D0D5DD}
+th{text-align:left;font-size:12.5px;font-weight:600;color:#475467;padding:10px 14px;background:#F9FAFB;border-bottom:1px solid #E4E7EC}
+td{padding:12px 14px;border-bottom:1px solid #EEF0F3;font-size:14px}
+.av{border-radius:99px;display:inline-flex;align-items:center;justify-content:center;font-weight:700}
+</style>
+<div style="font-family: 'Plus Jakarta Sans', system-ui, sans-serif; color: #101828; background: #F5F6F8; min-height: 1640px; display: flex; flex-wrap: wrap">
+  <nav aria-label="Main" style="flex: 1 1 220px; max-width: 248px; background: #FFFFFF; border-right: 1px solid #E4E7EC; padding: 20px 14px; display: flex; flex-direction: column; gap: 4px; box-sizing: border-box">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 4px 8px 24px">
+      <svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#0B7A62"></rect><circle cx="16" cy="17" r="5" fill="none" stroke="#FFFFFF" stroke-width="2"></circle><path d="M16 6.5v3M7.5 17h3M21.5 17h3M10 11l2 2M22 11l-2 2" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"></path></svg>
+      <span style="font-size: 16px; font-weight: 700; letter-spacing: -0.01em">GoInstall</span>
+    </div>
+    <a href="01-dashboard.html" class="nav"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><rect x="3" y="3" width="6" height="6" rx="1.5"></rect><rect x="11" y="3" width="6" height="6" rx="1.5"></rect><rect x="3" y="11" width="6" height="6" rx="1.5"></rect><rect x="11" y="11" width="6" height="6" rx="1.5"></rect></svg>Dashboard</a>
+    <a href="02-contacts.html" class="nav"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="7.5" r="3.2"></circle><path d="M2.5 16.5c.8-2.8 3-4.2 5.5-4.2s4.7 1.4 5.5 4.2"></path><path d="M13 4.6a3 3 0 0 1 0 5.8M17.5 16.5c-.4-1.7-1.3-2.9-2.6-3.6"></path></svg>Contacts</a>
+    <a href="05-project-overview.html" class="nav"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 6A1.5 1.5 0 0 1 4 4.5h3.5l2 2H16A1.5 1.5 0 0 1 17.5 8v7.5A1.5 1.5 0 0 1 16 17H4a1.5 1.5 0 0 1-1.5-1.5z"></path></svg>Projects</a>
+    <a href="09-project-proposal.html" class="nav"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M5 2.5h6.5L15.5 6.5v11H5z"></path><path d="M11 2.5v4.5h4.5M8 10.5h5M8 13.5h5"></path></svg>Proposals</a>
+    <a href="11-project-install-paperwork.html" class="nav"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4.5" width="14" height="12.5" rx="2"></rect><path d="M3 8.5h14M7 2.5v4M13 2.5v4"></path></svg>Schedule</a>
+    <div style="flex: 1"></div>
+    <a href="04-settings.html" class="nav" aria-current="page" style="background: #E6F4EF; color: #075C4A; font-weight: 600"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M3 6h8.5M15.5 6H17M3 14h2.5M9.5 14H17"></path><circle cx="13.5" cy="6" r="2"></circle><circle cx="7.5" cy="14" r="2"></circle></svg>Settings</a>
+    <div style="display: flex; align-items: center; gap: 10px; padding: 14px 8px 0; margin-top: 8px; border-top: 1px solid #EEF0F3">
+      <span class="av" style="background: #E6F4EF; color: #075C4A; width: 34px; height: 34px; font-size: 11.5px">AM</span>
+      <div style="display: flex; flex-direction: column"><span style="font-size: 14px; font-weight: 600">Alex Morgan</span><span style="font-size: 12.5px; color: #667085">Admin</span></div>
+    </div>
+  </nav>
+  <main style="flex: 999 1 640px; min-width: 0; padding: 28px 32px 48px; box-sizing: border-box; display: flex; flex-direction: column; gap: 24px">
+    <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px">
+      <div><h1 style="margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.02em">Settings</h1><p class="desc">Brightwell Energy · used across proposals, invoices and paperwork</p></div>
+      <div style="display: flex; gap: 10px"><button type="button" class="btn">Cancel</button><button type="button" class="btn btn-p">Save changes</button></div>
+    </div>
+    <div style="display: flex; flex-wrap: wrap; gap: 32px; align-items: flex-start">
+      <nav aria-label="Settings sections" style="flex: 1 1 180px; max-width: 210px; display: flex; flex-direction: column; gap: 2px">
+        <a href="#company" class="sub" aria-current="true" style="background: #FFFFFF; color: #101828; font-weight: 600; box-shadow: inset 2px 0 0 #0B7A62">Company details</a>
+        <a href="#invoices" class="sub">Invoices &amp; quotes</a>
+        <a href="#integrations" class="sub">Integrations</a>
+        <a href="#products" class="sub">Products &amp; suppliers</a>
+        <a href="#team" class="sub">Team &amp; permissions</a>
+        <a href="#workflow" class="sub">Surveys &amp; checklists</a>
+      </nav>
+      <div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 24px">
+        <section id="company" class="card">
+          <div><h2 class="h2">Company details</h2><p class="desc">Shown on proposals, invoices, emails and DNO/MCS forms.</p></div>
+          <div style="display: flex; align-items: center; gap: 16px">
+            <div style="width: 72px; height: 72px; border-radius: 14px; border: 1px dashed #98A2B3; display: flex; align-items: center; justify-content: center; background: #F9FAFB"><svg width="24" height="24" viewBox="0 0 20 20" fill="none" stroke="#667085" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13V4M6.5 7.5L10 4l3.5 3.5M4 13.5V16h12v-2.5"></path></svg></div>
+            <div style="display: flex; flex-direction: column; gap: 4px"><button type="button" class="btn" style="min-height: 36px; font-size: 13px">Upload logo</button><span class="hint">SVG or PNG, at least 400 px wide</span></div>
+          </div>
+          <div class="grid">
+            <div class="field"><label for="c1">Company name</label><input id="c1" class="input" value="Brightwell Energy Ltd"></div>
+            <div class="field"><label for="c2">Website</label><input id="c2" class="input" value="brightwellenergy.co.uk"></div>
+            <div class="field"><label for="c3">Phone</label><input id="c3" class="input" placeholder="01295 000 000"></div>
+            <div class="field"><label for="c4">Email</label><input id="c4" class="input" placeholder="hello@brightwellenergy.co.uk"></div>
+            <div class="field" style="grid-column: span 2"><label for="c5">Registered address</label><input id="c5" class="input" placeholder="Street, town, postcode"></div>
+            <div class="field"><label for="c6">Company number</label><input id="c6" class="input" placeholder="00000000"></div>
+            <div class="field"><label for="c7">VAT number</label><input id="c7" class="input" placeholder="GB000000000"></div>
+            <div class="field"><label for="c8">MCS certification number</label><input id="c8" class="input" placeholder="MCS 00000"></div>
+            <div class="field"><label for="c9">Competent person scheme</label><input id="c9" class="input" placeholder="NICEIC or NAPIT number"></div>
+          </div>
+        </section>
+        <section id="invoices" class="card">
+          <div><h2 class="h2">Invoices &amp; quotes</h2><p class="desc">Branding and payment details for proposals and invoices.</p></div>
+          <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-end">
+            <div class="field"><label>Brand colours</label><div style="display: flex; gap: 8px"><span class="sw" role="img" aria-label="Primary colour, teal" style="background: #0B7A62"></span><span class="sw" role="img" aria-label="Secondary colour, navy" style="background: #101828"></span><button type="button" class="btn" aria-label="Add colour" style="width: 40px; padding: 0; justify-content: center">+</button></div></div>
+            <div class="field" style="flex: 1 1 140px"><label for="i1">Quote prefix</label><input id="i1" class="input" value="Q-"></div>
+            <div class="field" style="flex: 1 1 140px"><label for="i2">Invoice prefix</label><input id="i2" class="input" value="INV-"></div>
+            <div class="field" style="flex: 1 1 140px"><label for="i3">Default deposit</label><input id="i3" class="input" value="25%"></div>
+          </div>
+          <div class="grid">
+            <div class="field"><label for="b1">Account name</label><input id="b1" class="input" placeholder="Brightwell Energy Ltd"></div>
+            <div class="field"><label for="b4">Payment terms</label><select id="b4" class="input"><option>Balance due on completion</option><option>14 days</option><option>30 days</option></select></div>
+            <div class="field"><label for="b2">Sort code</label><input id="b2" class="input" placeholder="00-00-00"></div>
+            <div class="field"><label for="b3">Account number</label><input id="b3" class="input" placeholder="00000000"></div>
+          </div>
+          <div class="field"><label for="tc">Terms &amp; conditions</label><textarea id="tc" placeholder="Shown at the end of every proposal" style="font: inherit; font-size: 14px; min-height: 80px; padding: 10px 12px; border: 1px solid #D0D5DD; border-radius: 8px; resize: vertical"></textarea></div>
+          <div><button type="button" class="btn" style="min-height: 36px; font-size: 13px">Preview proposal template</button></div>
+        </section>
+        <section id="integrations" class="card" style="gap: 4px">
+          <div style="padding-bottom: 8px"><h2 class="h2">Integrations</h2><p class="desc">Connect the tools you already use.</p></div>
+          <div class="int"><span class="logo" style="background: #EFF4FF; color: #1849A9">Ca</span><div style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; font-weight: 600">Google or Outlook calendar</span><span class="hint">Surveys and installs sync to each team member’s calendar</span></div><span class="ok"><span style="width: 6px; height: 6px; border-radius: 99px; background: #17B26A"></span>Connected</span></div>
+          <div class="int"><span class="logo" style="background: #E0F2FE; color: #026AA2">X</span><div style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; font-weight: 600">Xero</span><span class="hint">Invoices, deposits and payments sync to your accounts</span></div><button type="button" class="btn" style="min-height: 36px; font-size: 13px">Connect</button></div>
+          <div class="int"><span class="logo" style="background: #F4F3FF; color: #4A1FB8">S</span><div style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; font-weight: 600">Stripe</span><span class="hint">Take card payments for deposits and balances</span></div><button type="button" class="btn" style="min-height: 36px; font-size: 13px">Connect</button></div>
+          <div class="int"><span class="logo" style="background: #DCFAE6; color: #067647">W</span><div style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; font-weight: 600">WhatsApp Business</span><span class="hint">Message customers from the contact page</span></div><span class="ok"><span style="width: 6px; height: 6px; border-radius: 99px; background: #17B26A"></span>Connected</span></div>
+          <div class="int" style="border-bottom: 0"><span class="logo" style="background: #FEF0C7; color: #93370D">@</span><div style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; font-weight: 600">Email (Gmail or Outlook)</span><span class="hint">Send and receive from contact pages</span></div><span class="ok"><span style="width: 6px; height: 6px; border-radius: 99px; background: #17B26A"></span>Connected</span></div>
+        </section>
+        <section id="products" class="card">
+          <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 12px"><div><h2 class="h2">Products &amp; suppliers</h2><p class="desc">Used in designs, proposals and kit orders.</p></div><div style="display: flex; gap: 8px; flex-wrap: wrap"><button type="button" class="btn" style="min-height: 36px; font-size: 13px">Upload inventory (CSV)</button><button type="button" class="btn btn-p" style="min-height: 36px; font-size: 13px">Add product</button></div></div>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px">
+            <span style="display: inline-flex; align-items: center; gap: 8px; border: 1px solid #E4E7EC; border-radius: 99px; padding: 6px 12px; font-size: 13px; font-weight: 600"><span style="width: 6px; height: 6px; border-radius: 99px; background: #17B26A"></span>Supplier A · live prices</span>
+            <span style="display: inline-flex; align-items: center; gap: 8px; border: 1px solid #E4E7EC; border-radius: 99px; padding: 6px 12px; font-size: 13px; font-weight: 600"><span style="width: 6px; height: 6px; border-radius: 99px; background: #17B26A"></span>Supplier B · live prices</span>
+            <span style="display: inline-flex; align-items: center; gap: 8px; border: 1px solid #E4E7EC; border-radius: 99px; padding: 6px 12px; font-size: 13px; font-weight: 600"><span style="width: 6px; height: 6px; border-radius: 99px; background: #98A2B3"></span>Supplier C · price file 14 Oct</span>
+            <button type="button" class="btn" style="min-height: 32px; font-size: 13px; padding: 0 12px; border-radius: 99px">+ Connect supplier</button>
+          </div>
+          <div style="overflow-x: auto; border: 1px solid #E4E7EC; border-radius: 10px">
+            <table style="width: 100%; min-width: 600px; border-collapse: collapse">
+              <thead><tr><th>Product</th><th>Category</th><th>Best supplier</th><th style="text-align: right">Cost</th><th style="text-align: right">Sell</th></tr></thead>
+              <tbody>
+                <tr><td style="font-weight: 600">445 W all-black panel</td><td>Panel</td><td>Supplier A</td><td style="text-align: right">£96</td><td style="text-align: right">£165</td></tr>
+                <tr><td style="font-weight: 600">5 kW hybrid inverter</td><td>Inverter</td><td>Supplier B</td><td style="text-align: right">£890</td><td style="text-align: right">£1,450</td></tr>
+                <tr><td style="font-weight: 600">10 kWh battery</td><td>Battery</td><td>Supplier B</td><td style="text-align: right">£2,650</td><td style="text-align: right">£3,900</td></tr>
+                <tr><td style="font-weight: 600; border-bottom: 0">7 kW tethered charger</td><td style="border-bottom: 0">EV charger</td><td style="border-bottom: 0">Supplier C</td><td style="text-align: right; border-bottom: 0">£410</td><td style="text-align: right; border-bottom: 0">£690</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+</div>
+</body>
+</html>

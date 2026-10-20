@@ -1,6 +1,8 @@
-# Solar & EV Install Platform — Build Spec
+# GoInstall — Build Spec
 
-Version: 18 October 2026
+Version: 20 October 2026 · Product name: **GoInstall**
+
+**Designs:** the finished screen designs are in `docs/design/`. `docs/design/DESIGN.md` holds the colours, type, spacing, components and a list of the 16 screens. Each screen is in `docs/design/png/` (image) and `docs/design/html/` (reference markup). Match these designs when building the UI.
 
 ## Overview
 
@@ -19,7 +21,7 @@ Build a multi-tenant web console and installer mobile app that runs a solar, bat
 - Proposals generated from the design, kit orders generated from the proposal, paperwork pre-filled from survey and design.
 - Two-way customer messaging (email and WhatsApp) inside the console.
 
-**Reference:** the wireframes canvas "Solar Design Wireframes" shows every screen named in this spec. Placeholders in square brackets in the wireframes are data fields, not copy.
+**Reference:** every screen named in this spec is designed in `docs/design/` (see DESIGN.md). All names, prices and figures in the designs are demo data.
 
 ## Tech stack and architecture
 

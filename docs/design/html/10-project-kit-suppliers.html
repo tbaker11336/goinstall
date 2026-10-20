@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>Project kit and suppliers</title>
+</head>
+<body>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F5F6F8}
+a{color:#0B7A62}a:hover{color:#075C4A}
+.nav{display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:10px;color:#475467;text-decoration:none}
+.nav:hover{background:#F2F4F7;color:#101828}
+.card{background:#FFFFFF;border:1px solid #E4E7EC;border-radius:12px;box-sizing:border-box}
+.btn{font:inherit;font-size:14px;font-weight:600;min-height:40px;padding:0 16px;border-radius:8px;border:1px solid #D0D5DD;background:#FFFFFF;color:#344054;display:inline-flex;align-items:center;gap:8px;cursor:pointer;text-decoration:none;box-sizing:border-box}
+.btn-p{background:#0B7A62;border-color:#0B7A62;color:#FFFFFF}
+.btn-p:hover{background:#08654F;color:#FFFFFF}
+.tab{display:inline-flex;align-items:center;gap:6px;padding:12px 2px;margin-right:24px;font-size:14px;font-weight:500;color:#475467;text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap}
+.tab.on{color:#101828;font-weight:600;border-bottom-color:#0B7A62}
+.h2{margin:0;font-size:16px;font-weight:700}
+th{text-align:left;font-size:12.5px;font-weight:600;color:#475467;padding:10px 14px;background:#F9FAFB;border-bottom:1px solid #E4E7EC;white-space:nowrap}
+td{padding:10px 14px;border-bottom:1px solid #EEF0F3;font-size:14px;vertical-align:middle}
+.opt{display:flex;flex-direction:column;gap:1px;padding:8px 10px;border-radius:8px;border:1px solid transparent}
+.opt b{font-size:14px;font-weight:600;font-variant-numeric:tabular-nums}
+.opt span{font-size:12px;color:#667085}
+.pick{border-color:#0B7A62;background:#E6F4EF}
+.pick span{color:#075C4A}
+.na{font-size:13px;color:#98A2B3;padding:8px 10px}
+.po{display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid #EEF0F3}
+.lg{width:36px;height:36px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex:0 0 36px}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:99px;font-size:12.5px;font-weight:600;white-space:nowrap}
+.tick{display:inline-flex;align-items:center;gap:4px}
+</style>
+<div style="font-family: 'Plus Jakarta Sans', system-ui, sans-serif; color: #101828; background: #F5F6F8; min-height: 1024px; display: flex">
+  <nav aria-label="Main" style="flex: 0 0 72px; background: #FFFFFF; border-right: 1px solid #E4E7EC; padding: 16px 14px; display: flex; flex-direction: column; align-items: center; gap: 6px; box-sizing: border-box">
+    <svg width="36" height="36" viewBox="0 0 32 32" role="img" aria-label="GoInstall" style="margin-bottom: 16px"><rect width="32" height="32" rx="8" fill="#0B7A62"></rect><circle cx="16" cy="17" r="5" fill="none" stroke="#FFFFFF" stroke-width="2"></circle><path d="M16 6.5v3M7.5 17h3M21.5 17h3M10 11l2 2M22 11l-2 2" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"></path></svg>
+    <a href="01-dashboard.html" class="nav" aria-label="Dashboard"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><rect x="3" y="3" width="6" height="6" rx="1.5"></rect><rect x="11" y="3" width="6" height="6" rx="1.5"></rect><rect x="3" y="11" width="6" height="6" rx="1.5"></rect><rect x="11" y="11" width="6" height="6" rx="1.5"></rect></svg></a>
+    <a href="02-contacts.html" class="nav" aria-label="Contacts"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="7.5" r="3.2"></circle><path d="M2.5 16.5c.8-2.8 3-4.2 5.5-4.2s4.7 1.4 5.5 4.2"></path><path d="M13 4.6a3 3 0 0 1 0 5.8M17.5 16.5c-.4-1.7-1.3-2.9-2.6-3.6"></path></svg></a>
+    <a href="05-project-overview.html" class="nav" aria-label="Projects" aria-current="page" style="background: #E6F4EF; color: #075C4A"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 6A1.5 1.5 0 0 1 4 4.5h3.5l2 2H16A1.5 1.5 0 0 1 17.5 8v7.5A1.5 1.5 0 0 1 16 17H4a1.5 1.5 0 0 1-1.5-1.5z"></path></svg></a>
+    <a href="09-project-proposal.html" class="nav" aria-label="Proposals"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M5 2.5h6.5L15.5 6.5v11H5z"></path><path d="M11 2.5v4.5h4.5M8 10.5h5M8 13.5h5"></path></svg></a>
+    <a href="11-project-install-paperwork.html" class="nav" aria-label="Schedule"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4.5" width="14" height="12.5" rx="2"></rect><path d="M3 8.5h14M7 2.5v4M13 2.5v4"></path></svg></a>
+    <div style="flex: 1"></div>
+    <a href="04-settings.html" class="nav" aria-label="Settings"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M3 6h8.5M15.5 6H17M3 14h2.5M9.5 14H17"></path><circle cx="13.5" cy="6" r="2"></circle><circle cx="7.5" cy="14" r="2"></circle></svg></a>
+  </nav>
+  <div style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+    <header style="background: #FFFFFF; border-bottom: 1px solid #E4E7EC; padding: 18px 32px 0; display: flex; flex-direction: column; gap: 14px">
+      <div style="font-size: 13px; color: #667085"><a href="01-dashboard.html" style="color: #667085; text-decoration: none">Projects</a> / 14 Elm Close</div>
+      <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px">
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap">
+            <h1 style="margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.02em">14 Elm Close, Banbury</h1>
+            <span class="pill" style="background: #DCFAE6; color: #067647"><span style="width: 6px; height: 6px; border-radius: 99px; background: #17B26A"></span>Deposit paid</span>
+          </div>
+          <span style="font-size: 14px; color: #475467"><a href="03-contact.html" style="font-weight: 600; text-decoration: none">Sarah Mitchell</a> · Deposit of £3,712.50 received 19 Oct</span>
+        </div>
+        <button type="button" class="btn btn-p">Place 3 orders<svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10h12M11 5l5 5-5 5"></path></svg></button>
+      </div>
+      <nav aria-label="Project" style="display: flex; overflow-x: auto">
+        <a href="05-project-overview.html" class="tab">Overview</a>
+        <a href="06-project-survey.html" class="tab"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="#17B26A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 10.5l3.5 3.5 7.5-8"></path></svg>Survey</a>
+        <a href="07-project-solar-design.html" class="tab"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="#17B26A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 10.5l3.5 3.5 7.5-8"></path></svg>Design</a>
+        <a href="09-project-proposal.html" class="tab"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="#17B26A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 10.5l3.5 3.5 7.5-8"></path></svg>Proposal</a>
+        <a href="10-project-kit-suppliers.html" class="tab on" aria-current="page">Kit &amp; suppliers</a>
+        <a href="11-project-install-paperwork.html" class="tab">Install &amp; paperwork</a>
+      </nav>
+    </header>
+    <main style="width: 100%; max-width: 1360px; margin: 0 auto; padding: 24px 32px 40px; box-sizing: border-box; display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start">
+      <div style="flex: 999 1 640px; min-width: 0; display: flex; flex-direction: column; gap: 20px">
+        <section class="card" style="overflow: hidden">
+          <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; padding: 18px 20px">
+            <div style="display: flex; flex-direction: column; gap: 2px"><h2 class="h2">Kit list</h2><span style="font-size: 13px; color: #667085">From the accepted proposal · cheapest in-stock option picked for each line</span></div>
+            <button type="button" class="btn" style="min-height: 36px; font-size: 13px">Refresh prices</button>
+          </div>
+          <div style="overflow-x: auto">
+            <table style="width: 100%; min-width: 820px; border-collapse: collapse">
+              <thead><tr><th>Item</th><th>Qty</th><th>Supplier A</th><th>Supplier B</th><th>Supplier C</th><th style="text-align: right">Line cost</th></tr></thead>
+              <tbody>
+                <tr><td style="font-weight: 600">445 W all-black panel</td><td>18</td><td><div class="opt pick"><b>£96</b><span class="tick">✓ In stock</span></div></td><td><div class="opt"><b>£99</b><span>In stock</span></div></td><td><div class="opt"><b>£101</b><span>5 days</span></div></td><td style="text-align: right; font-weight: 600; font-variant-numeric: tabular-nums">£1,728</td></tr>
+                <tr><td style="font-weight: 600">5 kW hybrid inverter</td><td>1</td><td><div class="opt"><b>£915</b><span>In stock</span></div></td><td><div class="opt pick"><b>£890</b><span>✓ In stock</span></div></td><td><span class="na">Not stocked</span></td><td style="text-align: right; font-weight: 600; font-variant-numeric: tabular-nums">£890</td></tr>
+                <tr><td style="font-weight: 600">10 kWh battery</td><td>1</td><td><div class="opt"><b>£2,720</b><span>3 days</span></div></td><td><div class="opt pick"><b>£2,650</b><span>✓ In stock</span></div></td><td><div class="opt"><b>£2,690</b><span>In stock</span></div></td><td style="text-align: right; font-weight: 600; font-variant-numeric: tabular-nums">£2,650</td></tr>
+                <tr><td style="font-weight: 600">Mounting rails and hooks</td><td>1 kit</td><td><div class="opt pick"><b>£340</b><span>✓ In stock</span></div></td><td><div class="opt"><b>£355</b><span>In stock</span></div></td><td><span class="na">Not stocked</span></td><td style="text-align: right; font-weight: 600; font-variant-numeric: tabular-nums">£340</td></tr>
+                <tr><td style="font-weight: 600">7 kW tethered charger</td><td>1</td><td><span class="na">Not stocked</span></td><td><div class="opt"><b>£425</b><span>In stock</span></div></td><td><div class="opt pick"><b>£410</b><span>✓ In stock</span></div></td><td style="text-align: right; font-weight: 600; font-variant-numeric: tabular-nums">£410</td></tr>
+                <tr><td style="font-weight: 600; border-bottom: 0">Cable, isolators and sundries</td><td style="border-bottom: 0">1 kit</td><td style="border-bottom: 0"><div class="opt pick"><b>£185</b><span>✓ In stock</span></div></td><td style="border-bottom: 0"><div class="opt"><b>£196</b><span>In stock</span></div></td><td style="border-bottom: 0"><span class="na">Not stocked</span></td><td style="text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; border-bottom: 0">£185</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 32px; padding: 16px 20px; background: #F9FAFB; border-top: 1px solid #E4E7EC">
+            <div style="display: flex; flex-direction: column; align-items: flex-end"><span style="font-size: 12.5px; color: #475467; font-weight: 500">Kit cost</span><span style="font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums">£6,203</span></div>
+            <div style="display: flex; flex-direction: column; align-items: flex-end"><span style="font-size: 12.5px; color: #475467; font-weight: 500">Margin on kit</span><span style="font-size: 20px; font-weight: 700; color: #067647; font-variant-numeric: tabular-nums">36.6% · £3,587</span></div>
+          </div>
+        </section>
+        <section class="card" style="padding: 18px 20px">
+          <h2 class="h2" style="padding-bottom: 4px">Orders</h2>
+          <div class="po"><span class="lg" style="background: #EFF4FF; color: #1849A9">A</span><div style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; font-weight: 600">Supplier A · PO-0311 · £2,253</span><span style="font-size: 12.5px; color: #667085">Panels, mounting, sundries · deliver to site Mon 2 Nov · sent by API</span></div><span class="pill" style="background: #F2F4F7; color: #344054">Draft</span></div>
+          <div class="po"><span class="lg" style="background: #F4F3FF; color: #4A1FB8">B</span><div style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; font-weight: 600">Supplier B · PO-0312 · £3,540</span><span style="font-size: 12.5px; color: #667085">Inverter, battery · deliver to depot Fri 30 Oct · sent by API</span></div><span class="pill" style="background: #F2F4F7; color: #344054">Draft</span></div>
+          <div class="po" style="border-bottom: 0"><span class="lg" style="background: #FEF0C7; color: #93370D">C</span><div style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; font-weight: 600">Supplier C · PO-0313 · £410</span><span style="font-size: 12.5px; color: #667085">Charger · deliver to depot · PO emailed as PDF</span></div><span class="pill" style="background: #F2F4F7; color: #344054">Draft</span></div>
+        </section>
+      </div>
+      <aside style="flex: 1 1 300px; max-width: 360px; display: flex; flex-direction: column; gap: 20px">
+        <section class="card" style="padding: 18px 20px; display: flex; flex-direction: column; gap: 4px">
+          <h2 class="h2" style="padding-bottom: 4px">Supplier connections</h2>
+          <span style="font-size: 13px; color: #667085; padding-bottom: 8px">Connected suppliers share live prices, stock and order tracking.</span>
+          <div class="po"><span class="lg" style="background: #EFF4FF; color: #1849A9">A</span><div style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; font-weight: 600">Supplier A</span><span style="font-size: 12.5px; color: #667085">API · prices updated 2 min ago</span></div><span class="pill" style="background: #DCFAE6; color: #067647">Live</span></div>
+          <div class="po"><span class="lg" style="background: #F4F3FF; color: #4A1FB8">B</span><div style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; font-weight: 600">Supplier B</span><span style="font-size: 12.5px; color: #667085">API · prices updated 5 min ago</span></div><span class="pill" style="background: #DCFAE6; color: #067647">Live</span></div>
+          <div class="po" style="border-bottom: 0"><span class="lg" style="background: #FEF0C7; color: #93370D">C</span><div style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; font-weight: 600">Supplier C</span><span style="font-size: 12.5px; color: #667085">Price file · uploaded 14 Oct</span></div><span class="pill" style="background: #F2F4F7; color: #344054">Manual</span></div>
+          <button type="button" class="btn" style="justify-content: center; margin-top: 8px">Connect a supplier</button>
+        </section>
+      </aside>
+    </main>
+  </div>
+</div>
+</body>
+</html>

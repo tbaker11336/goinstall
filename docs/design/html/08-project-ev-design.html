@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>Project EV charger design</title>
+</head>
+<body>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F5F6F8}
+a{color:#0B7A62}a:hover{color:#075C4A}
+.nav{display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:10px;color:#475467;text-decoration:none}
+.nav:hover{background:#F2F4F7;color:#101828}
+.card{background:#FFFFFF;border:1px solid #E4E7EC;border-radius:12px;box-sizing:border-box}
+.btn{font:inherit;font-size:14px;font-weight:600;min-height:40px;padding:0 16px;border-radius:8px;border:1px solid #D0D5DD;background:#FFFFFF;color:#344054;display:inline-flex;align-items:center;gap:8px;cursor:pointer;text-decoration:none;box-sizing:border-box}
+.btn-p{background:#0B7A62;border-color:#0B7A62;color:#FFFFFF}
+.btn-p:hover{background:#08654F;color:#FFFFFF}
+.tab{display:inline-flex;align-items:center;gap:6px;padding:12px 2px;margin-right:24px;font-size:14px;font-weight:500;color:#475467;text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap}
+.tab.on{color:#101828;font-weight:600;border-bottom-color:#0B7A62}
+.tool{font:inherit;font-size:13px;font-weight:600;min-height:36px;padding:0 12px;border-radius:8px;border:0;background:transparent;color:#344054;display:inline-flex;align-items:center;gap:7px;cursor:pointer}
+.tool:hover{background:#F2F4F7}
+.tool.on{background:#E6F4EF;color:#075C4A}
+.lbl{font-size:12.5px;font-weight:600;color:#475467}
+.sel{font:inherit;text-align:left;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid #D0D5DD;border-radius:8px;padding:10px 12px;background:#FFFFFF;width:100%;box-sizing:border-box}
+.sel b{font-size:14px;font-weight:600;color:#101828}
+.sel span{font-size:12.5px;color:#667085}
+.row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #EEF0F3;font-size:14px}
+.k{color:#475467;font-size:13.5px}
+.ok{display:inline-flex;align-items:center;gap:5px;font-weight:600;color:#067647}
+.h2{margin:0;font-size:16px;font-weight:700}
+.seg2{font:inherit;font-size:13px;font-weight:600;flex:1;min-height:34px;border:0;border-radius:7px;background:transparent;color:#475467;cursor:pointer}
+</style>
+<div style="font-family: 'Plus Jakarta Sans', system-ui, sans-serif; color: #101828; background: #F5F6F8; min-height: 1024px; display: flex">
+  <nav aria-label="Main" style="flex: 0 0 72px; background: #FFFFFF; border-right: 1px solid #E4E7EC; padding: 16px 14px; display: flex; flex-direction: column; align-items: center; gap: 6px; box-sizing: border-box">
+    <svg width="36" height="36" viewBox="0 0 32 32" role="img" aria-label="GoInstall" style="margin-bottom: 16px"><rect width="32" height="32" rx="8" fill="#0B7A62"></rect><circle cx="16" cy="17" r="5" fill="none" stroke="#FFFFFF" stroke-width="2"></circle><path d="M16 6.5v3M7.5 17h3M21.5 17h3M10 11l2 2M22 11l-2 2" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"></path></svg>
+    <a href="01-dashboard.html" class="nav" aria-label="Dashboard"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><rect x="3" y="3" width="6" height="6" rx="1.5"></rect><rect x="11" y="3" width="6" height="6" rx="1.5"></rect><rect x="3" y="11" width="6" height="6" rx="1.5"></rect><rect x="11" y="11" width="6" height="6" rx="1.5"></rect></svg></a>
+    <a href="02-contacts.html" class="nav" aria-label="Contacts"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="7.5" r="3.2"></circle><path d="M2.5 16.5c.8-2.8 3-4.2 5.5-4.2s4.7 1.4 5.5 4.2"></path><path d="M13 4.6a3 3 0 0 1 0 5.8M17.5 16.5c-.4-1.7-1.3-2.9-2.6-3.6"></path></svg></a>
+    <a href="05-project-overview.html" class="nav" aria-label="Projects" aria-current="page" style="background: #E6F4EF; color: #075C4A"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 6A1.5 1.5 0 0 1 4 4.5h3.5l2 2H16A1.5 1.5 0 0 1 17.5 8v7.5A1.5 1.5 0 0 1 16 17H4a1.5 1.5 0 0 1-1.5-1.5z"></path></svg></a>
+    <a href="09-project-proposal.html" class="nav" aria-label="Proposals"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M5 2.5h6.5L15.5 6.5v11H5z"></path><path d="M11 2.5v4.5h4.5M8 10.5h5M8 13.5h5"></path></svg></a>
+    <a href="11-project-install-paperwork.html" class="nav" aria-label="Schedule"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4.5" width="14" height="12.5" rx="2"></rect><path d="M3 8.5h14M7 2.5v4M13 2.5v4"></path></svg></a>
+    <div style="flex: 1"></div>
+    <a href="04-settings.html" class="nav" aria-label="Settings"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M3 6h8.5M15.5 6H17M3 14h2.5M9.5 14H17"></path><circle cx="13.5" cy="6" r="2"></circle><circle cx="7.5" cy="14" r="2"></circle></svg></a>
+  </nav>
+  <div style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+    <header style="background: #FFFFFF; border-bottom: 1px solid #E4E7EC; padding: 18px 32px 0; display: flex; flex-direction: column; gap: 14px">
+      <div style="font-size: 13px; color: #667085"><a href="01-dashboard.html" style="color: #667085; text-decoration: none">Projects</a> / 14 Elm Close</div>
+      <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px">
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap">
+            <h1 style="margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.02em">14 Elm Close, Banbury</h1>
+            <span style="display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 99px; font-size: 12.5px; font-weight: 600; background: #F4F3FF; color: #4A1FB8"><span style="width: 6px; height: 6px; border-radius: 99px; background: #6941C6"></span>Design</span>
+          </div>
+          <span style="font-size: 14px; color: #475467"><a href="03-contact.html" style="font-weight: 600; text-decoration: none">Sarah Mitchell</a> · Solar, battery and EV charger · OX16 9AB</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap">
+          <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #667085"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="#17B26A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 10.5l3.5 3.5 7.5-8"></path></svg>Saved just now</span>
+          <button type="button" class="btn">Preview</button>
+          <a href="09-project-proposal.html" class="btn btn-p">Create proposal<svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10h12M11 5l5 5-5 5"></path></svg></a>
+        </div>
+      </div>
+      <nav aria-label="Project" style="display: flex; overflow-x: auto">
+        <a href="05-project-overview.html" class="tab">Overview</a>
+        <a href="06-project-survey.html" class="tab"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="#17B26A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 10.5l3.5 3.5 7.5-8"></path></svg>Survey</a>
+        <a href="07-project-solar-design.html" class="tab on" aria-current="page">Design</a>
+        <a href="09-project-proposal.html" class="tab">Proposal</a>
+        <a href="10-project-kit-suppliers.html" class="tab">Kit &amp; suppliers</a>
+        <a href="11-project-install-paperwork.html" class="tab">Install &amp; paperwork</a>
+      </nav>
+    </header>
+    <div style="flex: 1; display: flex; flex-wrap: wrap; gap: 20px; padding: 20px 24px 24px; box-sizing: border-box">
+      <section class="card" aria-label="Site plan" style="flex: 999 1 640px; min-width: 0; display: flex; flex-direction: column; overflow: hidden">
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 10px 12px; border-bottom: 1px solid #E4E7EC">
+          <div role="group" aria-label="Design type" style="display: flex; background: #F2F4F7; border-radius: 9px; padding: 3px">
+            <a href="07-project-solar-design.html" style="display: inline-flex; align-items: center; min-height: 34px; padding: 0 14px; border-radius: 7px; font-size: 13px; font-weight: 600; color: #475467; text-decoration: none">Solar PV</a>
+            <a href="08-project-ev-design.html" aria-current="page" style="display: inline-flex; align-items: center; min-height: 34px; padding: 0 14px; border-radius: 7px; background: #FFFFFF; box-shadow: 0 1px 2px rgba(16,24,40,0.1); font-size: 13px; font-weight: 600; color: #101828; text-decoration: none">EV charger</a>
+          </div>
+          <div style="width: 1px; height: 24px; background: #E4E7EC"></div>
+          <div role="toolbar" aria-label="Site plan tools" style="display: flex; flex-wrap: wrap; gap: 2px">
+            <button type="button" class="tool"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round" aria-hidden="true"><path d="M5 3l11 6.5-5 1.2-2.3 4.8z"></path></svg>Select</button>
+            <button type="button" class="tool"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="2.5" width="10" height="15" rx="2"></rect><path d="M10.5 6l-2 4h3l-2 4"></path></svg>Charger</button>
+            <button type="button" class="tool"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><rect x="3.5" y="4" width="13" height="12" rx="1.5"></rect><path d="M7 8v4M10 8v4M13 8v4"></path></svg>Supply</button>
+            <button type="button" class="tool on"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 16h5V9h6V4h3"></path></svg>Cable route</button>
+          </div>
+          <div style="flex: 1"></div>
+          <label for="bg" style="font-size: 13px; font-weight: 600; color: #344054">View</label>
+          <select id="bg" style="font: inherit; font-size: 13px; font-weight: 600; min-height: 34px; padding: 0 10px; border: 1px solid #D0D5DD; border-radius: 8px; background: #FFFFFF"><option>Aerial</option><option>Survey photo</option></select>
+        </div>
+        <div style="flex: 1; min-height: 640px; position: relative; background: #DCE5D2">
+          <svg viewBox="0 0 900 640" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Site plan with a 12.4 metre cable route from the consumer unit to the charger on the front wall" style="position: absolute; inset: 0; width: 100%; height: 100%">
+            <rect width="900" height="640" fill="#DCE5D2"></rect>
+            <rect x="440" y="360" width="360" height="280" fill="#E3DED4"></rect>
+            <path d="M440 360v280" stroke="#CFC8BA" stroke-width="2"></path>
+            <rect x="0" y="600" width="900" height="40" fill="#D6D3CC"></rect>
+            <circle cx="90" cy="460" r="52" fill="#C3D3B6"></circle>
+            <rect x="188" y="98" width="440" height="240" fill="#000000" opacity="0.08"></rect>
+            <polygon points="180,90 620,90 560,210 240,210" fill="#B9A898"></polygon>
+            <polygon points="240,210 560,210 620,330 180,330" fill="#CDBEAF"></polygon>
+            <polygon points="180,90 240,210 180,330" fill="#AE9C8C"></polygon>
+            <polygon points="620,90 620,330 560,210" fill="#C2B2A3"></polygon>
+            <path d="M240 210h320" stroke="#9C8A7A" stroke-width="3"></path>
+            <g fill="#1F2A44" opacity="0.55"><rect x="270" y="222" width="300" height="96" rx="2"></rect></g>
+            <rect x="420" y="330" width="40" height="8" fill="#7A6858"></rect>
+            <path d="M232 302 V340 H548" fill="none" stroke="#DC6803" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"></path>
+            <path d="M232 302 V340 H548" fill="none" stroke="#FFFFFF" stroke-width="1.5" stroke-dasharray="6 6" stroke-linecap="round"></path>
+            <g transform="translate(232 296)">
+              <rect x="-22" y="-22" width="44" height="44" rx="10" fill="#FFFFFF" stroke="#101828" stroke-width="2"></rect>
+              <path d="M-9 -8v16M-3 -8v16M3 -8v16M9 -8v16" stroke="#101828" stroke-width="2"></path>
+            </g>
+            <g transform="translate(560 340)">
+              <circle r="24" fill="#0B7A62" stroke="#FFFFFF" stroke-width="3"></circle>
+              <path d="M2 -12l-8 13h7l-3 11 9-14h-7z" fill="#FFFFFF"></path>
+            </g>
+            <g transform="translate(600 420)"><rect width="74" height="140" rx="18" fill="#9AA4B2"></rect><rect x="10" y="26" width="54" height="28" rx="6" fill="#4B5565"></rect><rect x="10" y="96" width="54" height="22" rx="6" fill="#4B5565"></rect></g>
+            <g transform="translate(830 70)">
+              <circle r="26" fill="#FFFFFF" fill-opacity="0.92" stroke="#D0D5DD"></circle>
+              <path d="M0 -16l6 14h-12z" fill="#D92D20"></path>
+              <path d="M0 16l6 -14h-12z" fill="#98A2B3"></path><text x="0" y="-32" text-anchor="middle" font-size="14" font-weight="700" fill="#344054" font-family="Plus Jakarta Sans, system-ui, sans-serif">N</text>
+            </g>
+          </svg>
+          <div style="position: absolute; left: 16px; top: 16px; display: flex; flex-direction: column; gap: 8px">
+            <span style="display: inline-flex; align-items: center; gap: 8px; background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 8px; padding: 6px 10px; font-size: 12.5px; font-weight: 600; color: #344054; box-shadow: 0 1px 2px rgba(16,24,40,0.06)"><span style="width: 10px; height: 10px; border-radius: 3px; border: 2px solid #101828"></span>Consumer unit · hallway</span>
+            <span style="display: inline-flex; align-items: center; gap: 8px; background: #FFFFFF; border: 2px solid #0B7A62; border-radius: 8px; padding: 6px 10px; font-size: 12.5px; font-weight: 600; color: #075C4A"><span style="width: 10px; height: 10px; border-radius: 99px; background: #0B7A62"></span>Charger · front wall, 1.2 m high</span>
+            <span style="display: inline-flex; align-items: center; gap: 8px; background: #FFFFFF; border: 1px solid #F5C67A; border-radius: 8px; padding: 6px 10px; font-size: 12.5px; font-weight: 600; color: #93370D"><span style="width: 14px; height: 4px; border-radius: 2px; background: #DC6803"></span>Cable route · 12.4 m, clipped to wall</span>
+          </div>
+          <div style="position: absolute; right: 16px; bottom: 16px; display: flex; flex-direction: column; background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(16,24,40,0.1)">
+            <button type="button" aria-label="Zoom in" style="font: inherit; font-size: 18px; width: 40px; height: 40px; border: 0; border-bottom: 1px solid #E4E7EC; background: #FFFFFF; color: #344054; cursor: pointer">+</button>
+            <button type="button" aria-label="Zoom out" style="font: inherit; font-size: 18px; width: 40px; height: 40px; border: 0; background: #FFFFFF; color: #344054; cursor: pointer">−</button>
+          </div>
+        </div>
+      </section>
+      <aside aria-label="Charger and checks" style="flex: 1 1 340px; max-width: 380px; display: flex; flex-direction: column; gap: 16px">
+        <section class="card" style="padding: 20px; display: flex; flex-direction: column; gap: 14px">
+          <h2 class="h2">Charger</h2>
+          <div style="display: flex; flex-direction: column; gap: 6px"><span class="lbl">Model</span><button type="button" class="sel"><div style="display: flex; flex-direction: column; gap: 2px"><b>7 kW tethered charger</b><span>£410 · in stock at Supplier C</span></div><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="#667085" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M6 8l4 4 4-4"></path></svg></button></div>
+          <div style="display: flex; flex-direction: column; gap: 6px"><span class="lbl">Mounting</span><div role="group" aria-label="Mounting" style="display: flex; background: #F2F4F7; border-radius: 9px; padding: 3px"><button type="button" class="seg2" aria-pressed="true" style="background: #FFFFFF; color: #101828; box-shadow: 0 1px 2px rgba(16,24,40,0.1)">Wall</button><button type="button" class="seg2" aria-pressed="false">Post</button></div></div>
+        </section>
+        <section class="card" style="padding: 18px 20px; display: flex; flex-direction: column">
+          <h2 class="h2" style="padding-bottom: 6px">Supply and load</h2>
+          <div class="row"><span class="k">Main fuse</span><span style="font-weight: 600">100 A · single phase</span></div>
+          <div class="row"><span class="k">Max demand with charger</span><span class="ok"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 10.5l3.5 3.5 7.5-8"></path></svg>78 A · OK</span></div>
+          <div class="row"><span class="k">Load management</span><span style="font-weight: 600">Not needed</span></div>
+          <div class="row" style="border-bottom: 0"><span class="k">Earthing</span><span style="font-weight: 600">TN-C-S · charger PEN protection</span></div>
+        </section>
+        <section class="card" style="padding: 18px 20px; display: flex; flex-direction: column">
+          <h2 class="h2" style="padding-bottom: 6px">Cable</h2>
+          <div class="row"><span class="k">Route</span><span style="font-weight: 600">12.4 m · clipped to wall</span></div>
+          <div class="row"><span class="k">Cable size</span><span style="font-weight: 600">6 mm² · auto</span></div>
+          <div class="row" style="border-bottom: 0"><span class="k">Volt drop</span><span class="ok"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 10.5l3.5 3.5 7.5-8"></path></svg>1.9% · within limit</span></div>
+        </section>
+        <section class="card" style="padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px">
+          <div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; font-weight: 600">Charge from surplus solar</span><span style="font-size: 12.5px; color: #667085">Uses the solar design · about 4,100 miles a year</span></div>
+          <button type="button" role="switch" aria-checked="true" aria-label="Charge from surplus solar" style="width: 44px; height: 26px; border-radius: 99px; border: 0; background: #0B7A62; position: relative; cursor: pointer; flex: 0 0 44px"><span style="position: absolute; top: 3px; right: 3px; width: 20px; height: 20px; border-radius: 99px; background: #FFFFFF"></span></button>
+        </section>
+        <div style="display: flex; gap: 12px; padding: 14px 16px; background: #EFF4FF; border: 1px solid #C7D7FE; border-radius: 12px">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#2E6BE6" stroke-width="1.75" stroke-linecap="round" aria-hidden="true" style="flex: 0 0 20px; margin-top: 1px"><circle cx="10" cy="10" r="7.5"></circle><path d="M10 9v5M10 6.5v.1"></path></svg>
+          <div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; font-weight: 600; color: #1849A9">DNO notification added</span><span style="font-size: 13px; color: #1849A9">It’s on the paperwork list, pre-filled from this design.</span></div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,6 +1,8 @@
 # goinstall
 
-Build spec: `docs/SPEC.md`. Build in the phases it lists; finish and confirm
+Build spec: `docs/SPEC.md`. UI designs: `docs/design/` (match `png/`, take
+spacing and colours from `html/`, tokens in `DESIGN.md`); agreed schema:
+`docs/DATA-MODEL.md`. Build in the phases it lists; finish and confirm
 each phase before starting the next. Ask the business about anything listed
 under Open questions rather than assuming (especially MCS tables and EV
 design rules: never invent rule values).

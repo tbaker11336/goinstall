@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>Project proposal</title>
+</head>
+<body>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F5F6F8}
+a{color:#0B7A62}a:hover{color:#075C4A}
+.nav{display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:10px;color:#475467;text-decoration:none}
+.nav:hover{background:#F2F4F7;color:#101828}
+.card{background:#FFFFFF;border:1px solid #E4E7EC;border-radius:12px;box-sizing:border-box}
+.btn{font:inherit;font-size:14px;font-weight:600;min-height:40px;padding:0 16px;border-radius:8px;border:1px solid #D0D5DD;background:#FFFFFF;color:#344054;display:inline-flex;align-items:center;gap:8px;cursor:pointer;text-decoration:none;box-sizing:border-box}
+.btn-p{background:#0B7A62;border-color:#0B7A62;color:#FFFFFF}
+.btn-p:hover{background:#08654F;color:#FFFFFF}
+.tab{display:inline-flex;align-items:center;gap:6px;padding:12px 2px;margin-right:24px;font-size:14px;font-weight:500;color:#475467;text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap}
+.tab.on{color:#101828;font-weight:600;border-bottom-color:#0B7A62}
+.h2{margin:0;font-size:16px;font-weight:700}
+.sec{font-size:12px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#667085;padding:18px 0 6px}
+.li{display:flex;justify-content:space-between;gap:16px;padding:10px 0;border-bottom:1px solid #EEF0F3;font-size:14px}
+.li span:last-child{font-variant-numeric:tabular-nums;white-space:nowrap}
+.fig{flex:1 1 140px;display:flex;flex-direction:column;gap:2px;padding:14px 16px;border-radius:10px;background:#F9FAFB}
+.fk{font-size:12.5px;color:#475467;font-weight:500}
+.fv{font-size:20px;font-weight:700;letter-spacing:-0.01em;font-variant-numeric:tabular-nums}
+.st{display:flex;gap:12px;align-items:flex-start;padding:10px 0}
+.sd{width:22px;height:22px;border-radius:99px;flex:0 0 22px;display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box}
+.row{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid #EEF0F3;font-size:14px}
+.k{color:#475467;font-size:13.5px}
+</style>
+<div style="font-family: 'Plus Jakarta Sans', system-ui, sans-serif; color: #101828; background: #F5F6F8; min-height: 1024px; display: flex">
+  <nav aria-label="Main" style="flex: 0 0 72px; background: #FFFFFF; border-right: 1px solid #E4E7EC; padding: 16px 14px; display: flex; flex-direction: column; align-items: center; gap: 6px; box-sizing: border-box">
+    <svg width="36" height="36" viewBox="0 0 32 32" role="img" aria-label="GoInstall" style="margin-bottom: 16px"><rect width="32" height="32" rx="8" fill="#0B7A62"></rect><circle cx="16" cy="17" r="5" fill="none" stroke="#FFFFFF" stroke-width="2"></circle><path d="M16 6.5v3M7.5 17h3M21.5 17h3M10 11l2 2M22 11l-2 2" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"></path></svg>
+    <a href="01-dashboard.html" class="nav" aria-label="Dashboard"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><rect x="3" y="3" width="6" height="6" rx="1.5"></rect><rect x="11" y="3" width="6" height="6" rx="1.5"></rect><rect x="3" y="11" width="6" height="6" rx="1.5"></rect><rect x="11" y="11" width="6" height="6" rx="1.5"></rect></svg></a>
+    <a href="02-contacts.html" class="nav" aria-label="Contacts"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="7.5" r="3.2"></circle><path d="M2.5 16.5c.8-2.8 3-4.2 5.5-4.2s4.7 1.4 5.5 4.2"></path><path d="M13 4.6a3 3 0 0 1 0 5.8M17.5 16.5c-.4-1.7-1.3-2.9-2.6-3.6"></path></svg></a>
+    <a href="05-project-overview.html" class="nav" aria-label="Projects" aria-current="page" style="background: #E6F4EF; color: #075C4A"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 6A1.5 1.5 0 0 1 4 4.5h3.5l2 2H16A1.5 1.5 0 0 1 17.5 8v7.5A1.5 1.5 0 0 1 16 17H4a1.5 1.5 0 0 1-1.5-1.5z"></path></svg></a>
+    <a href="09-project-proposal.html" class="nav" aria-label="Proposals"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M5 2.5h6.5L15.5 6.5v11H5z"></path><path d="M11 2.5v4.5h4.5M8 10.5h5M8 13.5h5"></path></svg></a>
+    <a href="11-project-install-paperwork.html" class="nav" aria-label="Schedule"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4.5" width="14" height="12.5" rx="2"></rect><path d="M3 8.5h14M7 2.5v4M13 2.5v4"></path></svg></a>
+    <div style="flex: 1"></div>
+    <a href="04-settings.html" class="nav" aria-label="Settings"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M3 6h8.5M15.5 6H17M3 14h2.5M9.5 14H17"></path><circle cx="13.5" cy="6" r="2"></circle><circle cx="7.5" cy="14" r="2"></circle></svg></a>
+  </nav>
+  <div style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+    <header style="background: #FFFFFF; border-bottom: 1px solid #E4E7EC; padding: 18px 32px 0; display: flex; flex-direction: column; gap: 14px">
+      <div style="font-size: 13px; color: #667085"><a href="01-dashboard.html" style="color: #667085; text-decoration: none">Projects</a> / 14 Elm Close</div>
+      <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px">
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap">
+            <h1 style="margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.02em">14 Elm Close, Banbury</h1>
+            <span style="display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 99px; font-size: 12.5px; font-weight: 600; background: #FEF0C7; color: #93370D"><span style="width: 6px; height: 6px; border-radius: 99px; background: #DC6803"></span>Proposal sent</span>
+          </div>
+          <span style="font-size: 14px; color: #475467"><a href="03-contact.html" style="font-weight: 600; text-decoration: none">Sarah Mitchell</a> · Solar, battery and EV charger · OX16 9AB</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap">
+          <label for="ver" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Version</label>
+          <select id="ver" style="font: inherit; font-size: 14px; font-weight: 600; min-height: 40px; padding: 0 10px; border: 1px solid #D0D5DD; border-radius: 8px; background: #FFFFFF"><option>Version 2 · sent</option><option>Version 1 · draft</option></select>
+          <button type="button" class="btn">Download PDF</button>
+          <button type="button" class="btn btn-p">Send reminder</button>
+        </div>
+      </div>
+      <nav aria-label="Project" style="display: flex; overflow-x: auto">
+        <a href="05-project-overview.html" class="tab">Overview</a>
+        <a href="06-project-survey.html" class="tab"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="#17B26A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 10.5l3.5 3.5 7.5-8"></path></svg>Survey</a>
+        <a href="07-project-solar-design.html" class="tab"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="#17B26A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 10.5l3.5 3.5 7.5-8"></path></svg>Design</a>
+        <a href="09-project-proposal.html" class="tab on" aria-current="page">Proposal</a>
+        <a href="10-project-kit-suppliers.html" class="tab">Kit &amp; suppliers</a>
+        <a href="11-project-install-paperwork.html" class="tab">Install &amp; paperwork</a>
+      </nav>
+    </header>
+    <main style="width: 100%; max-width: 1280px; margin: 0 auto; padding: 24px 32px 40px; box-sizing: border-box; display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start">
+      <article class="card" aria-label="Proposal preview" style="flex: 2 1 600px; min-width: 0; padding: 32px 36px; box-shadow: 0 4px 16px rgba(16,24,40,0.06)">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; padding-bottom: 20px; border-bottom: 1px solid #E4E7EC">
+          <div style="display: flex; align-items: center; gap: 12px"><span style="width: 40px; height: 40px; border-radius: 10px; background: #101828; color: #FFFFFF; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700">BE</span><div style="display: flex; flex-direction: column"><span style="font-size: 15px; font-weight: 700">Brightwell Energy</span><span style="font-size: 12.5px; color: #667085">MCS certified installer</span></div></div>
+          <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 2px"><span style="font-size: 12.5px; color: #667085">Proposal Q-0142 · v2</span><span style="font-size: 12.5px; color: #667085">Valid until 14 November 2026</span></div>
+        </div>
+        <h2 style="margin: 24px 0 4px; font-size: 22px; font-weight: 700; letter-spacing: -0.01em">Solar, battery and EV charging for 14 Elm Close</h2>
+        <p style="margin: 0 0 20px; font-size: 14px; color: #475467">Prepared for Sarah Mitchell</p>
+        <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: stretch">
+          <div style="flex: 1 1 220px; border-radius: 10px; overflow: hidden; background: #DCE5D2; min-height: 150px">
+            <svg viewBox="0 0 520 300" role="img" aria-label="Roof with 18 panels" style="width: 100%; height: 100%; display: block">
+              <rect width="520" height="300" fill="#DCE5D2"></rect>
+              <polygon points="70,40 450,40 380,140 140,140" fill="#B9A898"></polygon>
+              <polygon points="140,140 380,140 450,250 70,250" fill="#CDBEAF"></polygon>
+              <polygon points="70,40 140,140 70,250" fill="#AE9C8C"></polygon>
+              <polygon points="450,40 450,250 380,140" fill="#C2B2A3"></polygon>
+              <g fill="#1F2A44" stroke="#5B6B8C" stroke-width="1"><rect x="150" y="152" width="26" height="42"></rect><rect x="179" y="152" width="26" height="42"></rect><rect x="208" y="152" width="26" height="42"></rect><rect x="237" y="152" width="26" height="42"></rect><rect x="266" y="152" width="26" height="42"></rect><rect x="295" y="152" width="26" height="42"></rect><rect x="324" y="152" width="26" height="42"></rect><rect x="353" y="152" width="26" height="42"></rect><rect x="121" y="198" width="26" height="42"></rect><rect x="150" y="198" width="26" height="42"></rect><rect x="179" y="198" width="26" height="42"></rect><rect x="208" y="198" width="26" height="42"></rect><rect x="237" y="198" width="26" height="42"></rect><rect x="266" y="198" width="26" height="42"></rect><rect x="295" y="198" width="26" height="42"></rect><rect x="324" y="198" width="26" height="42"></rect><rect x="353" y="198" width="26" height="42"></rect><rect x="382" y="198" width="26" height="42"></rect></g>
+            </svg>
+          </div>
+          <div style="flex: 1 1 260px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+            <div class="fig"><span class="fk">Generation</span><span class="fv">6,840 kWh</span></div>
+            <div class="fig"><span class="fk">Yearly saving</span><span class="fv">£1,420</span></div>
+            <div class="fig"><span class="fk">Payback</span><span class="fv">10.5 yrs</span></div>
+            <div class="fig"><span class="fk">EV miles from sun</span><span class="fv">4,100</span></div>
+          </div>
+        </div>
+        <div class="sec">Solar PV</div>
+        <div class="li"><span>18 × 445 W all-black panels (8.01 kWp)</span><span>£2,970</span></div>
+        <div class="li"><span>5 kW hybrid inverter</span><span>£1,450</span></div>
+        <div class="li"><span>Mounting, cabling and isolators</span><span>£780</span></div>
+        <div class="sec">Battery</div>
+        <div class="li"><span>10 kWh battery</span><span>£3,900</span></div>
+        <div class="sec">EV charging</div>
+        <div class="li"><span>7 kW tethered charger with solar mode</span><span>£690</span></div>
+        <div class="li"><span>Charger installation, 12.4 m cable run</span><span>£420</span></div>
+        <div class="sec">Installation</div>
+        <div class="li"><span>Installation, commissioning and certification</span><span>£3,918</span></div>
+        <div class="li"><span>Scaffolding</span><span>£650</span></div>
+        <div class="li"><span>Single visit for solar and EV</span><span style="color: #067647">−£150</span></div>
+        <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end; padding-top: 18px">
+          <div style="display: flex; gap: 32px; font-size: 14px; color: #475467"><span>Subtotal</span><span style="font-variant-numeric: tabular-nums; min-width: 90px; text-align: right">£14,628</span></div>
+          <div style="display: flex; gap: 32px; font-size: 14px; color: #475467"><span>VAT</span><span style="font-variant-numeric: tabular-nums; min-width: 90px; text-align: right">£222</span></div>
+          <div style="display: flex; gap: 32px; font-size: 22px; font-weight: 700"><span>Total</span><span style="font-variant-numeric: tabular-nums; min-width: 90px; text-align: right">£14,850</span></div>
+          <div style="display: flex; gap: 32px; font-size: 14px; color: #075C4A; font-weight: 600; background: #E6F4EF; padding: 8px 12px; border-radius: 8px"><span>Deposit to confirm (25%)</span><span style="font-variant-numeric: tabular-nums; min-width: 90px; text-align: right">£3,712.50</span></div>
+        </div>
+      </article>
+      <aside style="flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 20px">
+        <section class="card" style="padding: 20px 24px">
+          <h2 class="h2" style="padding-bottom: 6px">Status</h2>
+          <div class="st"><span class="sd" style="background: #17B26A"><svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 10.5l3.5 3.5 7.5-8"></path></svg></span><div style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; font-weight: 600">Sent by email and WhatsApp</span><span style="font-size: 12.5px; color: #667085">15 Oct, 16:40</span></div></div>
+          <div class="st"><span class="sd" style="background: #17B26A"><svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 10.5l3.5 3.5 7.5-8"></path></svg></span><div style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; font-weight: 600">Viewed 3 times</span><span style="font-size: 12.5px; color: #667085">Last opened today, 08:12</span></div></div>
+          <div class="st"><span class="sd" style="border: 2px solid #DC6803; background: #FFFCF5"></span><div style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; font-weight: 600">Accept and sign</span><span style="font-size: 12.5px; color: #93370D">Waiting for Sarah</span></div></div>
+          <div class="st"><span class="sd" style="border: 2px solid #D0D5DD"></span><div style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; font-weight: 600; color: #475467">Deposit paid</span><span style="font-size: 12.5px; color: #667085">Kit order is drafted automatically</span></div></div>
+          <div style="display: flex; gap: 8px; padding-top: 10px"><button type="button" class="btn" style="flex: 1; justify-content: center; min-height: 36px; font-size: 13px">Copy customer link</button><button type="button" class="btn" style="flex: 1; justify-content: center; min-height: 36px; font-size: 13px">Edit proposal</button></div>
+        </section>
+        <section class="card" style="padding: 20px 24px">
+          <h2 class="h2" style="padding-bottom: 6px">Deposit</h2>
+          <div class="row"><span class="k">Amount</span><span style="font-weight: 600">£3,712.50 · 25%</span></div>
+          <div class="row"><span class="k">Pay by</span><span style="font-weight: 600">Card (Stripe) or bank transfer</span></div>
+          <div class="row" style="border-bottom: 0"><span class="k">Balance</span><span style="font-weight: 600">£11,137.50 on completion</span></div>
+        </section>
+      </aside>
+    </main>
+  </div>
+</div>
+</body>
+</html>

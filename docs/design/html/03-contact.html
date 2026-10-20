@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>Contact</title>
+</head>
+<body>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F5F6F8}
+a{color:#0B7A62}a:hover{color:#075C4A}
+.nav{display:flex;align-items:center;gap:12px;min-height:40px;padding:0 12px;border-radius:8px;color:#475467;text-decoration:none;font-size:14px;font-weight:500}
+.nav:hover{background:#F2F4F7;color:#101828}
+.nav svg{width:20px;height:20px;flex:0 0 20px}
+.card{background:#FFFFFF;border:1px solid #E4E7EC;border-radius:12px;box-sizing:border-box}
+.btn{font:inherit;font-size:14px;font-weight:600;min-height:40px;padding:0 16px;border-radius:8px;border:1px solid #D0D5DD;background:#FFFFFF;color:#344054;display:inline-flex;align-items:center;gap:8px;cursor:pointer;text-decoration:none;box-sizing:border-box}
+.btn-p{background:#0B7A62;border-color:#0B7A62;color:#FFFFFF}
+.btn-p:hover{background:#08654F;color:#FFFFFF}
+.input{font:inherit;font-size:14px;min-height:40px;padding:0 12px;border:1px solid #D0D5DD;border-radius:8px;background:#FFFFFF;box-sizing:border-box;color:#101828}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.av{border-radius:99px;display:inline-flex;align-items:center;justify-content:center;font-weight:700}
+.dl{display:flex;flex-direction:column;gap:2px;padding:10px 0;border-bottom:1px solid #EEF0F3}
+.dk{font-size:12.5px;color:#667085;font-weight:500}
+.dv{font-size:14px;color:#101828;font-weight:500}
+.tag{display:inline-block;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:600;background:#F2F4F7;color:#344054;margin-right:4px}
+.ct{font:inherit;font-size:14px;font-weight:500;padding:12px 2px;margin-right:22px;border:0;border-bottom:2px solid transparent;background:transparent;color:#475467;cursor:pointer}
+.ct.on{color:#101828;font-weight:600;border-bottom-color:#0B7A62}
+.msg{max-width:64%;display:flex;flex-direction:column;gap:6px}
+.bub{padding:12px 14px;border-radius:14px;font-size:14px;line-height:1.5;color:#101828}
+.via{display:flex;align-items:center;gap:6px;font-size:12px;color:#667085;font-weight:500}
+.ico{width:16px;height:16px;border-radius:4px;display:inline-flex;align-items:center;justify-content:center}
+</style>
+<div style="font-family: 'Plus Jakarta Sans', system-ui, sans-serif; color: #101828; background: #F5F6F8; min-height: 1024px; display: flex; flex-wrap: wrap">
+  <nav aria-label="Main" style="flex: 1 1 220px; max-width: 248px; background: #FFFFFF; border-right: 1px solid #E4E7EC; padding: 20px 14px; display: flex; flex-direction: column; gap: 4px; box-sizing: border-box">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 4px 8px 24px">
+      <svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#0B7A62"></rect><circle cx="16" cy="17" r="5" fill="none" stroke="#FFFFFF" stroke-width="2"></circle><path d="M16 6.5v3M7.5 17h3M21.5 17h3M10 11l2 2M22 11l-2 2" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"></path></svg>
+      <span style="font-size: 16px; font-weight: 700; letter-spacing: -0.01em">GoInstall</span>
+    </div>
+    <a href="01-dashboard.html" class="nav"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><rect x="3" y="3" width="6" height="6" rx="1.5"></rect><rect x="11" y="3" width="6" height="6" rx="1.5"></rect><rect x="3" y="11" width="6" height="6" rx="1.5"></rect><rect x="11" y="11" width="6" height="6" rx="1.5"></rect></svg>Dashboard</a>
+    <a href="02-contacts.html" class="nav" aria-current="page" style="background: #E6F4EF; color: #075C4A; font-weight: 600"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="7.5" r="3.2"></circle><path d="M2.5 16.5c.8-2.8 3-4.2 5.5-4.2s4.7 1.4 5.5 4.2"></path><path d="M13 4.6a3 3 0 0 1 0 5.8M17.5 16.5c-.4-1.7-1.3-2.9-2.6-3.6"></path></svg>Contacts</a>
+    <a href="05-project-overview.html" class="nav"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 6A1.5 1.5 0 0 1 4 4.5h3.5l2 2H16A1.5 1.5 0 0 1 17.5 8v7.5A1.5 1.5 0 0 1 16 17H4a1.5 1.5 0 0 1-1.5-1.5z"></path></svg>Projects</a>
+    <a href="09-project-proposal.html" class="nav"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M5 2.5h6.5L15.5 6.5v11H5z"></path><path d="M11 2.5v4.5h4.5M8 10.5h5M8 13.5h5"></path></svg>Proposals</a>
+    <a href="11-project-install-paperwork.html" class="nav"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4.5" width="14" height="12.5" rx="2"></rect><path d="M3 8.5h14M7 2.5v4M13 2.5v4"></path></svg>Schedule</a>
+    <div style="flex: 1"></div>
+    <a href="04-settings.html" class="nav"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M3 6h8.5M15.5 6H17M3 14h2.5M9.5 14H17"></path><circle cx="13.5" cy="6" r="2"></circle><circle cx="7.5" cy="14" r="2"></circle></svg>Settings</a>
+    <div style="display: flex; align-items: center; gap: 10px; padding: 14px 8px 0; margin-top: 8px; border-top: 1px solid #EEF0F3">
+      <span class="av" style="background: #E6F4EF; color: #075C4A; width: 34px; height: 34px; font-size: 11.5px">AM</span>
+      <div style="display: flex; flex-direction: column"><span style="font-size: 14px; font-weight: 600">Alex Morgan</span><span style="font-size: 12.5px; color: #667085">Admin</span></div>
+    </div>
+  </nav>
+  <main style="flex: 999 1 640px; min-width: 0; padding: 24px 32px 32px; box-sizing: border-box; display: flex; flex-direction: column; gap: 20px">
+    <div style="font-size: 13px; color: #667085"><a href="02-contacts.html" style="color: #667085; text-decoration: none">Contacts</a> / Sarah Mitchell</div>
+    <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px">
+      <div style="display: flex; align-items: center; gap: 16px">
+        <span class="av" style="background: #EFF4FF; color: #1849A9; width: 56px; height: 56px; font-size: 18px">SM</span>
+        <div style="display: flex; flex-direction: column; gap: 4px">
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap"><h1 style="margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.02em">Sarah Mitchell</h1><span style="display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 99px; font-size: 12.5px; font-weight: 600; background: #F4F3FF; color: #4A1FB8"><span style="width: 6px; height: 6px; border-radius: 99px; background: #6941C6"></span>Design</span></div>
+          <span style="font-size: 14px; color: #475467">Customer since September 2025 · Owner Alex Morgan</span>
+        </div>
+      </div>
+      <div style="display: flex; gap: 10px; flex-wrap: wrap">
+        <button type="button" class="btn"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round" aria-hidden="true"><path d="M4 3h3l1.5 4-2 1.2a9 9 0 0 0 5.3 5.3L13 11.5l4 1.5v3a1.5 1.5 0 0 1-1.6 1.5A14 14 0 0 1 2.5 4.6 1.5 1.5 0 0 1 4 3z"></path></svg>Call</button>
+        <button type="button" class="btn btn-p"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M10 4v12M4 10h12"></path></svg>New project</button>
+      </div>
+    </div>
+    <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+      <aside style="flex: 1 1 300px; max-width: 360px; display: flex; flex-direction: column; gap: 20px">
+        <section class="card" style="padding: 18px 20px">
+          <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 4px"><h2 style="margin: 0; font-size: 16px; font-weight: 700">Details</h2><button type="button" class="btn" style="min-height: 32px; font-size: 13px; padding: 0 10px">Edit</button></div>
+          <div class="dl"><span class="dk">Mobile</span><span class="dv">07700 900 412</span></div>
+          <div class="dl"><span class="dk">Email</span><span class="dv">sarah.mitchell@example.com</span></div>
+          <div class="dl"><span class="dk">Address</span><span class="dv">14 Elm Close, Banbury OX16 9AB</span></div>
+          <div class="dl"><span class="dk">Source</span><span class="dv">Website form</span></div>
+          <div class="dl" style="border-bottom: 0"><span class="dk">Interested in</span><div style="padding-top: 4px"><span class="tag">Solar</span><span class="tag">Battery</span><span class="tag">EV</span></div></div>
+        </section>
+        <section class="card" style="padding: 18px 20px; display: flex; flex-direction: column; gap: 10px">
+          <h2 style="margin: 0; font-size: 16px; font-weight: 700">Projects</h2>
+          <a href="05-project-overview.html" style="display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px; border: 1px solid #E4E7EC; border-radius: 10px; text-decoration: none; color: inherit">
+            <div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; font-weight: 600">Solar, battery and EV</span><span style="font-size: 12.5px; color: #667085">£14,850 · 14 Elm Close</span></div>
+            <span style="padding: 3px 10px; border-radius: 99px; font-size: 12px; font-weight: 600; background: #F4F3FF; color: #4A1FB8">Design</span>
+          </a>
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px; border: 1px solid #E4E7EC; border-radius: 10px">
+            <div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; font-weight: 600">EV charger</span><span style="font-size: 12.5px; color: #667085">£1,090 · March 2026</span></div>
+            <span style="padding: 3px 10px; border-radius: 99px; font-size: 12px; font-weight: 600; background: #DCFAE6; color: #067647">Complete</span>
+          </div>
+        </section>
+      </aside>
+      <section class="card" aria-label="Conversation" style="flex: 999 1 520px; min-width: 0; display: flex; flex-direction: column; overflow: hidden">
+        <div role="tablist" aria-label="Channel" style="display: flex; padding: 4px 20px 0; border-bottom: 1px solid #E4E7EC">
+          <button type="button" role="tab" aria-selected="true" class="ct on">All</button>
+          <button type="button" role="tab" aria-selected="false" class="ct">Email</button>
+          <button type="button" role="tab" aria-selected="false" class="ct">WhatsApp</button>
+          <button type="button" role="tab" aria-selected="false" class="ct">Notes</button>
+        </div>
+        <div style="flex: 1; padding: 24px; display: flex; flex-direction: column; gap: 18px; background: #FCFCFD; min-height: 520px">
+          <div style="align-self: center; font-size: 12px; font-weight: 600; color: #667085">Monday 12 October</div>
+          <div class="msg" style="align-self: flex-start"><span class="via"><span class="ico" style="background: #EFF4FF"><svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="#1849A9" stroke-width="2.2" aria-hidden="true"><rect x="2.5" y="4.5" width="15" height="11" rx="1.5"></rect><path d="M3 5.5l7 5 7-5"></path></svg></span>Email · 10:14</span><div class="bub" style="background: #FFFFFF; border: 1px solid #E4E7EC; border-top-left-radius: 4px">Hi, we’d like a quote for solar panels and a battery, and possibly a second car charger. We’re at 14 Elm Close.</div></div>
+          <div class="msg" style="align-self: flex-end; align-items: flex-end"><span class="via">Alex Morgan · Email · 10:32</span><div class="bub" style="background: #E6F4EF; border-top-right-radius: 4px">Thanks Sarah! Here’s a link to our online survey. It takes about 10 minutes and you can add photos from your phone.</div><span style="display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: #075C4A; border: 1px solid #B7DFD3; background: #FFFFFF; border-radius: 8px; padding: 6px 10px">Online survey link</span></div>
+          <div style="align-self: center; display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; color: #067647; background: #DCFAE6; border-radius: 99px; padding: 6px 12px"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 10.5l3.5 3.5 7.5-8"></path></svg>Online survey completed · 14 photos</div>
+          <div class="msg" style="align-self: flex-start"><span class="via"><span class="ico" style="background: #DCFAE6"><svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="#067647" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l1.2-3.6A7 7 0 1 1 7 16z"></path></svg></span>WhatsApp · Today 13:05</span><div class="bub" style="background: #FFFFFF; border: 1px solid #E4E7EC; border-top-left-radius: 4px">Photos of the meter cupboard attached. Is there anything else you need before the design?</div></div>
+        </div>
+        <div style="border-top: 1px solid #E4E7EC; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px">
+          <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center">
+            <label for="via" class="sr">Send via</label>
+            <select id="via" class="input" style="min-height: 34px; font-size: 13px; font-weight: 600"><option>WhatsApp</option><option>Email</option><option>Internal note</option></select>
+            <button type="button" class="btn" style="min-height: 34px; font-size: 13px; padding: 0 12px">Templates</button>
+            <button type="button" class="btn" style="min-height: 34px; font-size: 13px; padding: 0 12px">Send survey link</button>
+            <span style="flex: 1"></span>
+            <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: #067647; font-weight: 600"><span style="width: 6px; height: 6px; border-radius: 99px; background: #17B26A"></span>Reply window open · 23 h</span>
+          </div>
+          <div style="display: flex; gap: 10px; align-items: flex-end">
+            <label for="compose" class="sr">Message</label>
+            <textarea id="compose" placeholder="Write a message…" style="font: inherit; font-size: 14px; flex: 1; min-height: 72px; padding: 10px 12px; border: 1px solid #D0D5DD; border-radius: 10px; resize: vertical; box-sizing: border-box"></textarea>
+            <button type="button" class="btn" aria-label="Attach file" style="padding: 0 10px"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M15 9.5l-5.6 5.6a3.5 3.5 0 0 1-5-5L10.5 4a2.3 2.3 0 0 1 3.3 3.3L7.8 13.3a1.2 1.2 0 0 1-1.7-1.7L11.5 6.2"></path></svg></button>
+            <button type="button" class="btn btn-p">Send</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+</body>
+</html>
