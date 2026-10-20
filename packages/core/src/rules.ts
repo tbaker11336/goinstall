@@ -146,13 +146,27 @@ export interface DesignSettings {
   evMilesPerKwh?: number;
 }
 
+/**
+ * Defaults agreed with the business; new companies start with these (the
+ * column default in the database) and can change any of them.
+ */
+export const DEFAULT_DESIGN_SETTINGS: Required<DesignSettings> = {
+  edgeSetbackM: 0.4,
+  minDesignTempC: -10,
+  g98LimitAPerPhase: 16,
+  pvgisLossPct: 14,
+  evVoltDropLimitPct: 5,
+  evChargerDiversity: 1,
+  evMilesPerKwh: 3.5,
+};
+
 export const DESIGN_SETTING_FIELDS: { key: keyof DesignSettings; label: string; unit: string; help: string; min: number; max: number }[] = [
   { key: "edgeSetbackM", label: "Panel edge setback", unit: "m", help: "Gap kept clear between panels and roof edges or obstructions.", min: 0, max: 2 },
   { key: "minDesignTempC", label: "Minimum design temperature", unit: "°C", help: "Used to correct panel Voc when sizing strings.", min: -40, max: 10 },
   { key: "g98LimitAPerPhase", label: "G98 limit per phase", unit: "A", help: "Above this, a G99 application is needed. ENA G98 is 16 A.", min: 1, max: 100 },
-  { key: "pvgisLossPct", label: "PVGIS system losses", unit: "%", help: "Used for the PVGIS cross-check only.", min: 0, max: 50 },
-  { key: "evVoltDropLimitPct", label: "EV volt drop limit", unit: "%", help: "From your installation standard.", min: 0.5, max: 10 },
-  { key: "evChargerDiversity", label: "Charger diversity in max demand", unit: "×", help: "1 means the charger's full current is added.", min: 0, max: 1 },
+  { key: "pvgisLossPct", label: "PVGIS system losses", unit: "%", help: "Used for the PVGIS cross-check only. 14% is the PVGIS default.", min: 0, max: 50 },
+  { key: "evVoltDropLimitPct", label: "EV volt drop limit", unit: "%", help: "BS 7671 Appendix 4 gives 5% for circuits other than lighting.", min: 0.5, max: 10 },
+  { key: "evChargerDiversity", label: "Charger diversity in max demand", unit: "×", help: "1 means the charger's full current is added (BS 7671 722.311 allows no diversity).", min: 0, max: 1 },
   { key: "evMilesPerKwh", label: "EV efficiency", unit: "miles per kWh", help: "For the 'EV miles from solar' figure.", min: 1, max: 6 },
 ];
 

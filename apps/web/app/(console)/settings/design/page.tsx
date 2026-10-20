@@ -1,4 +1,4 @@
-import { DEFAULT_FINANCE, DESIGN_SETTING_FIELDS, FINANCE_FIELDS, RULE_TABLES, type FinanceAssumptions, type RuleTableKind } from "@goinstall/core";
+import { DEFAULT_DESIGN_SETTINGS, DEFAULT_FINANCE, DESIGN_SETTING_FIELDS, FINANCE_FIELDS, RULE_TABLES, type FinanceAssumptions, type RuleTableKind } from "@goinstall/core";
 import { ActionForm, SubmitButton } from "@/components/forms";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -78,7 +78,7 @@ export default async function DesignRulesPage() {
       <Card>
         <CardHeader className="flex-col items-start">
           <CardTitle>Design settings</CardTitle>
-          <p className="text-sm text-ink-3">Leave a value blank and designs will say it&apos;s needed rather than assume one.</p>
+          <p className="text-sm text-ink-3">Every company starts with the defaults shown; change any to suit how you work. Leave a value blank and designs will say it&apos;s needed rather than assume one.</p>
         </CardHeader>
         <CardContent>
           <ActionForm action={saveDesignSettingsAction} className="flex flex-col gap-4">
@@ -90,7 +90,7 @@ export default async function DesignRulesPage() {
                   </label>
                   <Input id={`ds-${f.key}`} name={f.key} inputMode="decimal" defaultValue={rules.settings[f.key] ?? ""} aria-describedby={`ds-${f.key}-help`} />
                   <span id={`ds-${f.key}-help`} className="text-xs text-muted-foreground">
-                    {f.help}
+                    {f.help} Default {DEFAULT_DESIGN_SETTINGS[f.key]} {f.unit}.
                   </span>
                 </div>
               ))}

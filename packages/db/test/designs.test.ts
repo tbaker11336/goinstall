@@ -80,6 +80,11 @@ describe("energy profiles", () => {
     expect(await errorCode(asUser(a.users.office, (c) => c.query("insert into energy_profiles (project_id, monthly_kwh) values ($1, '{1,2,3}')", [b.projectId])))).toBeDefined();
   });
 
+  it("start companies on the business's design setting defaults", async () => {
+    const d = await asUser(a.users.admin, async (c) => (await c.query("select design_settings from companies")).rows[0].design_settings);
+    expect(d).toEqual({ edgeSetbackM: 0.4, minDesignTempC: -10, g98LimitAPerPhase: 16, pvgisLossPct: 14, evVoltDropLimitPct: 5, evChargerDiversity: 1, evMilesPerKwh: 3.5 });
+  });
+
   it("start companies on the business's finance defaults", async () => {
     const f = await asUser(a.users.admin, async (c) => (await c.query("select finance_settings from companies")).rows[0].finance_settings);
     expect(f).toEqual({ electricityInflationPct: 5, discountRatePct: 2.58, lifetimeYears: 20, degradationFirstYearPct: 2, degradationAnnualPct: 0.55 });
