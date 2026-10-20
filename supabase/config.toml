@@ -1,0 +1,29 @@
+# Supabase CLI config for local development (`supabase start`).
+# Hosted projects (dev, staging, production) live in London (eu-west-2) and
+# are linked with `supabase link --project-ref <ref>`.
+project_id = "goinstall"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+extra_search_path = ["public"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 17
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["http://localhost:3000/auth/callback"]
+jwt_expiry = 3600
+enable_signup = false
+
+[auth.email]
+enable_signup = true
+enable_confirmations = true
+
+[storage]
+enabled = true
