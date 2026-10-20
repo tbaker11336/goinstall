@@ -189,7 +189,7 @@ export async function sendSurveyLinkAction(projectId: string, _?: ActionResult, 
   return result;
 }
 
-/** "Copy link": a fresh link staff can paste into WhatsApp or a text until WhatsApp is connected. */
+/** "Copy link": a fresh link staff can paste into a text message or another app. */
 export async function createSurveyLinkAction(projectId: string): Promise<{ url?: string; error?: string }> {
   if (!uuid.safeParse(projectId).success) return { error: "Project not found" };
   const out = await asUser(async (tx) => {

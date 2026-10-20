@@ -12,8 +12,7 @@ type Channel = "note" | "email";
 
 /**
  * Contact page composer: internal notes and emails, a "Send survey link"
- * shortcut, and the team's saved templates. WhatsApp joins in phase 2 once a
- * number is connected.
+ * shortcut, and the team's saved templates.
  */
 export function Composer({
   contactId,
@@ -63,9 +62,6 @@ export function Composer({
               Email{contactEmail ? "" : " (no address)"}
             </option>
             <option value="note">Internal note</option>
-            <option value="whatsapp" disabled>
-              WhatsApp (coming soon)
-            </option>
           </Select>
           {templates.length > 0 && channel === "email" && (
             <>

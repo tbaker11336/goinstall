@@ -7,6 +7,13 @@ each phase before starting the next. Ask the business about anything listed
 under Open questions rather than assuming (especially MCS tables and EV
 design rules: never invent rule values).
 
+## Decisions from the business
+
+- WhatsApp is deferred (October 2026): don't build or show it until asked.
+  The `whatsapp` message channel stays in the schema for later.
+- Email sends through Resend from `EMAIL_FROM` with the company's name;
+  replies go to the sending staff member (reply-to). Inbound email later.
+
 ## Conventions
 
 - Schema changes are new files in `supabase/migrations/` (timestamp prefix);

@@ -27,7 +27,6 @@ export interface ThreadEvent {
 export const THREAD_TABS = [
   { key: "all", label: "All" },
   { key: "email", label: "Email" },
-  { key: "whatsapp", label: "WhatsApp" },
   { key: "note", label: "Notes" },
 ] as const;
 export type ThreadTab = (typeof THREAD_TABS)[number]["key"];
@@ -111,7 +110,7 @@ export function Thread({
       <ol className="flex min-h-[420px] flex-col gap-[18px] bg-[#fcfcfd] p-6 max-md:p-4">
         {items.length === 0 && (
           <li>
-            <EmptyState>{tab === "email" || tab === "whatsapp" ? "Email and WhatsApp arrive in phase 2." : "Nothing here yet."}</EmptyState>
+            <EmptyState>{tab === "email" ? "No emails yet." : "Nothing here yet."}</EmptyState>
           </li>
         )}
         {items.map((item) =>

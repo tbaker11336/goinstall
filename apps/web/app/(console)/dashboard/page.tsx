@@ -170,7 +170,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                   ))}
                 </ul>
               ) : (
-                <EmptyState>No unread messages. Email and WhatsApp replies appear here once messaging is connected.</EmptyState>
+                <EmptyState>No unread messages. Customer email replies appear here once inbound email is connected.</EmptyState>
               )}
             </CardContent>
           </Card>

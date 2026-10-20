@@ -21,7 +21,7 @@ function Feedback({ error, message }: { error?: string | null; message?: string 
   return null;
 }
 
-/** Online survey card actions: email the link, or create one to paste into WhatsApp. */
+/** Online survey card actions: email the link, or create one to paste into a text message. */
 export function SurveyLinkActions({ projectId, canEmail, sent }: { projectId: string; canEmail: boolean; sent: boolean }) {
   const [pending, start] = useTransition();
   const [result, setResult] = useState<{ error?: string | null; message?: string | null }>({});
