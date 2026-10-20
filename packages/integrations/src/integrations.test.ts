@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createMemoryFileStore, createOfflineSupplier, createPvgisClient, createRecordingSender, pvgisAspect, createResendSender, createSupabaseFileStore, textToHtml } from "./index";
+import { createGoogleMapsClient, createMemoryFileStore, createOfflineSupplier, createPvgisClient, metresPerPixel, parseBuildingInsights, toLocalMetres, createRecordingSender, pvgisAspect, createResendSender, createSupabaseFileStore, textToHtml } from "./index";
 
 describe("textToHtml", () => {
   it("escapes HTML, keeps paragraphs and links URLs", () => {
@@ -98,5 +98,38 @@ describe("PVGIS", () => {
     expect(url).toContain("peakpower=8.01");
     expect(url).toContain("aspect=0");
     expect(url).toContain("angle=35");
+  });
+});
+
+describe("Google Solar", () => {
+  it("parses roof segments and the largest suggested layout", () => {
+    const insights = parseBuildingInsights({
+      imageryQuality: "HIGH",
+      center: { latitude: 52.06, longitude: -1.34 },
+      solarPotential: {
+        maxArrayPanelsCount: 30,
+        roofSegmentStats: [
+          { pitchDegrees: 35.24, azimuthDegrees: 178.6, stats: { areaMeters2: 40.33, sunshineQuantiles: [800, 900, 1000, 1100, 1200] }, center: { latitude: 52.0601, longitude: -1.3401 }, boundingBox: { sw: { latitude: 52.06, longitude: -1.341 }, ne: { latitude: 52.0602, longitude: -1.3392 } } },
+        ],
+        solarPanelConfigs: [
+          { panelsCount: 4, roofSegmentSummaries: [{ segmentIndex: 0, panelsCount: 4 }] },
+          { panelsCount: 18, roofSegmentSummaries: [{ segmentIndex: 0, panelsCount: 18 }] },
+        ],
+      },
+    });
+    expect(insights).toMatchObject({ imageryQuality: "HIGH", maxPanels: 30, suggestedPanels: { 0: 18 } });
+    expect(insights.segments[0]).toMatchObject({ pitch: 35.2, azimuth: 178.6, areaM2: 40.3, sunshineHours: 1000 });
+  });
+
+  it("treats 404 as no coverage", async () => {
+    const client = createGoogleMapsClient({ apiKey: "k", fetch: (async () => new Response(JSON.stringify({ error: { code: 404, status: "NOT_FOUND", message: "x" } }), { status: 404 })) as unknown as typeof fetch });
+    expect((await client.buildingInsights({ lat: 1, lng: 1 })).status).toBe("no_coverage");
+  });
+
+  it("converts lat/lng to local metres and map scale", () => {
+    const p = toLocalMetres({ lat: 52, lng: -1 }, { lat: 52.0001, lng: -0.9999 });
+    expect(p.x).toBeCloseTo(6.85, 1);
+    expect(p.y).toBeCloseTo(-11.13, 1);
+    expect(metresPerPixel(52, 20)).toBeCloseTo(0.0919, 3);
   });
 });

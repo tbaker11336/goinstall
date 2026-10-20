@@ -1,0 +1,5 @@
+zone,pitch,orientation,kwh_per_kwp
+TEST,30,0,1000
+TEST,30,45,950
+TEST,40,0,990
+TEST,40,45,930

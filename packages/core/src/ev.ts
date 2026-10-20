@@ -105,3 +105,77 @@ export function chargerCurrentA(specs: { rated_a?: number; rated_kw?: number; ph
 export function evMilesFromSurplus(surplusKwh: number, milesPerKwh: number | null): number | null {
   return milesPerKwh ? Math.round((surplusKwh * milesPerKwh) / 100) * 100 : null;
 }
+
+export interface EvDesignInput {
+  route: Point[];
+  /** Install method for each route segment (between consecutive points). */
+  routeMethods: string[];
+  /** Typed length; used instead of the drawn one when not measured (e.g. on a photo). */
+  routeLengthM: number | null;
+  routeLengthMeasured: boolean;
+  charger: { rated_a?: number; rated_kw?: number; phases?: number } | null;
+  mainFuseA: number | null;
+  existingDemandA: number | null;
+  rules: { cables: CableRow[] | null; voltDropLimitPct: number | null; chargerDiversity: number | null };
+}
+
+export interface EvDesignResult {
+  lengthM: number | null;
+  chargerA: number | null;
+  cableSizeMm2: number | null;
+  voltDropPct: number | null;
+  voltDropLimitPct: number | null;
+  demandA: number | null;
+  headroomA: number | null;
+  loadManagementNeeded: boolean | null;
+  fuseUpgradeWarning: boolean;
+  notes: string[];
+}
+
+/** Evaluate the EV design: route length, cable size and volt drop, maximum demand. */
+export function evaluateEvDesign(input: EvDesignInput): EvDesignResult {
+  const notes: string[] = [];
+  const chargerA = input.charger ? chargerCurrentA(input.charger) : null;
+  if (!input.charger) notes.push("Choose a charger.");
+  else if (chargerA === null) notes.push("The chosen charger needs its rated current or power in its datasheet values.");
+
+  const drawn = input.route.length >= 2 ? routeLength(input.route) : null;
+  const lengthM = input.routeLengthMeasured ? drawn : input.routeLengthM;
+  if (lengthM === null) notes.push(input.routeLengthMeasured ? "Draw the cable route from the supply to the charger." : "Enter the cable route length.");
+
+  // Segment lengths: drawn ones, scaled to a typed total when the plan isn't to scale.
+  let segments: CableSegment[] = [];
+  if (lengthM !== null) {
+    if (input.route.length >= 2) {
+      const parts = input.route.slice(1).map((p, i) => Math.hypot(p.x - input.route[i]!.x, p.y - input.route[i]!.y));
+      const sum = parts.reduce((a, b) => a + b, 0) || 1;
+      segments = parts.map((len, i) => ({ lengthM: (len / sum) * lengthM, method: input.routeMethods[i] ?? input.routeMethods[0] ?? "" }));
+    } else segments = [{ lengthM, method: input.routeMethods[0] ?? "" }];
+    if (segments.some((s) => !s.method)) notes.push("Choose how each part of the cable route is installed.");
+  }
+
+  let cableSizeMm2: number | null = null;
+  let voltDropPct: number | null = null;
+  if (chargerA !== null && lengthM !== null && segments.every((s) => s.method)) {
+    const cable = sizeCable(segments, chargerA, { cables: input.rules.cables, voltDropLimitPct: input.rules.voltDropLimitPct });
+    if (cable.ok) {
+      cableSizeMm2 = cable.sizeMm2;
+      voltDropPct = cable.voltDropPct;
+    } else notes.push(cable.missing);
+  }
+
+  let demandA: number | null = null;
+  let headroomA: number | null = null;
+  let loadManagementNeeded: boolean | null = null;
+  let fuseUpgradeWarning = false;
+  if (chargerA !== null) {
+    const d = maxDemand({ existingDemandA: input.existingDemandA, chargerA, mainFuseA: input.mainFuseA }, { chargerDiversity: input.rules.chargerDiversity });
+    if (d.ok) {
+      demandA = d.demandA;
+      headroomA = d.headroomA;
+      loadManagementNeeded = d.loadManagementNeeded;
+      fuseUpgradeWarning = d.fuseUpgradeWarning;
+    } else notes.push(d.missing);
+  }
+  return { lengthM, chargerA, cableSizeMm2, voltDropPct, voltDropLimitPct: input.rules.voltDropLimitPct, demandA, headroomA, loadManagementNeeded, fuseUpgradeWarning, notes: [...new Set(notes)] };
+}

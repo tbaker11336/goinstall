@@ -150,3 +150,14 @@ export async function findPublicSurvey(tx: Tx, token: string): Promise<PublicSur
 export async function touchSurvey(tx: Tx, s: Pick<PublicSurvey, "surveyId" | "companyId">) {
   await tx.updateTable("surveys").set({ last_opened_at: sql<Date>`now()` }).where("id", "=", s.surveyId).where("company_id", "=", s.companyId).execute();
 }
+
+/** Survey answers the design uses, by key. */
+export async function surveyAnswers(tx: Tx, projectId: string) {
+  const rows = await tx
+    .selectFrom("survey_fields as f")
+    .innerJoin("surveys as s", "s.id", "f.survey_id")
+    .select(["f.key", "f.value"])
+    .where("s.project_id", "=", projectId)
+    .execute();
+  return Object.fromEntries(rows.map((r) => [r.key, r.value])) as Record<string, string | null>;
+}

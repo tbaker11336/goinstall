@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chargerCurrentA, maxDemand, parseAmps, routeLength, sizeCable, voltDropPercent, type CableRow } from "./ev";
+import { chargerCurrentA, evaluateEvDesign, maxDemand, parseAmps, routeLength, sizeCable, voltDropPercent, type CableRow } from "./ev";
 
 // SYNTHETIC FIXTURE: invented ratings to test the selection logic. Not BS 7671
 // values; the business supplies its own cable table.
@@ -72,5 +72,31 @@ describe("helpers", () => {
     expect(chargerCurrentA({ rated_kw: 7.4 })).toBe(32.2);
     expect(chargerCurrentA({ rated_kw: 22, phases: 3 })).toBe(31.9);
     expect(chargerCurrentA({})).toBeNull();
+  });
+});
+
+describe("evaluateEvDesign (synthetic table)", () => {
+  const rules = { cables: CABLES, voltDropLimitPct: 5, chargerDiversity: 1 };
+  it("sizes cable over a drawn route with per-segment methods and checks demand", () => {
+    const r = evaluateEvDesign({
+      route: [{ x: 0, y: 0 }, { x: 0, y: 2 }, { x: 10.4, y: 2 }],
+      routeMethods: ["clipped", "clipped"],
+      routeLengthM: null,
+      routeLengthMeasured: true,
+      charger: { rated_a: 32 },
+      mainFuseA: 100,
+      existingDemandA: 46,
+      rules,
+    });
+    expect(r).toMatchObject({ lengthM: 12.4, chargerA: 32, cableSizeMm2: 4, voltDropPct: 1.9, demandA: 78, loadManagementNeeded: false, notes: [] });
+  });
+  it("uses a typed length when the plan isn't to scale", () => {
+    const r = evaluateEvDesign({ route: [], routeMethods: ["buried"], routeLengthM: 8, routeLengthMeasured: false, charger: { rated_a: 32 }, mainFuseA: 60, existingDemandA: 40, rules });
+    // 4 mm² buried is rated 33 A in the fixture, enough for 32 A.
+    expect(r).toMatchObject({ lengthM: 8, cableSizeMm2: 4, loadManagementNeeded: true, fuseUpgradeWarning: true });
+  });
+  it("lists what's missing", () => {
+    const r = evaluateEvDesign({ route: [], routeMethods: [], routeLengthM: null, routeLengthMeasured: true, charger: null, mainFuseA: null, existingDemandA: null, rules: { cables: null, voltDropLimitPct: null, chargerDiversity: null } });
+    expect(r.notes).toEqual(["Choose a charger.", "Draw the cable route from the supply to the charger."]);
   });
 });
