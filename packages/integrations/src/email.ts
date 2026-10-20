@@ -14,6 +14,8 @@ export interface OutgoingEmail {
   /** Stops a retried request sending the same email twice. */
   idempotencyKey?: string;
   tags?: Record<string, string>;
+  /** Files attached to the email (e.g. a purchase order PDF). */
+  attachments?: { filename: string; content: Uint8Array; contentType?: string }[];
 }
 
 export type SendResult = { ok: true; providerId: string } | { ok: false; error: string; retryable: boolean };
@@ -61,6 +63,7 @@ export function createResendSender({ apiKey, fetch: fetchImpl = fetch, baseUrl =
             subject: email.subject,
             text: email.text,
             html: email.html ?? textToHtml(email.text),
+            attachments: email.attachments?.map((a) => ({ filename: a.filename, content: Buffer.from(a.content).toString("base64"), content_type: a.contentType })),
             tags: email.tags ? Object.entries(email.tags).map(([name, value]) => ({ name, value: value.replace(/[^A-Za-z0-9_-]/g, "_") })) : undefined,
           }),
         });

@@ -18,7 +18,7 @@ export function emailSender(): EmailSender {
     const outbox = process.env.EMAIL_OUTBOX_FILE;
     g.goinstallEmail = createRecordingSender({
       onSend: async (email) => {
-        if (outbox) await appendFile(outbox, `${JSON.stringify({ ...email, at: new Date().toISOString() })}\n`);
+        if (outbox) await appendFile(outbox, `${JSON.stringify({ ...email, attachments: email.attachments?.map((a) => a.filename), at: new Date().toISOString() })}\n`);
         else console.info(`[email not sent: no RESEND_API_KEY] to ${email.to}: ${email.subject}`);
       },
     });

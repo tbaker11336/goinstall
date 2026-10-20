@@ -40,6 +40,7 @@ const companySchema = z.object({
   town: text,
   county: text,
   postcode: text.transform((v) => v?.toUpperCase() ?? null),
+  depot_address: text,
   company_number: text,
   vat_number: text,
   mcs_number: text,

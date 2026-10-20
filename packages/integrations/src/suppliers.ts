@@ -30,6 +30,8 @@ export interface PurchaseOrder {
   lines: PurchaseOrderLine[];
   notes?: string;
   replyTo?: string;
+  /** The branded PO PDF, attached to emailed orders. */
+  pdf?: Uint8Array;
 }
 
 export type PlacedOrder = { ok: true; providerRef: string } | { ok: false; error: string };
@@ -43,7 +45,7 @@ export interface SupplierAdapter {
   getOrderStatus?(providerRef: string): Promise<{ status: string; expectedDelivery: Date | null }>;
 }
 
-/** Plain-text purchase order, used in the email body (the PDF follows in phase 5). */
+/** Plain-text purchase order, used in the email body (the PDF is attached). */
 export function purchaseOrderText(po: PurchaseOrder): string {
   const money = (p: number | null) => (p === null ? "" : `£${(p / 100).toFixed(2)}`);
   const lines = po.lines.map((l) => `${l.quantity} × ${l.description}${l.supplierSku ? ` [${l.supplierSku}]` : ""}${l.unitCostPence !== null ? ` @ ${money(l.unitCostPence)}` : ""}`);
@@ -86,6 +88,7 @@ export function createOfflineSupplier(opts: OfflineSupplierOptions): SupplierAda
         text: purchaseOrderText(po),
         idempotencyKey: `po-${po.reference}`,
         tags: { kind: "purchase_order" },
+        attachments: po.pdf ? [{ filename: `${po.reference}.pdf`, content: po.pdf, contentType: "application/pdf" }] : undefined,
       });
       return result.ok ? { ok: true, providerRef: result.providerId } : { ok: false, error: result.error };
     },

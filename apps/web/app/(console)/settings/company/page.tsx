@@ -48,6 +48,7 @@ export default async function CompanySettingsPage() {
             <TextField c={c} name="county" label="County" />
             <TextField c={c} name="postcode" label="Postcode" />
             <div className="hidden sm:block" />
+            <TextField c={c} name="depot_address" label="Depot address" hint="Where kit can be delivered instead of the site." className="sm:col-span-2" />
             <TextField c={c} name="company_number" label="Company number" />
             <TextField c={c} name="vat_number" label="VAT number" />
             <TextField c={c} name="mcs_number" label="MCS certification number" />
