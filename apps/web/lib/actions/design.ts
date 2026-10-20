@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { asUser } from "@/lib/auth";
 import { loadDesignRules } from "@/lib/design-rules";
+import { loadEnergy } from "@/lib/energy";
 import { surveyAnswers } from "@/lib/survey";
 
 const rect = z.object({ x: z.number().finite(), y: z.number().finite(), w: z.number().positive().max(10), h: z.number().positive().max(10) });
@@ -58,13 +59,14 @@ export async function saveSolarDesignAction(projectId: string, payload: SolarDes
   return asUser(async (tx) => {
     const project = await tx.selectFrom("projects").select(["id", "site_postcode", "products", "lat", "lng"]).where("id", "=", projectId).executeTakeFirst();
     if (!project) return { error: "Project not found" };
-    const [rules, panel, inverter, battery, answers, previous] = await Promise.all([
+    const [rules, panel, inverter, battery, answers, previous, energy] = await Promise.all([
       loadDesignRules(tx),
       product(tx, d.panelProductId),
       product(tx, d.inverterProductId),
       product(tx, d.batteryProductId),
       surveyAnswers(tx, projectId),
       tx.selectFrom("solar_designs").select(["version", "segments", "pvgis_kwh", "pvgis_monthly"]).where("project_id", "=", projectId).orderBy("version", "desc").limit(1).executeTakeFirst(),
+      loadEnergy(tx, projectId),
     ]);
     const arrays = d.segments.filter((s) => s.used).map((s) => ({ id: s.id, label: s.label, pitch: s.pitch, azimuth: s.azimuth, panelCount: s.panels.length, shadeFactor: s.shadeFactor }));
     const result = evaluateSolarDesign({
@@ -74,7 +76,9 @@ export async function saveSolarDesignAction(projectId: string, payload: SolarDes
       battery: battery ? { usableKwh: Number(battery.specs.usable_kwh ?? battery.specs.capacity_kwh ?? 0), count: d.batteryCount } : null,
       postcode: project.site_postcode ?? "",
       phases: /three/i.test(answers.supply_phase ?? "") ? 3 : 1,
-      survey: { occupancy: answers.occupancy ?? null, annualUsageKwh: answers.annual_usage_kwh ? Number(answers.annual_usage_kwh) : null },
+      // Energy use entered on the Design tab wins over the survey answer.
+      survey: { occupancy: answers.occupancy ?? null, annualUsageKwh: energy.annualKwh },
+      tariff: energy.unitRatePence !== null && energy.exportRatePence !== null ? { unitRatePence: energy.unitRatePence, exportRatePence: energy.exportRatePence } : null,
       hasEv: project.products.includes("ev"),
       rules: { yields: rules.yields, zones: rules.zones, selfConsumption: rules.selfConsumption, settings: rules.settings },
     });
@@ -131,6 +135,8 @@ export async function saveSolarDesignAction(projectId: string, payload: SolarDes
         export_kw: result.exportKw,
         connection_form: result.connection?.form ?? null,
         calc_notes: JSON.stringify(result.notes),
+        mcs_arrays: JSON.stringify(result.perArray),
+        mcs_zone: result.zone,
       })
       .execute();
     revalidatePath(`/projects/${projectId}/design`);

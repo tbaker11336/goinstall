@@ -42,6 +42,7 @@ export interface SolarDesignerProps {
   batteries: CatalogueOption[];
   rules: { yields: McsYieldRow[] | null; zones: McsZoneRow[] | null; selfConsumption: SelfConsumptionRow[] | null; settings: DesignSettings };
   survey: { occupancy: string | null; annualUsageKwh: number | null; phases: 1 | 3 };
+  tariff: { unitRatePence: number; exportRatePence: number } | null;
   postcode: string;
   hasEv: boolean;
   photos: { url: string; label: string }[];
@@ -115,10 +116,11 @@ export function SolarDesigner(props: SolarDesignerProps) {
         postcode: props.postcode,
         phases: props.survey.phases,
         survey: { occupancy: props.survey.occupancy, annualUsageKwh: props.survey.annualUsageKwh },
+        tariff: props.tariff,
         hasEv: props.hasEv,
         rules: props.rules,
       }),
-    [segments, panel, inverter, battery, batteryCount, props.postcode, props.survey, props.hasEv, props.rules],
+    [segments, panel, inverter, battery, batteryCount, props.postcode, props.survey, props.tariff, props.hasEv, props.rules],
   );
 
   const payload: SolarDesignPayload = useMemo(

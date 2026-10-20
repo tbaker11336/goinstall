@@ -39,6 +39,10 @@ export const SPEC_FIELDS: Partial<Record<ProductCategory, SpecField[]>> = {
     { key: "vmp", label: "Voltage at max power (Vmp)", unit: "V", type: "number" },
     { key: "imp", label: "Current at max power (Imp)", unit: "A", type: "number" },
     { key: "temp_coeff_voc", label: "Voc temperature coefficient", unit: "%/°C", type: "number" },
+    { key: "degradation_first_year_pct", label: "Output lost in year 1", unit: "%", type: "number" },
+    { key: "degradation_annual_pct", label: "Output lost each later year", unit: "%", type: "number" },
+    { key: "warranty_years", label: "Product warranty", unit: "years", type: "number" },
+    { key: "performance_warranty_years", label: "Performance warranty", unit: "years", type: "number" },
   ],
   inverter: [
     { key: "ac_kw", label: "AC output", unit: "kW", type: "number" },
@@ -50,11 +54,15 @@ export const SPEC_FIELDS: Partial<Record<ProductCategory, SpecField[]>> = {
     { key: "max_input_a", label: "Max input current per MPPT", unit: "A", type: "number" },
     { key: "hybrid", label: "Hybrid (battery-ready)", type: "boolean" },
     { key: "phases", label: "Phases", type: "number" },
+    { key: "efficiency_pct", label: "Max efficiency", unit: "%", type: "number" },
+    { key: "warranty_years", label: "Product warranty", unit: "years", type: "number" },
   ],
   battery: [
     { key: "capacity_kwh", label: "Capacity", unit: "kWh", type: "number" },
     { key: "usable_kwh", label: "Usable capacity", unit: "kWh", type: "number" },
     { key: "power_kw", label: "Continuous power", unit: "kW", type: "number" },
+    { key: "round_trip_efficiency_pct", label: "Round-trip efficiency", unit: "%", type: "number" },
+    { key: "warranty_years", label: "Product warranty", unit: "years", type: "number" },
   ],
   ev_charger: [
     { key: "rated_kw", label: "Rated power", unit: "kW", type: "number" },
@@ -63,6 +71,7 @@ export const SPEC_FIELDS: Partial<Record<ProductCategory, SpecField[]>> = {
     { key: "tethered", label: "Tethered", type: "boolean" },
     { key: "solar_divert", label: "Solar divert mode", type: "boolean" },
     { key: "pen_protection", label: "Built-in PEN fault protection", type: "boolean" },
+    { key: "warranty_years", label: "Product warranty", unit: "years", type: "number" },
   ],
 };
 

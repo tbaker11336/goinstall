@@ -58,3 +58,20 @@ describe("rule tables", () => {
     expect(await errorCode(noSource)).toBe("23514");
   });
 });
+
+describe("energy profiles", () => {
+  it("are one per project, office-only and inside the company", async () => {
+    await asUser(a.users.office, (c) => c.query("insert into energy_profiles (project_id, annual_kwh, unit_rate_pence) values ($1, 4200, 24.5)", [a.projectId]), { commit: true });
+    expect(await errorCode(asUser(a.users.office, (c) => c.query("insert into energy_profiles (project_id) values ($1)", [a.projectId])))).toBe("23505");
+    expect(await asUser(b.users.office, async (c) => (await c.query("select 1 from energy_profiles")).rowCount)).toBe(0);
+    for (const role of ["installer", "subcontractor"] as const) {
+      expect(await asUser(a.users[role], async (c) => (await c.query("select 1 from energy_profiles")).rowCount)).toBe(0);
+    }
+    expect(await errorCode(asUser(a.users.office, (c) => c.query("insert into energy_profiles (project_id, monthly_kwh) values ($1, '{1,2,3}')", [b.projectId])))).toBeDefined();
+  });
+
+  it("start companies on the business's finance defaults", async () => {
+    const f = await asUser(a.users.admin, async (c) => (await c.query("select finance_settings from companies")).rows[0].finance_settings);
+    expect(f).toEqual({ electricityInflationPct: 5, discountRatePct: 2.58, lifetimeYears: 20, degradationFirstYearPct: 2, degradationAnnualPct: 0.55 });
+  });
+});

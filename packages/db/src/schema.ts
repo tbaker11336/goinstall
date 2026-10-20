@@ -193,6 +193,9 @@ export interface Companies {
   created_at: Generated<Timestamp>;
   created_by: Generated<string | null>;
   default_deposit_pct: Numeric | null;
+  default_export_rate_pence: Numeric | null;
+  default_standing_charge_pence: Numeric | null;
+  default_unit_rate_pence: Numeric | null;
   depot_address: string | null;
   design_settings: Generated<Json>;
   document_prefix: string | null;
@@ -206,6 +209,9 @@ export interface Companies {
   email_sender: string | null;
   enquiry_form: Generated<Json>;
   enquiry_form_key: Generated<string>;
+  finance_settings: Generated<Json>;
+  grid_emissions_kg_per_kwh: Numeric | null;
+  grid_emissions_source: string | null;
   id: Generated<string>;
   logo_path: string | null;
   mcs_number: string | null;
@@ -248,6 +254,22 @@ export interface Contacts {
   stage: Generated<ContactStage>;
   tags: Generated<string[]>;
   town: string | null;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface EnergyProfiles {
+  annual_kwh: number | null;
+  company_id: Generated<string>;
+  created_at: Generated<Timestamp>;
+  created_by: Generated<string | null>;
+  export_rate_pence: Numeric | null;
+  id: Generated<string>;
+  monthly_kwh: number[] | null;
+  project_id: string;
+  source: Generated<string>;
+  standing_charge_pence: Numeric | null;
+  tariff_name: string | null;
+  unit_rate_pence: Numeric | null;
   updated_at: Generated<Timestamp>;
 }
 
@@ -609,10 +631,14 @@ export interface SolarDesigns {
   created_by: Generated<string | null>;
   dc_ac_ratio: Numeric | null;
   export_kw: Numeric | null;
+  google_yearly_kwh: number | null;
   id: Generated<string>;
+  imagery_date: Timestamp | null;
   inverter_product_id: string | null;
   is_active: Generated<boolean>;
   kwp: Generated<Numeric>;
+  mcs_arrays: Json | null;
+  mcs_zone: string | null;
   panel_count: Generated<number>;
   panel_product_id: string | null;
   project_id: string;
@@ -760,6 +786,7 @@ export interface DB {
   checklist_templates: ChecklistTemplates;
   companies: Companies;
   contacts: Contacts;
+  energy_profiles: EnergyProfiles;
   ev_designs: EvDesigns;
   files: Files;
   integrations: Integrations;

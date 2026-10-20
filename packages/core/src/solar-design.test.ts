@@ -13,6 +13,7 @@ const base: SolarDesignInput = {
   postcode: "OX16 9AB",
   phases: 1,
   survey: { occupancy: "Home all day", annualUsageKwh: 4200 },
+  tariff: { unitRatePence: 25, exportRatePence: 15 },
   hasEv: true,
   rules: {
     yields: [{ zone: "Z", pitch: 35, orientation: 0, kwhPerKwp: 854 }],
@@ -21,7 +22,7 @@ const base: SolarDesignInput = {
       { occupancy: "Home all day", consumptionFromKwh: 0, generationFromKwh: 0, batteryFromKwh: 0, fraction: 0.38 },
       { occupancy: "Home all day", consumptionFromKwh: 0, generationFromKwh: 0, batteryFromKwh: 5, fraction: 0.71 },
     ],
-    settings: { minDesignTempC: -10, importPencePerKwh: 25, exportPencePerKwh: 15, evMilesPerKwh: 3.5 },
+    settings: { minDesignTempC: -10, evMilesPerKwh: 3.5 },
   },
 };
 

@@ -1,9 +1,9 @@
-import { DESIGN_SETTING_FIELDS, RULE_TABLES, type RuleTableKind } from "@goinstall/core";
+import { DEFAULT_FINANCE, DESIGN_SETTING_FIELDS, FINANCE_FIELDS, RULE_TABLES, type FinanceAssumptions, type RuleTableKind } from "@goinstall/core";
 import { ActionForm, SubmitButton } from "@/components/forms";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { saveDesignSettingsAction, uploadRuleTableAction } from "@/lib/actions/design-rules";
+import { saveDesignSettingsAction, saveFinanceSettingsAction, uploadRuleTableAction } from "@/lib/actions/design-rules";
 import { asUser } from "@/lib/auth";
 import { loadDesignRules } from "@/lib/design-rules";
 import { formatDate } from "@/lib/utils";
@@ -11,7 +11,18 @@ import { formatDate } from "@/lib/utils";
 export const metadata = { title: "Design rules" };
 
 export default async function DesignRulesPage() {
-  const rules = await asUser((tx) => loadDesignRules(tx), ["admin"]);
+  const { rules, company } = await asUser(
+    async (tx, s) => ({
+      rules: await loadDesignRules(tx),
+      company: await tx
+        .selectFrom("companies")
+        .select(["finance_settings", "default_unit_rate_pence", "default_standing_charge_pence", "default_export_rate_pence", "grid_emissions_kg_per_kwh", "grid_emissions_source"])
+        .where("id", "=", s.companyId)
+        .executeTakeFirstOrThrow(),
+    }),
+    ["admin"],
+  );
+  const finance = { ...DEFAULT_FINANCE, ...((company.finance_settings ?? {}) as Partial<FinanceAssumptions>) };
   return (
     <>
       <Card>
@@ -86,6 +97,68 @@ export default async function DesignRulesPage() {
             </div>
             <div>
               <SubmitButton>Save design settings</SubmitButton>
+            </div>
+          </ActionForm>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="flex-col items-start">
+          <CardTitle>Savings and payback</CardTitle>
+          <p className="text-sm text-ink-3">
+            Used for bills, payback, net present value and the 20-year cash flow on proposals. Prefilled with your own figures; change them to suit. Each project can
+            have its own tariff on the Design tab.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <ActionForm action={saveFinanceSettingsAction} className="flex flex-col gap-4">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {FINANCE_FIELDS.map((f) => (
+                <div key={f.key} className="flex flex-col gap-1.5">
+                  <label htmlFor={`fin-${f.key}`} className="text-[13px] font-semibold text-ink-2">
+                    {f.label} ({f.unit})
+                  </label>
+                  <Input id={`fin-${f.key}`} name={f.key} inputMode="decimal" defaultValue={finance[f.key]} required aria-describedby={`fin-${f.key}-help`} />
+                  <span id={`fin-${f.key}-help`} className="text-xs text-muted-foreground">
+                    {f.help}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <h3 className="mt-2 text-sm font-bold">Default tariff for new projects</h3>
+            <div className="grid gap-4 sm:grid-cols-3">
+              {(
+                [
+                  ["default_unit_rate_pence", "Unit rate (p/kWh)"],
+                  ["default_standing_charge_pence", "Standing charge (p/day)"],
+                  ["default_export_rate_pence", "Export tariff (p/kWh)"],
+                ] as const
+              ).map(([k, label]) => (
+                <div key={k} className="flex flex-col gap-1.5">
+                  <label htmlFor={k} className="text-[13px] font-semibold text-ink-2">
+                    {label}
+                  </label>
+                  <Input id={k} name={k} inputMode="decimal" defaultValue={company[k] ?? ""} />
+                </div>
+              ))}
+            </div>
+            <h3 className="mt-2 text-sm font-bold">Environmental figures</h3>
+            <div className="grid gap-4 sm:grid-cols-[200px_1fr]">
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="grid_emissions_kg_per_kwh" className="text-[13px] font-semibold text-ink-2">
+                  Grid emissions (kg CO₂ per kWh)
+                </label>
+                <Input id="grid_emissions_kg_per_kwh" name="grid_emissions_kg_per_kwh" inputMode="decimal" defaultValue={company.grid_emissions_kg_per_kwh ?? ""} />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="grid_emissions_source" className="text-[13px] font-semibold text-ink-2">
+                  Source of the factor
+                </label>
+                <Input id="grid_emissions_source" name="grid_emissions_source" defaultValue={company.grid_emissions_source ?? ""} placeholder="e.g. the published UK grid factor and year you use" />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">Leave the emissions factor blank to leave CO₂ off proposals.</p>
+            <div>
+              <SubmitButton>Save savings and payback</SubmitButton>
             </div>
           </ActionForm>
         </CardContent>

@@ -144,10 +144,6 @@ export interface DesignSettings {
   evChargerDiversity?: number;
   /** Miles per kWh used for "EV miles from solar". */
   evMilesPerKwh?: number;
-  /** Electricity price used for yearly saving, pence per kWh. */
-  importPencePerKwh?: number;
-  /** Export payment rate, pence per kWh. */
-  exportPencePerKwh?: number;
 }
 
 export const DESIGN_SETTING_FIELDS: { key: keyof DesignSettings; label: string; unit: string; help: string; min: number; max: number }[] = [
@@ -158,8 +154,6 @@ export const DESIGN_SETTING_FIELDS: { key: keyof DesignSettings; label: string; 
   { key: "evVoltDropLimitPct", label: "EV volt drop limit", unit: "%", help: "From your installation standard.", min: 0.5, max: 10 },
   { key: "evChargerDiversity", label: "Charger diversity in max demand", unit: "×", help: "1 means the charger's full current is added.", min: 0, max: 1 },
   { key: "evMilesPerKwh", label: "EV efficiency", unit: "miles per kWh", help: "For the 'EV miles from solar' figure.", min: 1, max: 6 },
-  { key: "importPencePerKwh", label: "Electricity price", unit: "p/kWh", help: "For yearly saving and payback.", min: 1, max: 100 },
-  { key: "exportPencePerKwh", label: "Export rate", unit: "p/kWh", help: "For yearly saving and payback.", min: 0, max: 100 },
 ];
 
 export function parseDesignSettings(raw: Record<string, string | undefined>): { settings: DesignSettings } | { error: string } {

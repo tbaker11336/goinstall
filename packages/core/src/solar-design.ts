@@ -37,6 +37,8 @@ export interface SolarDesignInput {
   phases: 1 | 3;
   exportLimitKw?: number | null;
   survey: { occupancy: string | null; annualUsageKwh: number | null };
+  /** The customer's tariff, for the simple yearly saving shown while designing. */
+  tariff?: { unitRatePence: number; exportRatePence: number } | null;
   hasEv: boolean;
   rules: { yields: McsYieldRow[] | null; zones: McsZoneRow[] | null; selfConsumption: SelfConsumptionRow[] | null; settings: DesignSettings };
 }
@@ -45,6 +47,8 @@ export interface SolarDesignResult {
   panelCount: number;
   kWp: number;
   annualKwh: number | null;
+  /** MCS postcode zone used. */
+  zone: string | null;
   perArray: { id: string; label: string; panels: number; kWp: number; pitch: number; azimuth: number; shadeFactor: number; kwhPerKwp: number | null; annualKwh: number | null }[];
   strings: number[] | null;
   dcAc: number | null;
@@ -68,11 +72,13 @@ export function evaluateSolarDesign(input: SolarDesignInput): SolarDesignResult 
   const kWp = wp ? toKwp(panelCount, wp) : 0;
 
   let annualKwh: number | null = null;
+  let zone: string | null = null;
   let perArray: SolarDesignResult["perArray"] = arrays.map((a) => ({ id: a.id, label: a.label, panels: a.panelCount, kWp: wp ? toKwp(a.panelCount, wp) : 0, pitch: a.pitch, azimuth: a.azimuth, shadeFactor: a.shadeFactor, kwhPerKwp: null, annualKwh: null }));
   if (panelCount && wp) {
     const mcs = mcsAnnualGeneration(arrays, wp, input.postcode, input.rules.yields && input.rules.zones ? { yields: input.rules.yields, zones: input.rules.zones } : null);
     if (mcs.ok) {
       annualKwh = mcs.annualKwh;
+      zone = mcs.zone;
       perArray = perArray.map((p) => {
         const y = mcs.arrays.find((m) => m.id === p.id);
         return y ? { ...p, kwhPerKwp: y.kwhPerKwp, annualKwh: y.annualKwh } : p;
@@ -120,10 +126,10 @@ export function evaluateSolarDesign(input: SolarDesignInput): SolarDesignResult 
 
   let yearlySavingPence: number | null = null;
   const used = selfUseWithBattery ?? selfUse;
-  const { importPencePerKwh, exportPencePerKwh, evMilesPerKwh } = input.rules.settings;
+  const { evMilesPerKwh } = input.rules.settings;
   if (annualKwh && used !== null) {
-    if (importPencePerKwh == null || exportPencePerKwh == null) notes.push("Set the electricity price and export rate in Settings › Design rules for the yearly saving.");
-    else yearlySavingPence = Math.round(annualKwh * (used * importPencePerKwh + (1 - used) * exportPencePerKwh));
+    if (!input.tariff) notes.push("Add the customer's unit rate and export tariff under Energy use and tariff for the yearly saving.");
+    else yearlySavingPence = Math.round(annualKwh * (used * input.tariff.unitRatePence + (1 - used) * input.tariff.exportRatePence));
   }
 
   let evMiles: number | null = null;
@@ -132,5 +138,5 @@ export function evaluateSolarDesign(input: SolarDesignInput): SolarDesignResult 
     else evMiles = Math.round((annualKwh * (1 - used) * evMilesPerKwh) / 100) * 100;
   }
 
-  return { panelCount, kWp, annualKwh, perArray, strings, dcAc, exportKw, connection, selfUse, selfUseWithBattery, yearlySavingPence, evMiles, notes: [...new Set(notes)] };
+  return { panelCount, kWp, annualKwh, zone, perArray, strings, dcAc, exportKw, connection, selfUse, selfUseWithBattery, yearlySavingPence, evMiles, notes: [...new Set(notes)] };
 }

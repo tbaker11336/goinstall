@@ -7,6 +7,7 @@ import type { SolarDesignPayload } from "@/lib/actions/design";
 import { asUser } from "@/lib/auth";
 import { listCatalogue, type CatalogueProduct } from "@/lib/catalogue";
 import { loadDesignRules } from "@/lib/design-rules";
+import { loadEnergy } from "@/lib/energy";
 import { signedUrls } from "@/lib/files";
 import {
   aerialWidthM,
@@ -16,6 +17,7 @@ import {
 } from "@/lib/site";
 import { surveyAnswers, surveyPhotos } from "@/lib/survey";
 import { cn } from "@/lib/utils";
+import { EnergyCard } from "./energy-card";
 import { EvDesigner } from "./ev-designer";
 import { loadEvDesign } from "./ev-data";
 import { SolarDesigner, type CatalogueOption } from "./solar-designer";
@@ -96,7 +98,9 @@ export default async function DesignPage({
         .where("is_active", "=", true)
         .executeTakeFirst(),
     );
+    const energy = await loadEnergy(tx, id);
     return {
+      energy,
       project,
       position,
       rules,
@@ -146,9 +150,8 @@ export default async function DesignPage({
   const byCat = (c: CatalogueProduct["category"]) =>
     catalogue.filter((p) => p.category === c).map(option);
   const occupancy = answers.occupancy ?? null;
-  const usage = answers.annual_usage_kwh
-    ? Number(answers.annual_usage_kwh)
-    : null;
+  // Energy use entered below wins over the survey answer.
+  const usage = data.energy.annualKwh;
   const phases: 1 | 3 = /three/i.test(answers.supply_phase ?? "") ? 3 : 1;
 
   const initial: SolarDesignPayload & {
@@ -247,6 +250,11 @@ export default async function DesignPage({
             settings: rules.settings,
           }}
           survey={{ occupancy, annualUsageKwh: usage, phases }}
+          tariff={
+            data.energy.unitRatePence !== null && data.energy.exportRatePence !== null
+              ? { unitRatePence: data.energy.unitRatePence, exportRatePence: data.energy.exportRatePence }
+              : null
+          }
           postcode={project.site_postcode ?? ""}
           hasEv={hasEv}
           photos={photos}
@@ -270,6 +278,7 @@ export default async function DesignPage({
           solarDesigned={Boolean(design?.annual_kwh_mcs)}
         />
       )}
+      {view === "solar" && <EnergyCard projectId={id} energy={data.energy} design={design ?? null} />}
     </div>
   );
 }
