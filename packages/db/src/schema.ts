@@ -17,6 +17,8 @@ export type ArrayTypeImpl<T> = T extends ColumnType<infer S, infer I, infer U>
 
 export type ContactStage = "design" | "lost" | "new_enquiry" | "proposal_sent" | "survey" | "won";
 
+export type FieldSource = "in_person" | "online" | "photo" | "staff_edit";
+
 export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
   ? ColumnType<S, I | undefined, U>
   : ColumnType<T, T | undefined, T>;
@@ -39,9 +41,15 @@ export type MessageDirection = "inbound" | "internal" | "outbound";
 
 export type Numeric = ColumnType<string, number | string, number | string>;
 
+export type OnlineSurveyStatus = "completed" | "in_progress" | "not_sent" | "sent";
+
 export type ProductType = "battery" | "ev" | "solar";
 
 export type ProjectStage = "accepted" | "complete" | "deposit_paid" | "design" | "enquiry" | "kit_ordered" | "lost" | "proposal_sent" | "scheduled" | "survey";
+
+export type SiteVisitStatus = "booked" | "completed" | "not_needed" | "recommended";
+
+export type SurveyQuestionType = "long_text" | "number" | "select" | "text" | "yes_no";
 
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
@@ -111,6 +119,25 @@ export interface Contacts {
   updated_at: Generated<Timestamp>;
 }
 
+export interface Files {
+  bucket: Generated<string>;
+  category: string | null;
+  company_id: Generated<string>;
+  content_type: string;
+  created_at: Generated<Timestamp>;
+  created_by: Generated<string | null>;
+  deleted_at: Timestamp | null;
+  id: Generated<string>;
+  kind: Generated<string>;
+  original_name: string | null;
+  path: string;
+  project_id: string | null;
+  size_bytes: number;
+  source: string;
+  updated_at: Generated<Timestamp>;
+  uploaded_by: string | null;
+}
+
 export interface Integrations {
   company_id: Generated<string>;
   created_at: Generated<Timestamp>;
@@ -132,6 +159,8 @@ export interface Messages {
   contact_id: string;
   created_at: Generated<Timestamp>;
   created_by: Generated<string | null>;
+  delivery_error: string | null;
+  delivery_status: string | null;
   direction: MessageDirection;
   id: Generated<string>;
   project_id: string | null;
@@ -139,6 +168,38 @@ export interface Messages {
   read_at: Timestamp | null;
   sent_by: string | null;
   subject: string | null;
+  to_address: string | null;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface MessageTemplates {
+  archived_at: Timestamp | null;
+  body: string;
+  channel: MessageChannel;
+  company_id: Generated<string>;
+  created_at: Generated<Timestamp>;
+  created_by: Generated<string | null>;
+  id: Generated<string>;
+  key: string | null;
+  name: string;
+  subject: string | null;
+  updated_at: Generated<Timestamp>;
+  whatsapp_status: string | null;
+  whatsapp_template_name: string | null;
+}
+
+export interface PhotoCategories {
+  archived_at: Timestamp | null;
+  company_id: Generated<string>;
+  created_at: Generated<Timestamp>;
+  created_by: Generated<string | null>;
+  help: string | null;
+  id: Generated<string>;
+  key: string;
+  label: string;
+  position: Generated<number>;
+  products: Generated<ArrayType<ProductType>>;
+  required: Generated<boolean>;
   updated_at: Generated<Timestamp>;
 }
 
@@ -165,6 +226,70 @@ export interface Projects {
   target_install_month: Timestamp | null;
   updated_at: Generated<Timestamp>;
   value: Numeric | null;
+}
+
+export interface SurveyFieldHistory {
+  company_id: string;
+  edited_by: string | null;
+  id: Generated<string>;
+  key: string;
+  replaced_at: Generated<Timestamp>;
+  set_at: Timestamp;
+  source: FieldSource;
+  survey_id: string;
+  value: string | null;
+}
+
+export interface SurveyFields {
+  company_id: Generated<string>;
+  created_at: Generated<Timestamp>;
+  created_by: Generated<string | null>;
+  edited_by: string | null;
+  id: Generated<string>;
+  key: string;
+  source: FieldSource;
+  survey_id: string;
+  updated_at: Generated<Timestamp>;
+  value: string | null;
+}
+
+export interface SurveyQuestions {
+  archived_at: Timestamp | null;
+  ask_online: Generated<boolean>;
+  company_id: Generated<string>;
+  created_at: Generated<Timestamp>;
+  created_by: Generated<string | null>;
+  help: string | null;
+  id: Generated<string>;
+  key: string;
+  label: string;
+  options: Generated<string[]>;
+  position: Generated<number>;
+  products: Generated<ArrayType<ProductType>>;
+  required: Generated<boolean>;
+  section: Generated<string>;
+  type: Generated<SurveyQuestionType>;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface Surveys {
+  company_id: Generated<string>;
+  completed_at: Timestamp | null;
+  created_at: Generated<Timestamp>;
+  created_by: Generated<string | null>;
+  id: Generated<string>;
+  last_opened_at: Timestamp | null;
+  online_completed_at: Timestamp | null;
+  online_status: Generated<OnlineSurveyStatus>;
+  project_id: string;
+  sent_at: Timestamp | null;
+  sent_count: Generated<number>;
+  site_visit_at: Timestamp | null;
+  site_visit_status: Generated<SiteVisitStatus>;
+  surveyor_id: string | null;
+  token_expires_at: Timestamp | null;
+  token_hash: string | null;
+  updated_at: Generated<Timestamp>;
 }
 
 export interface Teams {
@@ -196,9 +321,16 @@ export interface DB {
   activity_log: ActivityLog;
   companies: Companies;
   contacts: Contacts;
+  files: Files;
   integrations: Integrations;
+  message_templates: MessageTemplates;
   messages: Messages;
+  photo_categories: PhotoCategories;
   projects: Projects;
+  survey_field_history: SurveyFieldHistory;
+  survey_fields: SurveyFields;
+  survey_questions: SurveyQuestions;
+  surveys: Surveys;
   teams: Teams;
   users: Users;
 }

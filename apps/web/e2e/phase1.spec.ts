@@ -88,6 +88,7 @@ test("notes appear in the contact thread", async ({ page }) => {
   await signInAs(page, "Priya Shah");
   await page.goto("/contacts");
   await page.getByRole("link", { name: "Helen Price" }).click();
+  await page.getByLabel("Send via").selectOption("note");
   await page.getByLabel("Note").fill("Left a voicemail about the survey.");
   await page.getByRole("button", { name: "Add note" }).click();
   await expect(page.getByText("Left a voicemail about the survey.")).toBeVisible();

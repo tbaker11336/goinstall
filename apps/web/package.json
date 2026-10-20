@@ -13,6 +13,7 @@
   "dependencies": {
     "@goinstall/core": "workspace:*",
     "@goinstall/db": "workspace:*",
+    "@goinstall/integrations": "workspace:*",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.118.0",
     "class-variance-authority": "^0.7.1",

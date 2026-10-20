@@ -4,13 +4,14 @@ import { notFound } from "next/navigation";
 import { z } from "zod";
 import { ContactFields, ProductCheckboxes } from "@/components/contact-fields";
 import { Avatar, ContactStageChip, EmptyState, productLabel, ProductTags, StageChip } from "@/components/domain";
+import { Composer } from "@/components/composer";
 import { ActionForm, SubmitButton } from "@/components/forms";
 import { Thread, THREAD_TABS, type ThreadTab } from "@/components/thread";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, Textarea } from "@/components/ui/input";
-import { addNoteAction, addProjectAction, updateContactAction } from "@/lib/actions/crm";
+import { addProjectAction, updateContactAction } from "@/lib/actions/crm";
 import { asUser } from "@/lib/auth";
+import { emailConfigured } from "@/lib/email";
 import { contactTimeline, listSources, listStaff } from "@/lib/queries";
 import { addressLine, cn, formatMoney } from "@/lib/utils";
 
@@ -23,7 +24,7 @@ export default async function ContactPage({ params, searchParams }: { params: Pr
   const data = await asUser(async (tx) => {
     const contact = await tx.selectFrom("contacts").selectAll().where("id", "=", id).executeTakeFirst();
     if (!contact) return null;
-    const [projects, timeline, staff, sources] = await Promise.all([
+    const [projects, timeline, staff, sources, templates] = await Promise.all([
       tx
         .selectFrom("projects")
         .select(["id", "site_address_line1", "site_postcode", "products", "stage", "value"])
@@ -33,11 +34,20 @@ export default async function ContactPage({ params, searchParams }: { params: Pr
       contactTimeline(tx, id),
       listStaff(tx),
       listSources(tx),
+      // The team's own templates; app templates (e.g. the survey link) have a key.
+      tx
+        .selectFrom("message_templates")
+        .select(["id", "name", "subject", "body"])
+        .where("channel", "=", "email")
+        .where("key", "is", null)
+        .where("archived_at", "is", null)
+        .orderBy("name")
+        .execute(),
     ]);
-    return { contact, projects, timeline, staff, sources };
+    return { contact, projects, timeline, staff, sources, templates };
   });
   if (!data) notFound();
-  const { contact, projects, timeline, staff, sources } = data;
+  const { contact, projects, timeline, staff, sources, templates } = data;
 
   const owner = staff.find((u) => u.id === contact.owner_id)?.full_name;
   const since = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "Europe/London" }).format(new Date(contact.created_at));
@@ -148,48 +158,13 @@ export default async function ContactPage({ params, searchParams }: { params: Pr
 
         <Card className="flex min-w-0 flex-[999_1_520px] flex-col overflow-hidden" aria-label="Conversation">
           <Thread messages={timeline.messages} events={timeline.events} tab={tab} tabHref={(t) => `/contacts/${contact.id}${t === "all" ? "" : `?tab=${t}`}`} />
-          <ActionForm action={addNoteAction.bind(null, contact.id)} className="flex flex-col gap-2.5 border-t px-4 py-3.5" resetOnSuccess>
-            <div className="flex flex-wrap items-center gap-2">
-              <label htmlFor="channel" className="sr-only">
-                Send via
-              </label>
-              <Select id="channel" name="channel" defaultValue="note" aria-describedby="channel-hint" className="h-[34px] w-auto text-[13px] font-semibold">
-                <option value="note">Internal note</option>
-                <option value="whatsapp" disabled>
-                  WhatsApp (phase 2)
-                </option>
-                <option value="email" disabled>
-                  Email (phase 2)
-                </option>
-              </Select>
-              {projects.length > 1 && (
-                <>
-                  <label htmlFor="project_id" className="sr-only">
-                    Project
-                  </label>
-                  <Select id="project_id" name="project_id" defaultValue="" className="h-[34px] w-auto text-[13px]">
-                    <option value="">Not about one project</option>
-                    {projects.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {addressLine(p.site_address_line1, p.site_postcode) || "Project"}
-                      </option>
-                    ))}
-                  </Select>
-                </>
-              )}
-              {projects.length === 1 && <input type="hidden" name="project_id" value={projects[0]!.id} />}
-              <span id="channel-hint" className="ml-auto text-[12.5px] text-muted-foreground">
-                Email and WhatsApp sending arrive in phase 2
-              </span>
-            </div>
-            <div className="flex items-end gap-2.5">
-              <label htmlFor="body" className="sr-only">
-                Note
-              </label>
-              <Textarea id="body" name="body" required placeholder="Write a note for the team…" className="min-h-[72px] flex-1 rounded-[10px]" />
-              <SubmitButton>Add note</SubmitButton>
-            </div>
-          </ActionForm>
+          <Composer
+            contactId={contact.id}
+            contactEmail={contact.email}
+            projects={projects.map((p) => ({ id: p.id, label: addressLine(p.site_address_line1, p.site_postcode) || "Project" }))}
+            templates={templates}
+            emailLive={emailConfigured()}
+          />
         </Card>
       </div>
     </>

@@ -12,6 +12,8 @@ export interface ThreadMessage {
   body: string;
   created_at: Date;
   sender: string | null;
+  delivery_status?: string | null;
+  delivery_error?: string | null;
 }
 
 export interface ThreadEvent {
@@ -121,6 +123,13 @@ export function Thread({
                 {item.e.actor && ` by ${item.e.actor}`} · <time dateTime={item.at.toISOString()}>{formatDateTime(item.at)}</time>
               </span>
             </li>
+          ) : item.m.channel === "system" ? (
+            <li key={`m-${item.m.id}`} className="inline-flex max-w-full items-center gap-2 self-center rounded-full bg-success-tint px-3 py-1.5 text-[12.5px] font-semibold text-success-text">
+              <Check className="size-3.5 shrink-0" strokeWidth={2.5} aria-hidden />
+              <span>
+                {item.m.body} · <time dateTime={item.at.toISOString()}>{formatDateTime(item.at)}</time>
+              </span>
+            </li>
           ) : (
             <MessageItem key={`m-${item.m.id}`} m={item.m} />
           ),
@@ -159,6 +168,10 @@ function MessageItem({ m }: { m: ThreadMessage }) {
         {m.subject && <p className="font-semibold">{m.subject}</p>}
         <p className="whitespace-pre-wrap">{m.body}</p>
       </div>
+      {m.delivery_status === "failed" && (
+        <span className="text-xs font-semibold text-red-700">Not delivered{m.delivery_error ? `: ${m.delivery_error}` : ""}</span>
+      )}
+      {m.delivery_status === "queued" && <span className="text-xs text-muted-foreground">Sending…</span>}
     </li>
   );
 }

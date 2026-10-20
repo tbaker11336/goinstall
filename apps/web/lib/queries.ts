@@ -151,7 +151,7 @@ export async function contactTimeline(tx: Tx, contactId: string, projectId?: str
   let messages = tx
     .selectFrom("messages as m")
     .leftJoin("users as u", "u.id", "m.sent_by")
-    .select(["m.id", "m.channel", "m.direction", "m.subject", "m.body", "m.created_at", "m.project_id", "u.full_name as sender"])
+    .select(["m.id", "m.channel", "m.direction", "m.subject", "m.body", "m.created_at", "m.project_id", "m.delivery_status", "m.delivery_error", "u.full_name as sender"])
     .where("m.contact_id", "=", contactId)
     .orderBy("m.created_at", "desc")
     .limit(200);
@@ -162,6 +162,8 @@ export async function contactTimeline(tx: Tx, contactId: string, projectId?: str
     .leftJoin("users as u", "u.id", "a.actor_id")
     .select(["a.id", "a.event", "a.payload", "a.created_at", "a.project_id", "u.full_name as actor"])
     .where("a.contact_id", "=", contactId)
+    // These are also written to the thread as system messages; show them once.
+    .where("a.event", "not in", ["online_survey_completed", "online_survey_updated"])
     .orderBy("a.created_at", "desc")
     .limit(200);
   if (projectId) events = events.where("a.project_id", "=", projectId);

@@ -29,6 +29,9 @@ importers:
       '@goinstall/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@goinstall/integrations':
+        specifier: workspace:*
+        version: link:../../packages/integrations
       '@supabase/ssr':
         specifier: ^0.12.7
         version: 0.12.7(@supabase/supabase-js@2.118.0)
