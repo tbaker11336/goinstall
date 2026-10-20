@@ -16,6 +16,9 @@ design rules: never invent rule values).
 - Install checklists: GoInstall drafts starter steps (marked as drafts,
   editable in Settings); test readings have no default values.
 - Installer app: iOS and Android from launch (one Expo codebase).
+- Surveys: EV chargers and solar & battery are separate surveys, each with
+  its own questions, photos, link and status (`survey_kind`); a project with
+  both gets two.
 - Calendar sync: a private iCal feed link per team (Google, Outlook and
   Apple subscribe to it); no account connections for now.
 

@@ -22,11 +22,11 @@ wins.
 | --- | --- | --- |
 | 1 | `companies`, `users`, `teams`, `contacts`, `projects`, `messages`, `activity_log`, `integrations` | Built. Unmatched inbound messages have no contact (the manual-link inbox) |
 | 2 | `message_templates` | Email and WhatsApp; WhatsApp templates carry Meta approval status |
-| 2 | `surveys` | One per project; online and in-person status, surveyor, hashed link token |
-| 2 | `survey_questions` | Per-company configurable questions by product |
+| 2 | `surveys` | One per project per `kind` (`solar_battery`, `ev`: separate surveys, business decision); online and in-person status, surveyor, hashed link token |
+| 2 | `survey_questions` | Per-company configurable questions per survey kind (and optionally per product within it) |
 | 2 | `survey_fields` | Current value per key, with source and editor |
 | 2 | `survey_field_history` | Every overwritten value (offline conflicts: last write wins, history kept) |
-| 2 | `photo_categories` | Per-company required photo types |
+| 2 | `photo_categories` | Per-company required photo types per survey kind |
 | 2 | `files` | All stored objects (photos, signatures, PDFs, attachments): bucket path, type, uploader; other tables reference it |
 | 3 | `products` | Company catalogue: category, make, model, specs JSON, sell price |
 | 3 | `suppliers` | Connection type, credentials reference, last sync |

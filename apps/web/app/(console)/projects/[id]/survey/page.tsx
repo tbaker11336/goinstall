@@ -126,7 +126,7 @@ export default async function ProjectSurveyPage({ params, searchParams }: { para
               {status === "in_progress" && `${project.contact_name} has started: ${onlineAnswers} answers, ${onlinePhotos} photos so far.`}
               {status === "completed" && `Filled in by ${project.contact_name} · ${onlineAnswers} answers, ${onlinePhotos} photos.`}
             </p>
-            <SurveyLinkActions projectId={project.id} kind={kind} canEmail={Boolean(project.contact_email)} sent={status !== "not_sent"} />
+            <SurveyLinkActions key={kind} projectId={project.id} kind={kind} canEmail={Boolean(project.contact_email)} sent={status !== "not_sent"} />
           </div>
         </Card>
 

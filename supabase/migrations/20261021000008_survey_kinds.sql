@@ -7,21 +7,21 @@ create type public.survey_kind as enum ('solar_battery', 'ev');
 -- Questions and photo categories belong to one survey. Questions that applied
 -- to every project (e.g. the electrics) are copied into both.
 alter table public.survey_questions add column survey_kind public.survey_kind;
+alter table public.survey_questions drop constraint survey_questions_company_id_key_key;
 update public.survey_questions set survey_kind = case when products = '{ev}' then 'ev'::public.survey_kind else 'solar_battery'::public.survey_kind end;
 insert into public.survey_questions (company_id, survey_kind, key, label, help, type, options, products, section, position, required, ask_online, archived_at, created_by)
   select company_id, 'ev', key, label, help, type, options, products, section, position, required, ask_online, archived_at, created_by
   from public.survey_questions where products = '{}' and survey_kind = 'solar_battery';
 alter table public.survey_questions alter column survey_kind set not null;
-alter table public.survey_questions drop constraint survey_questions_company_id_key_key;
 alter table public.survey_questions add constraint survey_questions_kind_key unique (company_id, survey_kind, key);
 
 alter table public.photo_categories add column survey_kind public.survey_kind;
+alter table public.photo_categories drop constraint photo_categories_company_id_key_key;
 update public.photo_categories set survey_kind = case when products = '{ev}' then 'ev'::public.survey_kind else 'solar_battery'::public.survey_kind end;
 insert into public.photo_categories (company_id, survey_kind, key, label, help, products, required, position, archived_at, created_by)
   select company_id, 'ev', key, label, help, products, required, position, archived_at, created_by
   from public.photo_categories where products = '{}' and survey_kind = 'solar_battery';
 alter table public.photo_categories alter column survey_kind set not null;
-alter table public.photo_categories drop constraint photo_categories_company_id_key_key;
 alter table public.photo_categories add constraint photo_categories_kind_key unique (company_id, survey_kind, key);
 
 -- Photos say which survey they were taken for (null: staff uploads and app photos).

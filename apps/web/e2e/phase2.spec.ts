@@ -148,7 +148,7 @@ test("solar and EV: two separate surveys, each with its own link and questions",
   await page.getByRole("link", { name: "Grace Okafor" }).click();
   await page.getByRole("link", { name: /Henleaze/ }).click();
   await page.waitForURL(/\/projects\/[0-9a-f-]{36}$/);
-  await page.getByRole("navigation", { name: "Project sections" }).getByRole("link", { name: "Survey", exact: true }).click();
+  await page.getByRole("navigation", { name: "Project sections" }).getByRole("link", { name: /^(\(done\) )?Survey$/ }).click();
   const surveys = page.getByRole("navigation", { name: "Surveys" });
   await expect(surveys.getByRole("link", { name: "Solar & battery survey" })).toHaveAttribute("aria-current", "page");
   await page.getByRole("button", { name: "Create link to copy" }).click();
