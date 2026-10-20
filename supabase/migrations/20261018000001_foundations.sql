@@ -150,6 +150,9 @@ language sql stable security definer set search_path = '' as $$
   select coalesce(private.current_app_role() = any (roles), false);
 $$;
 
+-- teams is created before the helper exists, so set its default here.
+alter table public.teams alter column company_id set default private.current_company_id();
+
 -- Users may edit their own name, phone and preferences, but only an admin may
 -- change role, team, company or active status.
 create function private.guard_user_update() returns trigger

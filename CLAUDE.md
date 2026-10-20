@@ -25,3 +25,16 @@ design rules: never invent rule values).
 - `pnpm test`: needs `DATABASE_URL` pointing at a Postgres superuser
   connection (default `postgres://postgres:postgres@localhost:5432/postgres`).
 - `pnpm typecheck`
+- `pnpm --filter @goinstall/db reset-dev` then `pnpm --filter @goinstall/db codegen`
+  after schema changes.
+- `cd apps/web && pnpm e2e` (here: `PW_CHROMIUM_PATH=/opt/pw-browsers/chromium`).
+
+## Web console
+
+- Next.js 16 (read `apps/web/node_modules/next/dist/docs` before using an API;
+  middleware is `proxy.ts`, request APIs are async).
+- Read and write for users only through `asUser()` in `apps/web/lib/auth.ts`
+  (RLS applies). `withService` is for onboarding, webhooks and public routes
+  that have done their own checks.
+- UI components follow shadcn/ui layout in `components/ui`; keep forms
+  accessible (labels, keyboard alternatives to drag and drop).

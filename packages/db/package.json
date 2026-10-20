@@ -5,10 +5,23 @@
   "type": "module",
   "scripts": {
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "reset-dev": "tsx scripts/reset-dev.ts",
+    "codegen": "kysely-codegen --dialect postgres --include-pattern 'public.*' --out-file src/schema.ts --url ${CODEGEN_DATABASE_URL:-postgres://postgres:postgres@localhost:5432/goinstall_dev}"
   },
   "devDependencies": {
     "@types/pg": "^8.15.0",
-    "pg": "^8.16.0"
+    "kysely-codegen": "^0.20.0",
+    "pg": "^8.16.0",
+    "tsx": "^4.23.15"
+  },
+  "dependencies": {
+    "kysely": "^0.29.7",
+    "postgres-array": "^3.0.4"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./migrate": "./src/migrate.ts",
+    "./seed": "./src/seed.ts"
   }
 }

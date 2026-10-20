@@ -111,16 +111,22 @@ describe("project stages", () => {
 
 describe("contact stages", () => {
   it("requires a reason to mark a contact lost and logs the change", async () => {
+    const contactId = await asSuperuser(async (c) => {
+      const { rows } = await c.query("insert into contacts (company_id, name) values ($1, 'No projects') returning id", [
+        a.companyId,
+      ]);
+      return rows[0].id as string;
+    });
     const code = await errorCode(
-      asUser(a.users.office, (c) => c.query("update contacts set stage = 'lost' where id = $1", [a.contactId])),
+      asUser(a.users.office, (c) => c.query("update contacts set stage = 'lost' where id = $1", [contactId])),
     );
     expect(code).toBe("23514");
 
     const payload = await asUser(a.users.office, async (c) => {
-      await c.query("update contacts set stage = 'lost', lost_reason = 'Price' where id = $1", [a.contactId]);
+      await c.query("update contacts set stage = 'lost', lost_reason = 'Price' where id = $1", [contactId]);
       const { rows } = await c.query(
         "select payload from activity_log where contact_id = $1 and event = 'contact_stage_changed'",
-        [a.contactId],
+        [contactId],
       );
       return rows[0]?.payload;
     });
