@@ -8,6 +8,7 @@ const SECTIONS = [
   { href: "/settings/products", label: "Products & suppliers" },
   { href: "/settings/design", label: "Design rules" },
   { href: "/settings/surveys", label: "Surveys & templates" },
+  { href: "/settings/invoices", label: "Invoices & quotes" },
 ];
 
 export default async function SettingsLayout({ children }: { children: React.ReactNode }) {
@@ -20,7 +21,7 @@ export default async function SettingsLayout({ children }: { children: React.Rea
         <div className="flex min-w-0 max-w-[860px] flex-[999_1_560px] flex-col gap-6">
           {children}
           <p className="text-xs text-muted-foreground">
-            Invoices &amp; quotes, integrations and install checklists arrive with the phases that use them.
+            Integrations and install checklists arrive with the phases that use them.
           </p>
         </div>
       </div>

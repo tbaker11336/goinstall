@@ -35,6 +35,9 @@ export default defineConfig({
       RESEND_API_KEY: "",
       FILE_STORE: "disk",
       FILE_STORE_DIR: `${process.cwd()}/.data/e2e-uploads`,
+      PAYMENTS_FAKE: "true",
+      STRIPE_SECRET_KEY: "",
+      STRIPE_WEBHOOK_SECRET: "",
     },
   },
 });

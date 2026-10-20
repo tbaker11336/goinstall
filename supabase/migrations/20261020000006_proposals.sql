@@ -236,6 +236,10 @@ alter table public.companies
 
 -- Labour and extras on proposals come from catalogue items too (category labour).
 
+-- Signatures drawn on the public proposal page are stored as files.
+alter table public.files drop constraint files_source_check;
+alter table public.files add constraint files_source_check check (source in ('online_survey', 'staff', 'installer_app', 'customer'));
+
 -- Allocate the next proposal or invoice number for the caller's company.
 create function public.next_document_number(p_kind text) returns integer
 language plpgsql security definer set search_path = '' as $$

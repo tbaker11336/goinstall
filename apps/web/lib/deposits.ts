@@ -2,15 +2,27 @@ import "server-only";
 import { formatPence } from "@goinstall/core";
 import { sql, type Tx } from "@goinstall/db";
 
-/** Invoice reference from the company prefix: INV-0007. */
+/**
+ * Invoice reference from the company prefix: Q-INV-0007. Staff can't update
+ * the company row (admin only), so they allocate through next_document_number;
+ * the service role (public page, webhook) updates the counter directly.
+ */
 async function nextInvoiceNumber(tx: Tx, companyId: string) {
-  const c = await tx
-    .updateTable("companies")
-    .set((eb) => ({ next_invoice_number: eb("next_invoice_number", "+", 1) }))
-    .where("id", "=", companyId)
-    .returning(["next_invoice_number", "document_prefix"])
-    .executeTakeFirstOrThrow();
-  return `${(c.document_prefix ?? "INV").replace(/-$/, "")}-INV-${String(c.next_invoice_number - 1).padStart(4, "0")}`;
+  const { rows } = await sql<{ u: string }>`select current_user as u`.execute(tx);
+  let n: number;
+  if (rows[0]?.u === "authenticated") {
+    n = (await sql<{ n: number }>`select public.next_document_number('invoice') as n`.execute(tx)).rows[0]!.n;
+  } else {
+    const c = await tx
+      .updateTable("companies")
+      .set((eb) => ({ next_invoice_number: eb("next_invoice_number", "+", 1) }))
+      .where("id", "=", companyId)
+      .returning("next_invoice_number")
+      .executeTakeFirstOrThrow();
+    n = c.next_invoice_number - 1;
+  }
+  const c = await tx.selectFrom("companies").select("document_prefix").where("id", "=", companyId).executeTakeFirstOrThrow();
+  return `${(c.document_prefix ?? "Q").replace(/-$/, "")}-INV-${String(n).padStart(4, "0")}`;
 }
 
 /**

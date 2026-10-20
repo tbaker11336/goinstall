@@ -2,6 +2,7 @@ import "server-only";
 import { createHash, createHmac, randomBytes } from "node:crypto";
 import { buildLinesFromDesigns, type CatalogueItem, type ProductCategory, type VatRates } from "@goinstall/core";
 import { sql, type Tx } from "@goinstall/db";
+import type { ProposalView } from "@/components/proposal-document";
 import { env } from "./env";
 
 /** Secret for proposal links. A dedicated one if set; else the service key (server-only either way). */
@@ -158,3 +159,42 @@ export async function proposalContent(tx: Tx, proposalId: string, companyId?: st
 }
 
 export type ProposalContent = NonNullable<Awaited<ReturnType<typeof proposalContent>>>;
+
+/** Content in the shape ProposalDocument renders. */
+export function proposalView(c: ProposalContent): ProposalView {
+  const p = c.proposal;
+  return {
+    companyName: p.company_name,
+    mcsNumber: p.mcs_number,
+    documentPrefix: p.document_prefix,
+    number: p.number,
+    version: p.version,
+    validUntil: p.valid_until,
+    title: p.title,
+    intro: p.intro,
+    contactName: p.contact_name,
+    depositPct: Number(p.deposit_pct),
+    summary: (p.summary ?? {}) as ProposalView["summary"],
+    lines: c.lines.map((l) => ({ id: l.id, section: l.section, description: l.description, quantity: Number(l.quantity), unitPricePence: Number(l.unit_price_pence), vatRate: Number(l.vat_rate) })),
+    terms: p.terms,
+  };
+}
+
+/** Customer opened the link: count it and move Sent → Viewed (service role only). */
+export async function recordProposalView(tx: Tx, p: PublicProposal, userAgent: string | null) {
+  await tx.insertInto("proposal_views").values({ company_id: p.companyId, proposal_id: p.id, user_agent: userAgent?.slice(0, 300) ?? null }).execute();
+  await tx
+    .updateTable("proposals")
+    .set((eb) => ({
+      view_count: eb("view_count", "+", 1),
+      first_viewed_at: sql<Date>`coalesce(first_viewed_at, now())`,
+      last_viewed_at: sql<Date>`now()`,
+      ...(p.status === "sent" ? { status: "viewed" as const } : {}),
+    }))
+    .where("id", "=", p.id)
+    .where("company_id", "=", p.companyId)
+    .execute();
+  if (p.status === "sent") {
+    await tx.insertInto("activity_log").values({ company_id: p.companyId, project_id: p.projectId, contact_id: p.contactId, actor_id: null, event: "proposal_viewed", payload: {} }).execute();
+  }
+}
