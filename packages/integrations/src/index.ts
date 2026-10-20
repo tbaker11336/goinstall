@@ -5,3 +5,4 @@ export * from "./storage";
 export * from "./suppliers";
 export * from "./pvgis";
 export * from "./google";
+export * from "./payments";

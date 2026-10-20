@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createGoogleMapsClient, createMemoryFileStore, createOfflineSupplier, createPvgisClient, metresPerPixel, parseBuildingInsights, toLocalMetres, createRecordingSender, pvgisAspect, createResendSender, createSupabaseFileStore, textToHtml } from "./index";
+import { createStripePayments, signStripePayload, verifyStripeWebhook, createGoogleMapsClient, createMemoryFileStore, createOfflineSupplier, createPvgisClient, metresPerPixel, parseBuildingInsights, toLocalMetres, createRecordingSender, pvgisAspect, createResendSender, createSupabaseFileStore, textToHtml } from "./index";
 
 describe("textToHtml", () => {
   it("escapes HTML, keeps paragraphs and links URLs", () => {
@@ -131,5 +131,35 @@ describe("Google Solar", () => {
     expect(p.x).toBeCloseTo(6.85, 1);
     expect(p.y).toBeCloseTo(-11.13, 1);
     expect(metresPerPixel(52, 20)).toBeCloseTo(0.0919, 3);
+  });
+});
+
+describe("Stripe", () => {
+  it("creates a Checkout session on the company's connected account", async () => {
+    let req: { url: string; init: RequestInit } | null = null;
+    const fetchMock = (async (url: string, init: RequestInit) => {
+      req = { url, init };
+      return new Response(JSON.stringify({ id: "cs_1", url: "https://checkout.stripe.com/c/cs_1" }));
+    }) as unknown as typeof fetch;
+    const stripe = createStripePayments({ secretKey: "sk_test", fetch: fetchMock });
+    const s = await stripe.createCheckout({ amountPence: 371250, description: "Deposit Q-0142", successUrl: "https://x/ok", cancelUrl: "https://x/no", metadata: { invoice_id: "inv1" }, connectedAccountId: "acct_9", idempotencyKey: "inv1" });
+    expect(s).toEqual({ id: "cs_1", url: "https://checkout.stripe.com/c/cs_1" });
+    const headers = req!.init.headers as Record<string, string>;
+    expect(headers["Stripe-Account"]).toBe("acct_9");
+    expect(headers["Idempotency-Key"]).toBe("inv1");
+    const body = new URLSearchParams(req!.init.body as string);
+    expect(body.get("line_items[0][price_data][unit_amount]")).toBe("371250");
+    expect(body.get("metadata[invoice_id]")).toBe("inv1");
+    expect(body.get("line_items[0][price_data][currency]")).toBe("gbp");
+  });
+
+  it("verifies webhook signatures and rejects tampering and replays", () => {
+    const payload = JSON.stringify({ id: "evt_1", type: "checkout.session.completed", data: { object: { id: "cs_1" } } });
+    const header = signStripePayload(payload, "whsec_x", 1_000_000);
+    expect(verifyStripeWebhook(payload, header, "whsec_x", { now: 1_000_010 }).id).toBe("evt_1");
+    expect(() => verifyStripeWebhook(payload.replace("cs_1", "cs_2"), header, "whsec_x", { now: 1_000_010 })).toThrow(/mismatch/);
+    expect(() => verifyStripeWebhook(payload, header, "whsec_other", { now: 1_000_010 })).toThrow(/mismatch/);
+    expect(() => verifyStripeWebhook(payload, header, "whsec_x", { now: 1_001_000 })).toThrow(/tolerance/);
+    expect(() => verifyStripeWebhook(payload, null, "whsec_x")).toThrow();
   });
 });

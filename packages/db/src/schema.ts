@@ -51,6 +51,8 @@ export type ProductType = "battery" | "ev" | "solar";
 
 export type ProjectStage = "accepted" | "complete" | "deposit_paid" | "design" | "enquiry" | "kit_ordered" | "lost" | "proposal_sent" | "scheduled" | "survey";
 
+export type ProposalStatus = "accepted" | "declined" | "draft" | "sent" | "superseded" | "viewed";
+
 export type SiteVisitStatus = "booked" | "completed" | "not_needed" | "recommended";
 
 export type SupplierConnection = "api" | "email" | "price_file";
@@ -105,13 +107,19 @@ export interface Companies {
   logo_path: string | null;
   mcs_number: string | null;
   name: string;
+  next_invoice_number: Generated<number>;
+  next_proposal_number: Generated<number>;
   payment_terms: string | null;
   phone: string | null;
   postcode: string | null;
+  proposal_valid_days: number | null;
+  shared_visit_discount_pence: Int8 | null;
+  stripe_account_id: string | null;
   terms_and_conditions: string | null;
   town: string | null;
   updated_at: Generated<Timestamp>;
   vat_number: string | null;
+  vat_rates: Generated<Json>;
   website: string | null;
 }
 
@@ -206,6 +214,26 @@ export interface Integrations {
   user_id: string | null;
 }
 
+export interface Invoices {
+  amount_pence: Int8;
+  company_id: Generated<string>;
+  created_at: Generated<Timestamp>;
+  created_by: Generated<string | null>;
+  due_date: Timestamp | null;
+  id: Generated<string>;
+  issued_at: Generated<Timestamp>;
+  kind: string;
+  number: string;
+  paid_at: Timestamp | null;
+  project_id: string;
+  proposal_id: string | null;
+  status: Generated<string>;
+  updated_at: Generated<Timestamp>;
+  vat_pence: Generated<Int8>;
+  xero_invoice_id: string | null;
+  xero_synced_at: Timestamp | null;
+}
+
 export interface Messages {
   attachments: Generated<Json>;
   body: Generated<string>;
@@ -241,6 +269,21 @@ export interface MessageTemplates {
   updated_at: Generated<Timestamp>;
   whatsapp_status: string | null;
   whatsapp_template_name: string | null;
+}
+
+export interface Payments {
+  amount_pence: Int8;
+  company_id: Generated<string>;
+  created_at: Generated<Timestamp>;
+  created_by: Generated<string | null>;
+  id: Generated<string>;
+  invoice_id: string;
+  method: string;
+  paid_at: Timestamp | null;
+  provider: string | null;
+  provider_ref: string | null;
+  status: Generated<string>;
+  updated_at: Generated<Timestamp>;
 }
 
 export interface PhotoCategories {
@@ -315,6 +358,72 @@ export interface Projects {
   target_install_month: Timestamp | null;
   updated_at: Generated<Timestamp>;
   value: Numeric | null;
+}
+
+export interface ProposalLines {
+  company_id: Generated<string>;
+  created_at: Generated<Timestamp>;
+  created_by: Generated<string | null>;
+  description: string;
+  id: Generated<string>;
+  line_total_pence: Int8;
+  origin: Generated<string>;
+  position: Generated<number>;
+  product_id: string | null;
+  proposal_id: string;
+  quantity: Generated<Numeric>;
+  section: string;
+  unit_price_pence: Int8;
+  updated_at: Generated<Timestamp>;
+  vat_rate: Numeric;
+}
+
+export interface Proposals {
+  accepted_at: Timestamp | null;
+  accepted_ip: string | null;
+  accepted_name: string | null;
+  accepted_user_agent: string | null;
+  company_id: Generated<string>;
+  created_at: Generated<Timestamp>;
+  created_by: Generated<string | null>;
+  decline_reason: string | null;
+  declined_at: Timestamp | null;
+  deposit_pct: Numeric;
+  deposit_pence: Generated<Int8>;
+  ev_design_id: string | null;
+  first_viewed_at: Timestamp | null;
+  id: Generated<string>;
+  intro: string | null;
+  last_reminder_at: Timestamp | null;
+  last_viewed_at: Timestamp | null;
+  link_nonce: string | null;
+  number: number;
+  project_id: string;
+  sent_at: Timestamp | null;
+  sent_channels: Generated<string[]>;
+  signature_file_id: string | null;
+  solar_design_id: string | null;
+  status: Generated<ProposalStatus>;
+  subtotal_pence: Generated<Int8>;
+  summary: Generated<Json>;
+  terms: string | null;
+  title: Generated<string>;
+  token_expires_at: Timestamp | null;
+  token_hash: string | null;
+  total_pence: Generated<Int8>;
+  updated_at: Generated<Timestamp>;
+  valid_until: Timestamp | null;
+  vat_pence: Generated<Int8>;
+  version: number;
+  view_count: Generated<number>;
+}
+
+export interface ProposalViews {
+  company_id: string;
+  id: Generated<string>;
+  proposal_id: string;
+  user_agent: string | null;
+  viewed_at: Generated<Timestamp>;
 }
 
 export interface RoofDataCache {
@@ -488,12 +597,17 @@ export interface DB {
   ev_designs: EvDesigns;
   files: Files;
   integrations: Integrations;
+  invoices: Invoices;
   message_templates: MessageTemplates;
   messages: Messages;
+  payments: Payments;
   photo_categories: PhotoCategories;
   price_file_imports: PriceFileImports;
   products: Products;
   projects: Projects;
+  proposal_lines: ProposalLines;
+  proposal_views: ProposalViews;
+  proposals: Proposals;
   roof_data_cache: RoofDataCache;
   solar_designs: SolarDesigns;
   supplier_products: SupplierProducts;
