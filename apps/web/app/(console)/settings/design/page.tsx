@@ -1,6 +1,7 @@
 import { DEFAULT_DESIGN_SETTINGS, DEFAULT_FINANCE, DESIGN_SETTING_FIELDS, FINANCE_FIELDS, RULE_TABLES, type FinanceAssumptions, type RuleTableKind } from "@goinstall/core";
 import { ActionForm, SubmitButton } from "@/components/forms";
 import { Badge } from "@/components/ui/badge";
+import { GoogleCheck } from "@/components/google-check";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { saveDesignSettingsAction, saveFinanceSettingsAction, uploadRuleTableAction } from "@/lib/actions/design-rules";
@@ -25,6 +26,15 @@ export default async function DesignRulesPage() {
   const finance = { ...DEFAULT_FINANCE, ...((company.finance_settings ?? {}) as Partial<FinanceAssumptions>) };
   return (
     <>
+      <Card>
+        <CardHeader className="flex-col items-start">
+          <CardTitle>Google maps and roof data</CardTitle>
+          <p className="text-sm text-ink-3">Addresses, postcode search, roof faces and aerial images come from Google. This checks each one works with your key.</p>
+        </CardHeader>
+        <CardContent>
+          <GoogleCheck />
+        </CardContent>
+      </Card>
       <Card>
         <CardHeader className="flex-col items-start">
           <CardTitle>Rule tables</CardTitle>

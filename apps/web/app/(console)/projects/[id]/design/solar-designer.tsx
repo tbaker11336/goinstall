@@ -66,6 +66,8 @@ export interface SolarDesignerProps {
   mapsBrowserKey: string | null;
   /** Postcode search needs the server-side Google key. */
   canSearch: boolean;
+  /** Google's message when it refused the address or roof lookup (key, API or billing settings). */
+  googleError?: string | null;
   panels: CatalogueOption[];
   inverters: CatalogueOption[];
   batteries: CatalogueOption[];
@@ -856,6 +858,11 @@ export function SolarDesigner(props: SolarDesignerProps) {
           )}
         </div>
 
+        {props.googleError && (
+          <p role="alert" className="border-t bg-red-50 px-4 py-2.5 text-[13px] text-red-900">
+            Google refused the lookup: {props.googleError}. Check that the server key has the Geocoding, Solar and Maps Static APIs enabled, billing on, and no website restriction (Settings › Design rules › Check Google connection).
+          </p>
+        )}
         {mapError && <p className="border-t bg-warning-tint px-4 py-2.5 text-[13px] text-warning-text">The live Google map couldn&rsquo;t load ({mapError}), so the saved aerial image is shown. Check the browser key&rsquo;s website restrictions.</p>}
         {roofStatus !== "ok" && roofStatus !== "drawn" && (
           <p className="border-t bg-info-tint px-4 py-2.5 text-[13px] text-info-text">

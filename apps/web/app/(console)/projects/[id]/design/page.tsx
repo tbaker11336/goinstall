@@ -64,7 +64,7 @@ export default async function DesignPage({
       .where("id", "=", id)
       .executeTakeFirst();
     if (!project) return null;
-    const position = await ensureSitePosition(tx, project);
+    const { position, error: geocodeError } = await ensureSitePosition(tx, project);
     const [rules, catalogue, answers, photos, design] = await Promise.all([
       loadDesignRules(tx),
       listCatalogue(tx, {
@@ -103,6 +103,7 @@ export default async function DesignPage({
       energy,
       project,
       position,
+      googleError: geocodeError ?? roof?.error ?? null,
       rules,
       catalogue,
       answers,
@@ -254,6 +255,7 @@ export default async function DesignPage({
           position={position}
           mapsBrowserKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY || null}
           canSearch={Boolean(process.env.GOOGLE_MAPS_API_KEY)}
+          googleError={data.googleError}
           panels={byCat("panel")}
           inverters={byCat("inverter")}
           batteries={byCat("battery")}

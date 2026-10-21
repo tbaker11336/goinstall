@@ -1,9 +1,11 @@
 "use server";
 
+import { checkGoogle, type GoogleCheck } from "@/lib/google-check";
+
 import { DESIGN_SETTING_FIELDS, FINANCE_FIELDS, parseCsv, parseDesignSettings, RULE_PARSERS, RULE_TABLES, type RuleTableKind } from "@goinstall/core";
 import { sql } from "@goinstall/db";
 import { revalidatePath } from "next/cache";
-import { asUser } from "@/lib/auth";
+import { asUser, requireAdmin } from "@/lib/auth";
 import type { ActionResult } from "./crm";
 
 /**
@@ -78,4 +80,10 @@ export async function saveFinanceSettingsAction(_: ActionResult, form: FormData)
     revalidatePath("/settings/design");
     return { message: "Savings and payback settings saved." };
   }, ["admin"]);
+}
+
+/** Settings › Design rules: "Check Google connection" (admins; three billed calls). */
+export async function checkGoogleAction(): Promise<GoogleCheck | { error: string }> {
+  await requireAdmin();
+  return checkGoogle();
 }

@@ -20,8 +20,12 @@ export async function relocateSiteAction(
   if (!q.success) return { error: q.error.issues[0]!.message };
   const maps = googleMaps();
   if (!maps) return { error: "Search needs the Google Maps key (GOOGLE_MAPS_API_KEY)." };
-  const at = await maps.geocode(q.data).catch(() => undefined);
-  if (at === undefined) return { error: "The map search isn't working just now. Try again shortly." };
+  let at: { lat: number; lng: number } | null;
+  try {
+    at = await maps.geocode(q.data);
+  } catch (e) {
+    return { error: `Google refused the search: ${e instanceof Error ? e.message.slice(0, 200) : "unknown error"}` };
+  }
   if (!at) return { error: `Nothing found for “${q.data}”.` };
   return asUser(async (tx) => {
     const updated = await tx.updateTable("projects").set({ lat: at.lat, lng: at.lng }).where("id", "=", projectId).returning("id").executeTakeFirst();

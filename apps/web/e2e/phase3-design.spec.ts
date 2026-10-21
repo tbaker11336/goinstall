@@ -15,6 +15,9 @@ const fixture = (f: string) => path.join(process.cwd(), "e2e", "fixtures", f);
 test("design rules upload, solar auto-fill and MCS figure, EV cable sizing", async ({ page }) => {
   await signInAs(page, "Alex Morgan");
   await page.goto("/settings/design");
+  // No Google key in e2e: the check says so plainly instead of failing silently.
+  await page.getByRole("button", { name: "Check Google connection" }).click();
+  await expect(page.getByRole("status", { name: "Google connection" })).toContainText("GOOGLE_MAPS_API_KEY isn't set on the server");
   for (const [section, file] of [
     ["MCS kWh/kWp table", "synthetic-mcs-yield.csv"],
     ["MCS postcode zones", "synthetic-mcs-zones.csv"],

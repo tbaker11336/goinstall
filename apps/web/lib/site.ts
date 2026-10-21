@@ -23,20 +23,25 @@ export interface SitePosition {
 
 /**
  * The project's site position, geocoding the site address once (and storing
- * it) when Google is configured. Null without a key or a findable address.
+ * it) when Google is configured. Null without a key or a findable address;
+ * `error` carries Google's own message when the request was refused.
  */
 export async function ensureSitePosition(
   tx: Tx,
   project: { id: string; lat: number | null; lng: number | null; site_address_line1: string | null; site_town: string | null; site_postcode: string | null },
-): Promise<SitePosition | null> {
-  if (project.lat != null && project.lng != null) return { lat: project.lat, lng: project.lng };
+): Promise<{ position: SitePosition | null; error: string | null }> {
+  if (project.lat != null && project.lng != null) return { position: { lat: project.lat, lng: project.lng }, error: null };
   const maps = googleMaps();
   const address = [project.site_address_line1, project.site_town, project.site_postcode].filter(Boolean).join(", ");
-  if (!maps || !address) return null;
-  const at = await maps.geocode(address).catch(() => null);
-  if (!at) return null;
-  await tx.updateTable("projects").set({ lat: at.lat, lng: at.lng }).where("id", "=", project.id).execute();
-  return at;
+  if (!maps || !address) return { position: null, error: null };
+  try {
+    const at = await maps.geocode(address);
+    if (!at) return { position: null, error: null };
+    await tx.updateTable("projects").set({ lat: at.lat, lng: at.lng }).where("id", "=", project.id).execute();
+    return { position: at, error: null };
+  } catch (e) {
+    return { position: null, error: e instanceof Error ? e.message.slice(0, 300) : String(e) };
+  }
 }
 
 export interface RoofData {
@@ -44,6 +49,8 @@ export interface RoofData {
   imageryQuality: string | null;
   insights: BuildingInsights | null;
   fetchedAt: Date | null;
+  /** Google's message when the lookup failed (not cached, so a later visit retries). */
+  error?: string | null;
 }
 
 /** Google Solar API roof data for the project, from the cache when present (calls are billed). */
@@ -70,6 +77,7 @@ export async function roofData(tx: Tx, projectId: string, at: LatLng | null): Pr
     if (r.status === "ok") insights = r.insights;
   } catch (err) {
     response = { error: err instanceof Error ? err.message : String(err) };
+    console.error("Google Solar lookup failed", (response as { error: string }).error);
   }
   // Errors aren't cached, so a later visit retries; results and "no coverage" are.
   if (status !== "error") {
@@ -79,7 +87,7 @@ export async function roofData(tx: Tx, projectId: string, at: LatLng | null): Pr
       .onConflict((oc) => oc.columns(["company_id", "project_id", "provider"]).doUpdateSet({ status, response: JSON.stringify(response), fetched_at: sql<Date>`now()` }))
       .execute();
   }
-  return { status, imageryQuality: insights?.imageryQuality ?? null, insights, fetchedAt: new Date() };
+  return { status, imageryQuality: insights?.imageryQuality ?? null, insights, fetchedAt: new Date(), error: status === "error" ? String((response as { error?: string })?.error ?? "").slice(0, 300) || null : null };
 }
 
 /** A roof segment in the designer's terms: plan position, size along the ridge and up the slope. */
