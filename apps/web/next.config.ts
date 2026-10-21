@@ -7,6 +7,10 @@ const nextConfig: NextConfig = {
     serverActions: { bodySizeLimit: "4mb" },
   },
   serverExternalPackages: ["pg", "@react-pdf/renderer"],
+  // The installer app's web build lives in public/app (scripts/build-installer-web.mjs).
+  async redirects() {
+    return [{ source: "/app", destination: "/app/index.html", permanent: false }];
+  },
 };
 
 export default nextConfig;

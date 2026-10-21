@@ -16,3 +16,4 @@ next-env.d.ts
 .env.local
 .vercel
 .data/
+apps/web/public/app/

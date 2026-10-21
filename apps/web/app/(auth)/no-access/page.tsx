@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { signOutAction } from "../actions";
 
@@ -12,6 +12,9 @@ export default function NoAccessPage() {
         <p className="text-sm text-muted-foreground">
           Your account is set up for field work. Sign in to the GoInstall installer app on your phone to see your jobs.
         </p>
+        <a href="/app" className={buttonVariants({ className: "w-full" })}>
+          Open the installer app
+        </a>
         <form action={signOutAction}>
           <Button type="submit" variant="outline" className="w-full">
             Sign out

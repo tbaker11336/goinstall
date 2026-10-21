@@ -39,5 +39,6 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+  // /app is the installer app's static web build: it signs in with bearer tokens, not cookies.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|app(?:/|$)|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
 };
