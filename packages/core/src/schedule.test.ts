@@ -15,6 +15,9 @@ describe("schedule", () => {
     expect(bookingDates("2026-10-20T23:30:00Z", "2026-10-21T00:30:00Z")).toEqual(["2026-10-21"]);
     // Fri for 2 working days skips the weekend.
     expect(bookingDates(...(Object.values(allDaySpan("2026-11-06", 2)) as [string, string]))).toEqual(["2026-11-06", "2026-11-07", "2026-11-08", "2026-11-09"]);
+    // Booked on a Sunday: that Sunday counts, then Monday.
+    expect(bookingDates(...(Object.values(allDaySpan("2026-10-25", 1)) as [string, string]))).toEqual(["2026-10-25"]);
+    expect(bookingDates(...(Object.values(allDaySpan("2026-10-25", 2)) as [string, string]))).toEqual(["2026-10-25", "2026-10-26"]);
   });
 
   it("flags double-booked teams and people only", () => {

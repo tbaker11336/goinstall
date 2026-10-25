@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { googleYearlyEstimateKwh, createResendDomains, createStripePayments, signStripePayload, verifyStripeWebhook, createGoogleMapsClient, createMemoryFileStore, createOfflineSupplier, createPvgisClient, metresPerPixel, parseBuildingInsights, toLocalMetres, createRecordingSender, pvgisAspect, createResendSender, createSupabaseFileStore, textToHtml } from "./index";
+import { createTwilio, twilioSignature, verifyTwilioSignature, googleYearlyEstimateKwh, createResendDomains, createStripePayments, signStripePayload, verifyStripeWebhook, createGoogleMapsClient, createMemoryFileStore, createOfflineSupplier, createPvgisClient, metresPerPixel, parseBuildingInsights, toLocalMetres, createRecordingSender, pvgisAspect, createResendSender, createSupabaseFileStore, textToHtml } from "./index";
 
 describe("textToHtml", () => {
   it("escapes HTML, keeps paragraphs and links URLs", () => {
@@ -198,5 +198,27 @@ describe("Resend domains", () => {
   it("surfaces provider errors", async () => {
     const fake = (async () => new Response(JSON.stringify({ message: "This API key is restricted to only send emails" }), { status: 401 })) as unknown as typeof fetch;
     await expect(createResendDomains({ apiKey: "k", fetch: fake }).get("d_1")).rejects.toThrow(/restricted to only send/);
+  });
+});
+
+describe("Twilio", () => {
+  it("sends from the company's subaccount and reports errors", async () => {
+    const calls: [string, RequestInit][] = [];
+    const ok = createTwilio({ accountSid: "ACmaster", authToken: "tok", fetch: (async (u: string, i: RequestInit) => (calls.push([u, i]), new Response(JSON.stringify({ sid: "SM1" }), { status: 201 }))) as unknown as typeof fetch });
+    expect(await ok.send({ accountSid: "ACsub", from: "+447700900001", to: "+447700900123", body: "Hi" })).toEqual({ ok: true, providerId: "SM1" });
+    expect(calls[0]![0]).toBe("https://api.twilio.com/2010-04-01/Accounts/ACsub/Messages.json");
+    expect((calls[0]![1].headers as Record<string, string>).Authorization).toBe(`Basic ${Buffer.from("ACmaster:tok").toString("base64")}`);
+    expect(String(calls[0]![1].body)).toBe("To=%2B447700900123&From=%2B447700900001&Body=Hi");
+    const bad = createTwilio({ accountSid: "A", authToken: "t", fetch: (async () => new Response(JSON.stringify({ message: "Unsubscribed recipient", code: 21610 }), { status: 400 })) as unknown as typeof fetch });
+    expect(await bad.send({ accountSid: "A", from: "+44", to: "+44", body: "x" })).toEqual({ ok: false, error: "Twilio: Unsubscribed recipient (21610)", retryable: false });
+  });
+
+  it("verifies webhook signatures (Twilio's documented example)", () => {
+    const params = { CallSid: "CA1234567890ABCDE", Caller: "+12349013030", Digits: "1234", From: "+12349013030", To: "+18005551212" };
+    const url = "https://mycompany.com/myapp.php?foo=1&bar=2";
+    expect(twilioSignature("12345", url, params)).toBe("0/KCTR6DLpKmkAf8muzZqo1nDgQ=");
+    expect(verifyTwilioSignature("12345", url, params, "0/KCTR6DLpKmkAf8muzZqo1nDgQ=")).toBe(true);
+    expect(verifyTwilioSignature("12345", url, { ...params, Digits: "9" }, "0/KCTR6DLpKmkAf8muzZqo1nDgQ=")).toBe(false);
+    expect(verifyTwilioSignature("12345", url, params, null)).toBe(false);
   });
 });

@@ -11,6 +11,7 @@ export async function POST(request: Request) {
   const body = z.object({ ops: z.array(z.unknown()).max(500) }).safeParse(await request.json().catch(() => null));
   if (!body.success) return Response.json({ error: "Bad request" }, { status: 400 });
   const completed = new Set<string>();
+  const followUps: (() => Promise<void>)[] = [];
   let companyId: string | null = null;
   const response = await withAppUser(request, async (tx, session) => {
     companyId = session.companyId;
@@ -24,7 +25,7 @@ export async function POST(request: Request) {
       }
       await sql`savepoint app_op`.execute(tx);
       try {
-        results.push(await applyOp(tx, session, op.data, completed));
+        results.push(await applyOp(tx, session, op.data, completed, followUps));
         await sql`release savepoint app_op`.execute(tx);
       } catch (err) {
         await sql`rollback to savepoint app_op`.execute(tx);
@@ -34,6 +35,7 @@ export async function POST(request: Request) {
     return Response.json({ results });
   });
   // Committed: now the paperwork, stage and balance invoice that follow an install.
+  if (response.ok) for (const f of followUps) await f().catch((err) => console.error("sync follow-up failed", err));
   if (response.ok && companyId) {
     for (const projectId of completed) {
       await completeInstall(companyId, projectId).catch((err) => console.error("completeInstall failed", projectId, err));

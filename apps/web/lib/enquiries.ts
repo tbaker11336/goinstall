@@ -1,6 +1,7 @@
 import "server-only";
 import { sql, withService } from "@goinstall/db";
 import { db } from "./db";
+import { notifyTeam } from "./notify";
 
 export interface EnquiryInput {
   key: string;
@@ -23,13 +24,13 @@ export interface EnquiryInput {
  * key is unknown.
  */
 export async function createEnquiry(e: EnquiryInput): Promise<boolean> {
-  return withService(db(), async (tx) => {
+  const created = await withService(db(), async (tx) => {
     const company = await tx
       .selectFrom("companies")
       .select("id")
       .where("enquiry_form_key", "=", e.key)
       .executeTakeFirst();
-    if (!company) return false;
+    if (!company) return null;
 
     const existing = e.email
       ? await tx
@@ -102,6 +103,9 @@ export async function createEnquiry(e: EnquiryInput): Promise<boolean> {
         })
         .execute();
     }
-    return true;
+    return { companyId: company.id, projectId: project.id };
   });
+  if (!created) return false;
+  await notifyTeam(created.companyId, "new_enquiry", { projectId: created.projectId, data: { site: [e.address, e.town ?? e.postcode].filter(Boolean).join(", ") || undefined, detail: `${e.name}${e.products.length ? ` is interested in ${e.products.join(", ")}` : ""}.` } });
+  return true;
 }

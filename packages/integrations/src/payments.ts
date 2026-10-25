@@ -32,8 +32,10 @@ function form(data: Record<string, string | number | undefined | null>): string 
   return p.toString();
 }
 
-export function createStripePayments({ secretKey, fetch: fetchImpl = fetch }: { secretKey: string; fetch?: typeof fetch }): PaymentsProvider {
-  async function call<T>(path: string, body: Record<string, string | number | undefined | null> | null, opts: { account?: string; idempotencyKey?: string; method?: string } = {}): Promise<T> {
+type StripeCall = <T>(path: string, body: Record<string, string | number | undefined | null> | null, opts?: { account?: string; idempotencyKey?: string; method?: string }) => Promise<T>;
+
+function stripeCaller(secretKey: string, fetchImpl: typeof fetch): StripeCall {
+  return async function call<T>(path: string, body: Record<string, string | number | undefined | null> | null, opts: { account?: string; idempotencyKey?: string; method?: string } = {}): Promise<T> {
     const res = await fetchImpl(`https://api.stripe.com/v1${path}`, {
       method: opts.method ?? (body ? "POST" : "GET"),
       headers: {
@@ -47,7 +49,11 @@ export function createStripePayments({ secretKey, fetch: fetchImpl = fetch }: { 
     const json = (await res.json()) as T & { error?: { message: string } };
     if (!res.ok) throw new Error(`Stripe: ${json.error?.message ?? res.status}`);
     return json;
-  }
+  };
+}
+
+export function createStripePayments({ secretKey, fetch: fetchImpl = fetch }: { secretKey: string; fetch?: typeof fetch }): PaymentsProvider {
+  const call = stripeCaller(secretKey, fetchImpl);
   return {
     name: "stripe",
     async createCheckout(req) {
@@ -83,6 +89,56 @@ export function createStripePayments({ secretKey, fetch: fetchImpl = fetch }: { 
     async accountReady(accountId) {
       const a = await call<{ charges_enabled?: boolean }>(`/accounts/${accountId}`, null);
       return Boolean(a.charges_enabled);
+    },
+  };
+}
+
+/**
+ * GoInstall's own billing (add-ons such as SMS), on the platform Stripe
+ * account: separate from the companies' connected accounts.
+ */
+export interface PlatformBilling {
+  readonly name: string;
+  /** Checkout for a monthly subscription to a Stripe price. */
+  createSubscriptionCheckout(req: { priceId: string; customerEmail?: string | null; customerId?: string | null; successUrl: string; cancelUrl: string; metadata: Record<string, string>; idempotencyKey: string }): Promise<{ id: string; url: string }>;
+  /** A one-off charge on the customer's next (or a given draft) invoice, e.g. texts over the allowance. */
+  addInvoiceItem(req: { customerId: string; invoiceId?: string; amountPence: number; description: string; idempotencyKey: string }): Promise<void>;
+  /** Stripe's own page for updating the card, seeing invoices or cancelling. */
+  portal(req: { customerId: string; returnUrl: string }): Promise<{ url: string }>;
+}
+
+export function createStripeBilling({ secretKey, fetch: fetchImpl = fetch }: { secretKey: string; fetch?: typeof fetch }): PlatformBilling {
+  const call = stripeCaller(secretKey, fetchImpl);
+  return {
+    name: "stripe",
+    async createSubscriptionCheckout(req) {
+      const meta: Record<string, string> = {};
+      for (const [k, v] of Object.entries(req.metadata)) {
+        meta[`metadata[${k}]`] = v;
+        meta[`subscription_data[metadata][${k}]`] = v;
+      }
+      const s = await call<{ id: string; url: string }>(
+        "/checkout/sessions",
+        {
+          mode: "subscription",
+          "line_items[0][price]": req.priceId,
+          "line_items[0][quantity]": 1,
+          customer: req.customerId ?? undefined,
+          customer_email: req.customerId ? undefined : (req.customerEmail ?? undefined),
+          success_url: req.successUrl,
+          cancel_url: req.cancelUrl,
+          ...meta,
+        },
+        { idempotencyKey: req.idempotencyKey },
+      );
+      return { id: s.id, url: s.url };
+    },
+    async addInvoiceItem(req) {
+      await call("/invoiceitems", { customer: req.customerId, invoice: req.invoiceId, amount: req.amountPence, currency: "gbp", description: req.description }, { idempotencyKey: req.idempotencyKey });
+    },
+    async portal(req) {
+      const s = await call<{ url: string }>("/billing_portal/sessions", { customer: req.customerId, return_url: req.returnUrl });
+      return { url: s.url };
     },
   };
 }

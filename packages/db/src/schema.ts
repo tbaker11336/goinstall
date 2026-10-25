@@ -41,7 +41,7 @@ export type JsonPrimitive = boolean | number | string | null;
 
 export type JsonValue = JsonArray | JsonObject | JsonPrimitive;
 
-export type MessageChannel = "email" | "note" | "system" | "whatsapp";
+export type MessageChannel = "email" | "note" | "sms" | "system" | "whatsapp";
 
 export type MessageDirection = "inbound" | "internal" | "outbound";
 
@@ -223,6 +223,7 @@ export interface Companies {
   next_invoice_number: Generated<number>;
   next_po_number: Generated<number>;
   next_proposal_number: Generated<number>;
+  notification_settings: Generated<Json>;
   payment_terms: string | null;
   phone: string | null;
   postcode: string | null;
@@ -254,6 +255,7 @@ export interface Contacts {
   owner_id: string | null;
   phone: string | null;
   postcode: string | null;
+  sms_opt_out_at: Timestamp | null;
   source: string | null;
   stage: Generated<ContactStage>;
   tags: Generated<string[]>;
@@ -399,6 +401,7 @@ export interface Messages {
   provider_message_id: string | null;
   read_at: Timestamp | null;
   sent_by: string | null;
+  sms_segments: number | null;
   subject: string | null;
   to_address: string | null;
   updated_at: Generated<Timestamp>;
@@ -418,6 +421,34 @@ export interface MessageTemplates {
   updated_at: Generated<Timestamp>;
   whatsapp_status: string | null;
   whatsapp_template_name: string | null;
+}
+
+export interface NotificationLog {
+  channels: Generated<string[]>;
+  company_id: Generated<string>;
+  created_at: Generated<Timestamp>;
+  created_by: Generated<string | null>;
+  entity_id: string;
+  event: string;
+  id: Generated<string>;
+  project_id: string | null;
+  step: Generated<number>;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface Notifications {
+  body: string | null;
+  company_id: Generated<string>;
+  created_at: Generated<Timestamp>;
+  created_by: Generated<string | null>;
+  event: string;
+  id: Generated<string>;
+  link: string | null;
+  project_id: string | null;
+  read_at: Timestamp | null;
+  title: string;
+  updated_at: Generated<Timestamp>;
+  user_id: string;
 }
 
 export interface PaperworkItems {
@@ -665,6 +696,25 @@ export interface RoofDataCache {
   status: string;
 }
 
+export interface SmsAccounts {
+  activated_at: Timestamp | null;
+  business_details: Generated<Json>;
+  company_id: Generated<string>;
+  created_at: Generated<Timestamp>;
+  created_by: Generated<string | null>;
+  current_period_end: Timestamp | null;
+  current_period_start: Timestamp | null;
+  id: Generated<string>;
+  phone_number: string | null;
+  phone_number_sid: string | null;
+  staff_texts_this_period: Generated<number>;
+  status: Generated<string>;
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
+  twilio_subaccount_sid: string | null;
+  updated_at: Generated<Timestamp>;
+}
+
 export interface SolarDesigns {
   annual_kwh_mcs: number | null;
   battery_count: Generated<number>;
@@ -790,6 +840,7 @@ export interface Surveys {
   id: Generated<string>;
   kind: Generated<SurveyKind>;
   last_opened_at: Timestamp | null;
+  link_nonce: string | null;
   online_completed_at: Timestamp | null;
   online_status: Generated<OnlineSurveyStatus>;
   project_id: string;
@@ -847,6 +898,8 @@ export interface DB {
   kit_items: KitItems;
   message_templates: MessageTemplates;
   messages: Messages;
+  notification_log: NotificationLog;
+  notifications: Notifications;
   paperwork_items: PaperworkItems;
   payments: Payments;
   photo_categories: PhotoCategories;
@@ -860,6 +913,7 @@ export interface DB {
   purchase_order_lines: PurchaseOrderLines;
   purchase_orders: PurchaseOrders;
   roof_data_cache: RoofDataCache;
+  sms_accounts: SmsAccounts;
   solar_designs: SolarDesigns;
   supplier_products: SupplierProducts;
   suppliers: Suppliers;

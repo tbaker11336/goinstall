@@ -40,14 +40,18 @@ export function bookingDates(startsAt: Date | string, endsAt: Date | string): st
   return out;
 }
 
-/** All-day span from a first date and a number of working days (weekends skipped). */
+/**
+ * All-day span from a first date and a number of working days (weekends
+ * skipped). The first date always counts: a job booked on a Saturday works
+ * that Saturday.
+ */
 export function allDaySpan(firstDate: string, workingDays: number): { startsAt: string; endsAt: string } {
   let d = firstDate;
   let left = Math.max(1, Math.floor(workingDays));
   let last = d;
   while (left > 0) {
     const dow = new Date(`${d}T00:00:00Z`).getUTCDay();
-    if (dow !== 0 && dow !== 6) {
+    if (d === firstDate || (dow !== 0 && dow !== 6)) {
       left--;
       last = d;
     }

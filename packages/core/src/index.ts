@@ -8,6 +8,7 @@ export * from "./solar-design";
 export * from "./site-plan";
 export * from "./library";
 export * from "./paperwork";
+export * from "./notifications";
 export * from "./proposal";
 export * from "./kit";
 export * from "./schedule";

@@ -10,6 +10,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { ensureDepositInvoice } from "@/lib/deposits";
 import { env } from "@/lib/env";
+import { notifyTeam } from "@/lib/notify";
 import { fileStore } from "@/lib/files";
 import { payments } from "@/lib/payments";
 import { findPublicProposal, type PublicProposal } from "@/lib/proposals";
@@ -45,6 +46,7 @@ export async function acceptProposalAction(token: string, input: z.input<typeof 
   const h = await headers();
   const ip = (h.get("x-forwarded-for")?.split(",")[0] ?? h.get("x-real-ip") ?? "").trim();
   const ua = h.get("user-agent")?.slice(0, 300) ?? null;
+  let accepted: { companyId: string; projectId: string } | null = null;
   const result = await withProposal(token, async (tx, p): Promise<AcceptResult> => {
     const row = await tx
       .selectFrom("proposals")
@@ -95,8 +97,11 @@ export async function acceptProposalAction(token: string, input: z.input<typeof 
       .values({ company_id: p.companyId, contact_id: p.contactId, project_id: p.projectId, channel: "system", direction: "internal", body: `${parsed.data.name} accepted proposal ${proposalReference(null, p.number, p.version)}${deposit > 0 ? `. Deposit of ${formatPence(deposit)} due.` : "."}`, created_by: null })
       .execute();
     await tx.insertInto("activity_log").values({ company_id: p.companyId, project_id: p.projectId, contact_id: p.contactId, actor_id: null, event: "proposal_accepted", payload: { name: parsed.data.name } }).execute();
+    accepted = { companyId: p.companyId, projectId: p.projectId };
     return { ok: true };
   });
+  const a = accepted as { companyId: string; projectId: string } | null;
+  if (a) await notifyTeam(a.companyId, "proposal_accepted", { projectId: a.projectId, link: `/projects/${a.projectId}/proposal`, data: { detail: parsed.data.name } });
   revalidatePath(`/p/${token}`);
   return result;
 }

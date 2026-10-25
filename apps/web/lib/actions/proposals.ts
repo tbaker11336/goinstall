@@ -8,6 +8,7 @@ import { z } from "zod";
 import { asUser, type Session } from "@/lib/auth";
 import { ensureDepositInvoice, recordInvoicePayment } from "@/lib/deposits";
 import { emailConfigured, emailSender, fromAddress } from "@/lib/email";
+import { notifyTeam } from "@/lib/notify";
 import { captureLayout } from "@/lib/proposal-layout";
 import { designInputs, hashToken, newLinkNonce, PROPOSAL_LINK_DAYS, proposalToken, proposalUrl, refreshProposalFinance } from "@/lib/proposals";
 import type { ActionResult } from "./crm";
@@ -253,7 +254,7 @@ export async function recordBankTransferAction(proposalId: string, _: ActionResu
   if (!uuid.safeParse(proposalId).success) return { error: "Proposal not found" };
   const amount = parsePence(String(form.get("amount") ?? ""));
   if (amount === null || Number.isNaN(amount) || amount <= 0) return { error: "Enter the amount received." };
-  return asUser(async (tx, session) => {
+  const r: ActionResult & { paid?: { companyId: string; projectId: string; by: string } } = await asUser(async (tx, session) => {
     const p = await tx.selectFrom("proposals").select(["id", "status", "project_id", "company_id", "deposit_pence"]).where("id", "=", proposalId).executeTakeFirst();
     if (!p) return { error: "Proposal not found" };
     if (p.status !== "accepted") return { error: "Record the deposit once the customer has accepted the proposal." };
@@ -261,6 +262,8 @@ export async function recordBankTransferAction(proposalId: string, _: ActionResu
     if (invoice.status === "paid") return { error: "The deposit is already recorded as paid." };
     await recordInvoicePayment(tx, { companyId: p.company_id, invoiceId: invoice.id, amountPence: amount, method: "bank_transfer", provider: null, providerRef: null, actorId: session.userId });
     revalidatePath(`/projects/${p.project_id}`, "layout");
-    return { message: `Deposit of ${formatPence(amount)} recorded. The project is now at Deposit paid.` };
+    return { message: `Deposit of ${formatPence(amount)} recorded. The project is now at Deposit paid.`, paid: { companyId: p.company_id, projectId: p.project_id, by: session.userId } };
   });
+  if ("paid" in r && r.paid) await notifyTeam(r.paid.companyId, "payment_received", { projectId: r.paid.projectId, exclude: r.paid.by, link: `/projects/${r.paid.projectId}/proposal`, data: { detail: `Deposit of ${formatPence(amount)} received by bank transfer` } });
+  return { error: r.error, message: r.message };
 }

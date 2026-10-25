@@ -9,7 +9,7 @@ import { z } from "zod";
 import { asUser, type Session } from "@/lib/auth";
 import { emailConfigured, emailSender, fromAddress } from "@/lib/email";
 import { extensionFor, fileStore, IMAGE_TYPES, MAX_UPLOAD_BYTES } from "@/lib/files";
-import { newSurveyToken, surveyConfig, surveyUrl } from "@/lib/survey";
+import { hashSurveyToken, newLinkNonce, SURVEY_LINK_DAYS, surveyConfig, surveyToken, surveyUrl } from "@/lib/survey";
 import { addressLine } from "@/lib/utils";
 import type { ActionResult } from "./crm";
 
@@ -115,12 +115,16 @@ export async function sendEmailAction(contactId: string, _: ActionResult, form: 
  * the old one, so only the latest link works.
  */
 async function issueSurveyLink(tx: Tx, projectId: string, kind: SurveyKind) {
-  const { token, hash, expiresAt } = newSurveyToken();
-  await tx
+  const nonce = newLinkNonce();
+  const expiresAt = new Date(Date.now() + SURVEY_LINK_DAYS * 86_400_000);
+  const survey = await tx
     .insertInto("surveys")
-    .values({ project_id: projectId, kind, token_hash: hash, token_expires_at: expiresAt })
-    .onConflict((oc) => oc.columns(["company_id", "project_id", "kind"]).doUpdateSet({ token_hash: hash, token_expires_at: expiresAt }))
-    .execute();
+    .values({ project_id: projectId, kind, link_nonce: nonce })
+    .onConflict((oc) => oc.columns(["company_id", "project_id", "kind"]).doUpdateSet({ link_nonce: nonce }))
+    .returning("id")
+    .executeTakeFirstOrThrow();
+  const token = surveyToken(survey.id, nonce);
+  await tx.updateTable("surveys").set({ token_hash: hashSurveyToken(token), token_expires_at: expiresAt }).where("id", "=", survey.id).execute();
   return { url: surveyUrl(token), expiresAt };
 }
 

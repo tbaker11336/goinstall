@@ -1,16 +1,22 @@
 import "server-only";
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, createHmac, randomBytes } from "node:crypto";
 import { photoCategoriesFor, questionsFor, SURVEY_KINDS, type PhotoCategory, type Product, type SurveyField, type SurveyKind, type SurveyQuestion } from "@goinstall/core";
 import { sql, type Tx } from "@goinstall/db";
 import { env } from "./env";
+import { linkSecret } from "./proposals";
 
 /** How long a survey link works for. */
 export const SURVEY_LINK_DAYS = 30;
 
-export function newSurveyToken() {
-  const token = randomBytes(32).toString("base64url");
-  return { token, hash: hashSurveyToken(token), expiresAt: new Date(Date.now() + SURVEY_LINK_DAYS * 86_400_000) };
+/**
+ * A survey's link token, derived from the survey and a nonce with the link
+ * secret: only its hash is stored, and a reminder can rebuild the same link.
+ */
+export function surveyToken(surveyId: string, nonce: string) {
+  return createHmac("sha256", linkSecret()).update(`survey:${surveyId}:${nonce}`).digest("base64url");
 }
+
+export const newLinkNonce = () => randomBytes(16).toString("base64url");
 
 export function hashSurveyToken(token: string) {
   return createHash("sha256").update(token).digest("hex");

@@ -48,6 +48,9 @@ wins.
 | 5 | `checklist_item_history` | Overwritten checklist values (last write wins, history kept) (added in build) |
 | 6 | `paperwork_items` | One row per paperwork item per project (one per product for warranty registrations), generated from the design and install by `packages/core/src/paperwork.ts`; status, due date (rule-set until staff change it), DNO/scheme reference, portal link, staff-entered form values. Files attach via `files.paperwork_item_id`. `projects.mpan` holds the site MPAN. Balance invoices carry a hashed pay link (`invoices.pay_token_hash`) (added in build) |
 | 6 | `paperwork` | Type, status, due date, reference, generated file |
+| 7 | `notifications` | In-app notifications per staff member (the bell and the installer app's Alerts tab). Written only by the server; a user can read theirs and mark them read (added in build) |
+| 7 | `notification_log` | One row per customer reminder step sent (event, entity, step), so the daily reminders job never sends one twice (added in build) |
+| 7 | `sms_accounts` | The SMS add-on per company: Stripe subscription on GoInstall's account, status, the company's own UK number (Twilio subaccount), texts used this period. Written by the server; admins can read it. `companies.notification_settings` holds the event × channel choices and reminder timings (off until set); `contacts.sms_opt_out_at` records STOP; `messages.sms_segments` counts billable texts; `surveys.link_nonce` lets a reminder resend the same link (added in build) |
 
 ## Access rules
 

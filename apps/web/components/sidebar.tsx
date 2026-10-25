@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, FileText, Folder, LayoutGrid, SlidersHorizontal, Users } from "lucide-react";
+import { Bell, CalendarDays, FileText, Folder, LayoutGrid, SlidersHorizontal, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Avatar } from "@/components/domain";
@@ -24,14 +24,14 @@ export function Logo({ size = 32 }: { size?: number }) {
   );
 }
 
-function NavLink({ href, label, icon: Icon, rail }: (typeof NAV)[number] & { rail: boolean }) {
+function NavLink({ href, label, icon: Icon, rail, count }: (typeof NAV)[number] & { rail: boolean; count?: number }) {
   const pathname = usePathname();
   const active = pathname === href || pathname.startsWith(`${href}/`);
   return (
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      aria-label={rail ? label : undefined}
+      aria-label={rail ? (count ? `${label}, ${count} unread` : label) : undefined}
       title={rail ? label : undefined}
       className={cn(
         "flex items-center gap-3 rounded-md text-sm font-medium text-ink-3 transition-colors hover:bg-muted hover:text-foreground",
@@ -39,8 +39,17 @@ function NavLink({ href, label, icon: Icon, rail }: (typeof NAV)[number] & { rai
         active && "bg-accent-tint font-semibold text-accent-strong hover:bg-accent-tint hover:text-accent-strong",
       )}
     >
-      <Icon className="size-5 shrink-0" strokeWidth={1.75} aria-hidden />
+      <span className="relative">
+        <Icon className="size-5 shrink-0" strokeWidth={1.75} aria-hidden />
+        {rail && count ? <span aria-hidden className="absolute -top-1 -right-1 size-2.5 rounded-full border-2 border-card bg-red-600" /> : null}
+      </span>
       {!rail && label}
+      {!rail && count ? (
+        <span className="ml-auto rounded-full bg-red-600 px-1.5 text-[11px] leading-5 font-bold text-white">
+          {count > 99 ? "99+" : count}
+          <span className="sr-only"> unread</span>
+        </span>
+      ) : null}
     </Link>
   );
 }
@@ -52,11 +61,13 @@ export function Sidebar({
   userName,
   role,
   signOut,
+  unread = 0,
 }: {
   companyName: string;
   userName: string;
   role: keyof typeof ROLE_LABELS;
   signOut: () => Promise<void>;
+  unread?: number;
 }) {
   // Project pages use a 72 px icon rail so the design tools get the width.
   const rail = /^\/projects\/[^/]+/.test(usePathname());
@@ -88,6 +99,9 @@ export function Sidebar({
         </ul>
       </nav>
       <div className="flex-1 max-md:hidden" />
+      <div className="max-md:hidden">
+        <NavLink href="/notifications" label="Notifications" icon={Bell} rail={rail} count={unread} />
+      </div>
       {role === "admin" && (
         <div className="max-md:hidden">
           <NavLink href="/settings" label="Settings" icon={SlidersHorizontal} rail={rail} />

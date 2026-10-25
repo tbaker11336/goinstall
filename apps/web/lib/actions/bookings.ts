@@ -6,6 +6,7 @@ import { textToHtml } from "@goinstall/integrations";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { asUser } from "@/lib/auth";
+import { notifyBooking } from "@/lib/notify";
 import { emailConfigured, emailSender, fromAddress } from "@/lib/email";
 import { calendarFeedUrl, newCalendarNonce } from "@/lib/schedule";
 import type { ActionResult } from "./crm";
@@ -51,7 +52,8 @@ export async function saveBookingAction(projectId: string, bookingId: string | n
   const span = timed
     ? { startsAt: new Date(`${d.start_date}T${d.start_time}:00${londonOffset(d.start_date)}`).toISOString(), endsAt: new Date(new Date(`${d.start_date}T${d.start_time}:00${londonOffset(d.start_date)}`).getTime() + 2 * 3_600_000).toISOString() }
     : allDaySpan(d.start_date, d.days);
-  return asUser(async (tx) => {
+  let saved: { companyId: string; bookingId: string; actor: string } | null = null;
+  const result = await asUser(async (tx, session) => {
     const project = await tx.selectFrom("projects").select("id").where("id", "=", projectId).executeTakeFirst();
     if (!project) return { error: "Project not found" };
     let id = bookingId;
@@ -88,10 +90,14 @@ export async function saveBookingAction(projectId: string, bookingId: string | n
     } else {
       await setAssignment(tx, id, "scaffolder", { userId: d.scaffolder_id });
     }
+    saved = { companyId: session.companyId, bookingId: id, actor: session.userId };
     revalidatePath(`/projects/${projectId}`, "layout");
     revalidatePath("/schedule");
     return { message: `${BOOKING_TYPE_LABELS[d.type]} booked ${bookingDates(span.startsAt, span.endsAt).length > 1 ? `for ${bookingDates(span.startsAt, span.endsAt).length} days` : ""}`.trim() + "." };
   });
+  const sv = saved as { companyId: string; bookingId: string; actor: string } | null;
+  if (sv) await notifyBooking(sv.companyId, sv.bookingId, sv.actor);
+  return result;
 }
 
 /** "+01:00" in British Summer Time, "Z" otherwise, for a local date. */
@@ -104,7 +110,7 @@ function londonOffset(date: string) {
 /** Drag on the calendar: move a booking to a new first day (same length) and, for installs, a team row. */
 export async function moveBookingAction(bookingId: string, firstDate: string, teamId: string | null): Promise<ActionResult> {
   if (!uuid.safeParse(bookingId).success || !z.iso.date().safeParse(firstDate).success || (teamId && !uuid.safeParse(teamId).success)) return { error: "Not found" };
-  return asUser(async (tx) => {
+  const moved = await asUser(async (tx, session) => {
     const b = await tx.selectFrom("bookings").select(["id", "type", "starts_at", "ends_at", "all_day", "project_id"]).where("id", "=", bookingId).executeTakeFirst();
     if (!b) return { error: "Booking not found" };
     const shift = Date.parse(`${firstDate}T00:00:00Z`) - Date.parse(`${b.starts_at.toISOString().slice(0, 10)}T00:00:00Z`);
@@ -116,8 +122,10 @@ export async function moveBookingAction(bookingId: string, firstDate: string, te
     if (teamId && b.type === "install") await setAssignment(tx, bookingId, "team", { teamId });
     if (b.project_id) revalidatePath(`/projects/${b.project_id}`, "layout");
     revalidatePath("/schedule");
-    return {};
+    return { companyId: session.companyId, actor: session.userId };
   });
+  if ("companyId" in moved && moved.companyId) await notifyBooking(moved.companyId, bookingId, moved.actor ?? null);
+  return "error" in moved ? { error: moved.error } : {};
 }
 
 export async function cancelBookingAction(bookingId: string): Promise<ActionResult> {

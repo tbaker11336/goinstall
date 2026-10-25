@@ -4,6 +4,7 @@ import { normaliseAnswer, SURVEY_KINDS, surveyProgress } from "@goinstall/core";
 import { sql, withService, type Tx } from "@goinstall/db";
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
+import { notifyTeam } from "@/lib/notify";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { extensionFor, fileStore, IMAGE_TYPES, MAX_UPLOAD_BYTES } from "@/lib/files";
@@ -118,6 +119,7 @@ export async function removeSurveyPhotoAction(token: string, fileId: string): Pr
 
 /** Final step: save, check required answers, mark complete and tell the team in the thread. */
 export async function submitSurveyAction(token: string, _: SurveyActionResult, form: FormData): Promise<SurveyActionResult> {
+  let completed: { companyId: string; projectId: string; kind: string } | null = null;
   const result = await withSurvey(token, async (tx, s): Promise<SurveyActionResult> => {
     const saved = await saveAnswers(tx, s, form);
     if (saved.error) return saved;
@@ -164,8 +166,11 @@ export async function submitSurveyAction(token: string, _: SurveyActionResult, f
       })
       .execute();
     await tx.updateTable("contacts").set({ last_activity_at: sql<Date>`now()` }).where("id", "=", s.contactId).where("company_id", "=", s.companyId).execute();
+    if (first) completed = { companyId: s.companyId, projectId: s.projectId, kind: SURVEY_KINDS[s.kind].label };
     return { ok: true };
   });
+  const c = completed as { companyId: string; projectId: string; kind: string } | null;
+  if (c) await notifyTeam(c.companyId, "survey_completed", { projectId: c.projectId, link: `/projects/${c.projectId}/survey`, data: { detail: c.kind } });
   revalidatePath(`/s/${token}`);
   return result;
 }

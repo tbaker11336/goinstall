@@ -1,9 +1,11 @@
 import "server-only";
+import { formatPence } from "@goinstall/core";
 import type { StripeEvent } from "@goinstall/integrations";
 import { withService } from "@goinstall/db";
 import { z } from "zod";
 import { db } from "./db";
 import { recordInvoicePayment } from "./deposits";
+import { notifyTeam } from "./notify";
 
 const meta = z.object({ invoice_id: z.uuid(), company_id: z.uuid() });
 
@@ -18,11 +20,11 @@ export async function handleStripeEvent(event: StripeEvent): Promise<{ status: s
   if (s.payment_status !== "paid") return { status: "not_paid" };
   const m = meta.safeParse(s.metadata);
   if (!m.success) return { status: "no_invoice" };
-  return withService(db(), async (tx) => {
+  const r = await withService(db(), async (tx) => {
     const inv = await tx
       .selectFrom("invoices as i")
       .innerJoin("companies as c", "c.id", "i.company_id")
-      .select(["i.id", "i.amount_pence", "i.status", "c.stripe_account_id"])
+      .select(["i.id", "i.kind", "i.project_id", "i.amount_pence", "i.status", "c.stripe_account_id"])
       .where("i.id", "=", m.data.invoice_id)
       .where("i.company_id", "=", m.data.company_id)
       .executeTakeFirst();
@@ -39,6 +41,11 @@ export async function handleStripeEvent(event: StripeEvent): Promise<{ status: s
       providerRef: s.id,
       actorId: null,
     });
-    return { status: r.alreadyRecorded ? "duplicate" : "recorded" };
+    return { status: r.alreadyRecorded ? "duplicate" : "recorded", paid: r.alreadyRecorded ? null : { companyId: m.data.company_id, projectId: inv.project_id, kind: inv.kind, amount: Number(s.amount_total) } };
   });
+  if ("paid" in r && r.paid) {
+    const p = r.paid;
+    await notifyTeam(p.companyId, "payment_received", { projectId: p.projectId, link: `/projects/${p.projectId}/proposal`, data: { detail: `${p.kind === "balance" ? "Balance" : "Deposit"} of ${formatPence(p.amount)} paid by card` } });
+  }
+  return { status: r.status };
 }

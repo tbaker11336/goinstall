@@ -6,6 +6,8 @@ const SECTIONS = [
   { href: "/settings/company", label: "Company details" },
   { href: "/settings/team", label: "Team & permissions" },
   { href: "/settings/email", label: "Email sending" },
+  { href: "/settings/notifications", label: "Notifications" },
+  { href: "/settings/sms", label: "SMS add-on" },
   { href: "/settings/products", label: "Products & suppliers" },
   { href: "/settings/design", label: "Design rules" },
   { href: "/settings/surveys", label: "Surveys & templates" },

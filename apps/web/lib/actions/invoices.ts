@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { asUser } from "@/lib/auth";
 import { emailBalanceInvoice, hashPayToken } from "@/lib/completion";
+import { notifyTeam } from "@/lib/notify";
 import { emailConfigured } from "@/lib/email";
 import { recordInvoicePayment } from "@/lib/deposits";
 import type { ActionResult } from "./crm";
@@ -17,14 +18,16 @@ export async function recordBalanceTransferAction(invoiceId: string, _: ActionRe
   if (!uuid.safeParse(invoiceId).success) return { error: "Invoice not found" };
   const amount = parsePence(String(form.get("amount") ?? ""));
   if (amount === null || Number.isNaN(amount) || amount <= 0) return { error: "Enter the amount received." };
-  return asUser(async (tx, session) => {
+  const r: ActionResult & { paid?: { companyId: string; projectId: string; by: string } } = await asUser(async (tx, session) => {
     const inv = await tx.selectFrom("invoices").select(["id", "status", "project_id", "kind"]).where("id", "=", invoiceId).executeTakeFirst();
     if (!inv || inv.kind !== "balance") return { error: "Invoice not found" };
     if (inv.status === "paid") return { error: "The balance is already recorded as paid." };
     await recordInvoicePayment(tx, { companyId: session.companyId, invoiceId: inv.id, amountPence: amount, method: "bank_transfer", provider: null, providerRef: null, actorId: session.userId });
     revalidatePath(`/projects/${inv.project_id}`, "layout");
-    return { message: `Balance of ${formatPence(amount)} recorded as paid.` };
+    return { message: `Balance of ${formatPence(amount)} recorded as paid.`, paid: { companyId: session.companyId, projectId: inv.project_id, by: session.userId } };
   });
+  if (r.paid) await notifyTeam(r.paid.companyId, "payment_received", { projectId: r.paid.projectId, exclude: r.paid.by, link: `/projects/${r.paid.projectId}/proposal`, data: { detail: `Balance of ${formatPence(amount)} received by bank transfer` } });
+  return { error: r.error, message: r.message };
 }
 
 /** Email the balance invoice again with a fresh pay link (the old link stops working). */

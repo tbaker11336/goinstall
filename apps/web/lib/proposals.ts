@@ -8,7 +8,7 @@ import { signedUrls } from "./files";
 import { env } from "./env";
 
 /** Secret for proposal links. A dedicated one if set; else the service key (server-only either way). */
-function linkSecret() {
+export function linkSecret() {
   const s = process.env.LINK_SIGNING_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.DEV_AUTH_SECRET;
   if (!s) throw new Error("Set LINK_SIGNING_SECRET to create proposal links");
   return s;
@@ -218,7 +218,8 @@ export function proposalView(c: ProposalContent): ProposalView {
 }
 
 /** Customer opened the link: count it and move Sent → Viewed (service role only). */
-export async function recordProposalView(tx: Tx, p: PublicProposal, userAgent: string | null) {
+/** Record a customer view; true for the first one (the team is told once). */
+export async function recordProposalView(tx: Tx, p: PublicProposal, userAgent: string | null): Promise<boolean> {
   await tx.insertInto("proposal_views").values({ company_id: p.companyId, proposal_id: p.id, user_agent: userAgent?.slice(0, 300) ?? null }).execute();
   await tx
     .updateTable("proposals")
@@ -234,6 +235,7 @@ export async function recordProposalView(tx: Tx, p: PublicProposal, userAgent: s
   if (p.status === "sent") {
     await tx.insertInto("activity_log").values({ company_id: p.companyId, project_id: p.projectId, contact_id: p.contactId, actor_id: null, event: "proposal_viewed", payload: {} }).execute();
   }
+  return p.status === "sent";
 }
 
 /** Work out the proposal's finance for its total price and store it in the summary (drafts only). */

@@ -25,6 +25,16 @@ design rules: never invent rule values).
   Installation Database, then store the certificate number and PDF. EIC: a
   test-readings sheet for the electrician's certificate software, then upload
   the signed EIC. No supplier API adapter until access is agreed.
+- Notifications: in-app, email and SMS, internal (team) and external
+  (customer). Each company picks channels per event in Settings ›
+  Notifications; customer reminder timings are off until the company sets
+  them.
+- SMS is a paid add-on: a Stripe subscription on GoInstall's account
+  (monthly fee plus a text allowance, extra texts on the next invoice) and
+  the company's own UK number on a Twilio subaccount. Prices come from
+  `SMS_PLAN_*` env settings: never invent them. GoInstall staff
+  (`PLATFORM_ADMIN_EMAILS`) attach the number at `/platform/sms` once
+  Twilio approves the business.
 - Calendar sync: a private iCal feed link per team (Google, Outlook and
   Apple subscribe to it); no account connections for now.
 

@@ -7,6 +7,7 @@ import { Checklist } from "./src/screens/Checklist";
 import { JobScreen } from "./src/screens/Job";
 import { Jobs } from "./src/screens/Jobs";
 import { Login } from "./src/screens/Login";
+import { Notifications } from "./src/screens/Notifications";
 import { Placeholder, Profile } from "./src/screens/Other";
 import { SignOff } from "./src/screens/SignOff";
 import { Survey } from "./src/screens/Survey";
@@ -15,7 +16,7 @@ import { colors } from "./src/theme";
 
 const TABS: { route: Route; label: string; icon: string }[] = [
   { route: { name: "jobs" }, label: "Jobs", icon: "▣" },
-  { route: { name: "messages" }, label: "Messages", icon: "✉" },
+  { route: { name: "messages" }, label: "Alerts", icon: "✉" },
   { route: { name: "van" }, label: "Van stock", icon: "⬡" },
   { route: { name: "profile" }, label: "Profile", icon: "◯" },
 ];
@@ -44,7 +45,7 @@ function Shell() {
     <View style={{ flex: 1 }}>
       <View style={{ flex: 1 }}>
         {route.name === "jobs" && <Jobs nav={nav} />}
-        {route.name === "messages" && <Placeholder title="Messages" text="Messages from the office will show here in a later update. Your office can still reach you by phone." />}
+        {route.name === "messages" && <Notifications />}
         {route.name === "van" && <Placeholder title="Van stock" text="Van stock tracking arrives in a later update. Report missing or damaged kit from the job's kit check." />}
         {route.name === "profile" && <Profile />}
         {route.name === "job" && <JobScreen nav={nav} id={route.id} />}

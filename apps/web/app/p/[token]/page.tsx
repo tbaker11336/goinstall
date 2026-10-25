@@ -6,6 +6,7 @@ import { ProposalDocument } from "@/components/proposal-document";
 import { Logo } from "@/components/sidebar";
 import { buttonVariants } from "@/components/ui/button";
 import { db } from "@/lib/db";
+import { notifyTeam } from "@/lib/notify";
 import { payments } from "@/lib/payments";
 import { findPublicProposal, proposalContent, proposalViewWithLayout, recordProposalView } from "@/lib/proposals";
 import { formatDateTime } from "@/lib/utils";
@@ -41,14 +42,15 @@ export default async function PublicProposalPage({ params, searchParams }: { par
   const data = await withService(db(), async (tx) => {
     const p = await findPublicProposal(tx, token);
     if (!p) return null;
-    if (p.status !== "accepted") await recordProposalView(tx, p, ua);
+    const firstView = p.status !== "accepted" ? await recordProposalView(tx, p, ua) : false;
     const [content, invoice] = await Promise.all([
       proposalContent(tx, p.id, p.companyId),
       tx.selectFrom("invoices").select(["id", "number", "amount_pence", "status", "paid_at"]).where("proposal_id", "=", p.id).where("company_id", "=", p.companyId).where("kind", "=", "deposit").where("status", "!=", "void").executeTakeFirst(),
     ]);
     const company = await tx.selectFrom("companies").select(["stripe_account_id"]).where("id", "=", p.companyId).executeTakeFirstOrThrow();
-    return { p, content: content!, invoice, cardAvailable: Boolean(company.stripe_account_id && payments()) };
+    return { p, content: content!, invoice, cardAvailable: Boolean(company.stripe_account_id && payments()), firstView };
   });
+  if (data?.firstView) await notifyTeam(data.p.companyId, "proposal_viewed", { projectId: data.p.projectId, link: `/projects/${data.p.projectId}/proposal` });
 
   if (!data) {
     return (

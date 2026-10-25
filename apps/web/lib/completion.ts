@@ -7,6 +7,7 @@ import { db } from "./db";
 import { nextInvoiceNumber } from "./deposits";
 import { emailSender, fromAddress } from "./email";
 import { env } from "./env";
+import { notifyTeam } from "./notify";
 import { syncPaperwork } from "./paperwork";
 
 export const hashPayToken = (token: string) => createHash("sha256").update(token).digest("hex");
@@ -79,7 +80,7 @@ export async function emailBalanceInvoice(tx: Tx, companyId: string, projectId: 
  * sent from the console once the certificates are in.
  */
 export async function completeInstall(companyId: string, projectId: string): Promise<void> {
-  await withService(db(), async (tx) => {
+  const done = await withService(db(), async (tx) => {
     await syncPaperwork(tx, companyId, projectId);
     const open = await tx
       .selectFrom("bookings")
@@ -89,7 +90,7 @@ export async function completeInstall(companyId: string, projectId: string): Pro
       .where("type", "=", "install")
       .where("status", "not in", ["completed", "cancelled"])
       .executeTakeFirst();
-    if (open) return;
+    if (open) return null;
     const project = await tx.selectFrom("projects").select(["stage", "contact_id"]).where("id", "=", projectId).where("company_id", "=", companyId).executeTakeFirstOrThrow();
     if (project.stage !== "complete" && project.stage !== "lost") {
       // The stage trigger writes the activity log.
@@ -111,5 +112,7 @@ export async function completeInstall(companyId: string, projectId: string): Pro
         })
         .execute();
     }
+    return { balance: inv ? `Balance invoice ${inv.number} for ${formatPence(inv.amountPence)}.` : null };
   });
+  if (done) await notifyTeam(companyId, "job_completed", { projectId, link: `/projects/${projectId}/install`, data: { detail: done.balance ?? undefined } });
 }

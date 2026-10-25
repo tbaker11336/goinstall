@@ -10,7 +10,11 @@ import { Thread, THREAD_TABS, type ThreadTab } from "@/components/thread";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { addProjectAction, updateContactAction } from "@/lib/actions/crm";
-import { asUser } from "@/lib/auth";
+import { withService } from "@goinstall/db";
+import { ukMobileE164 } from "@goinstall/core";
+import { asUser, requireSession } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { activeSms } from "@/lib/sms";
 import { emailConfigured } from "@/lib/email";
 import { contactTimeline, listSources, listStaff } from "@/lib/queries";
 import { addressLine, cn, formatMoney } from "@/lib/utils";
@@ -47,6 +51,9 @@ export default async function ContactPage({ params, searchParams }: { params: Pr
     return { contact, projects, timeline, staff, sources, templates };
   });
   if (!data) notFound();
+  // The add-on's number (billing rows are admin-only, so read for this company server-side).
+  const session = await requireSession();
+  const smsNumber = (await withService(db(), (tx) => activeSms(tx, session.companyId)))?.phone_number ?? null;
   const { contact, projects, timeline, staff, sources, templates } = data;
 
   const owner = staff.find((u) => u.id === contact.owner_id)?.full_name;
@@ -159,6 +166,7 @@ export default async function ContactPage({ params, searchParams }: { params: Pr
         <Card className="flex min-w-0 flex-[999_1_520px] flex-col overflow-hidden" aria-label="Conversation">
           <Thread messages={timeline.messages} events={timeline.events} tab={tab} tabHref={(t) => `/contacts/${contact.id}${t === "all" ? "" : `?tab=${t}`}`} />
           <Composer
+            sms={smsNumber ? { number: smsNumber, mobile: ukMobileE164(contact.phone), optedOut: Boolean(contact.sms_opt_out_at) } : null}
             contactId={contact.id}
             contactEmail={contact.email}
             projects={projects.map((p) => ({ id: p.id, label: addressLine(p.site_address_line1, p.site_postcode) || "Project" }))}

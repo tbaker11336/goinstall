@@ -5,6 +5,7 @@ import { pgErrorCode, sql } from "@goinstall/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { notifyTeam } from "@/lib/notify";
 import { asUser } from "@/lib/auth";
 
 export interface ActionResult {
@@ -61,7 +62,7 @@ export async function createEnquiryAction(_: ActionResult, form: FormData): Prom
   if (!parsed.success) return { error: parsed.error.issues[0]?.message };
   const { products, note, ...contact } = parsed.data;
 
-  const projectId = await asUser(async (tx, session) => {
+  const { projectId, companyId, owner, me } = await asUser(async (tx, session) => {
     const owner = contact.owner_id ?? session.userId;
     const c = await tx
       .insertInto("contacts")
@@ -88,8 +89,10 @@ export async function createEnquiryAction(_: ActionResult, form: FormData): Prom
         .values({ contact_id: c.id, project_id: p.id, channel: "note", direction: "internal", body: note, sent_by: session.userId })
         .execute();
     }
-    return p.id;
+    return { projectId: p.id, companyId: session.companyId, owner, me: session.userId };
   });
+  // Someone else's enquiry: tell its owner.
+  if (owner !== me) await notifyTeam(companyId, "new_enquiry", { projectId, recipients: [owner], data: { site: [contact.address_line1, contact.town].filter(Boolean).join(", ") || undefined, detail: `${contact.name}, added by a colleague.` } });
   revalidatePath("/", "layout");
   redirect(`/projects/${projectId}`);
 }

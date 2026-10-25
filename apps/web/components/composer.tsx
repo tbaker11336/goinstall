@@ -7,11 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Input, Select, Textarea } from "@/components/ui/input";
 import { addNoteAction } from "@/lib/actions/crm";
 import { sendEmailAction, sendProjectSurveysAction } from "@/lib/actions/messaging";
+import { sendContactSmsAction } from "@/lib/actions/sms";
 
-type Channel = "note" | "email";
+type Channel = "note" | "email" | "sms";
 
 /**
- * Contact page composer: internal notes and emails, a "Send survey link"
+ * Contact page composer: internal notes, emails and texts (SMS add-on), a "Send survey link"
  * shortcut, and the team's saved templates.
  */
 export function Composer({
@@ -20,27 +21,32 @@ export function Composer({
   projects,
   templates,
   emailLive,
+  sms,
 }: {
   contactId: string;
   contactEmail: string | null;
   projects: { id: string; label: string }[];
   templates: { id: string; name: string; subject: string | null; body: string }[];
   emailLive: boolean;
+  /** The company's number when the SMS add-on is live, and whether this contact can be texted. */
+  sms?: { number: string; mobile: string | null; optedOut: boolean } | null;
 }) {
   const [channel, setChannel] = useState<Channel>(contactEmail ? "email" : "note");
   const [projectId, setProjectId] = useState(projects[0]?.id ?? "");
   const [noteState, noteAction] = useActionState<FormState, FormData>(addNoteAction.bind(null, contactId), {});
   const [emailState, emailAction] = useActionState<FormState, FormData>(sendEmailAction.bind(null, contactId), {});
+  const [smsState, smsAction] = useActionState<FormState, FormData>(sendContactSmsAction.bind(null, contactId), {});
   const [surveyState, setSurveyState] = useState<FormState>({});
   const [sendingSurvey, startSurvey] = useTransition();
   const form = useRef<HTMLFormElement>(null);
   const subject = useRef<HTMLInputElement>(null);
   const body = useRef<HTMLTextAreaElement>(null);
-  const state = channel === "email" ? emailState : noteState;
+  const state = channel === "email" ? emailState : channel === "sms" ? smsState : noteState;
+  const canText = Boolean(sms?.mobile && !sms.optedOut);
 
   useEffect(() => {
-    if (noteState.message || emailState.message) form.current?.reset();
-  }, [noteState, emailState]);
+    if (noteState.message || emailState.message || smsState.message) form.current?.reset();
+  }, [noteState, emailState, smsState]);
 
   function applyTemplate(id: string) {
     const t = templates.find((x) => x.id === id);
@@ -52,7 +58,7 @@ export function Composer({
 
   return (
     <div className="flex flex-col gap-2.5 border-t px-4 py-3.5">
-      <form ref={form} action={channel === "email" ? emailAction : noteAction} className="flex flex-col gap-2.5">
+      <form ref={form} action={channel === "email" ? emailAction : channel === "sms" ? smsAction : noteAction} className="flex flex-col gap-2.5">
         <div className="flex flex-wrap items-center gap-2">
           <label htmlFor="channel" className="sr-only">
             Send via
@@ -61,6 +67,11 @@ export function Composer({
             <option value="email" disabled={!contactEmail}>
               Email{contactEmail ? "" : " (no address)"}
             </option>
+            {sms && (
+              <option value="sms" disabled={!canText}>
+                SMS{!sms.mobile ? " (no mobile)" : sms.optedOut ? " (opted out)" : ""}
+              </option>
+            )}
             <option value="note">Internal note</option>
           </Select>
           {templates.length > 0 && channel === "email" && (
@@ -109,7 +120,7 @@ export function Composer({
             </Button>
           )}
           <span className="ml-auto text-[12.5px] text-muted-foreground">
-            {channel === "email" ? (emailLive ? `To ${contactEmail}` : "Email not connected yet: messages are recorded, not delivered") : "Only your team sees notes"}
+            {channel === "email" ? (emailLive ? `To ${contactEmail}` : "Email not connected yet: messages are recorded, not delivered") : channel === "sms" ? `To ${sms?.mobile} from ${sms?.number}` : "Only your team sees notes"}
           </span>
         </div>
         {channel === "email" && (
@@ -122,17 +133,18 @@ export function Composer({
         )}
         <div className="flex items-end gap-2.5">
           <label htmlFor="body" className="sr-only">
-            {channel === "email" ? "Message" : "Note"}
+            {channel === "email" ? "Message" : channel === "sms" ? "Text message" : "Note"}
           </label>
           <Textarea
             ref={body}
             id="body"
             name="body"
             required
-            placeholder={channel === "email" ? "Write an email…" : "Write a note for the team…"}
+            placeholder={channel === "email" ? "Write an email…" : channel === "sms" ? "Write a text… (160 characters is one text)" : "Write a note for the team…"}
+            maxLength={channel === "sms" ? 640 : undefined}
             className="min-h-[72px] flex-1 rounded-[10px]"
           />
-          <SubmitButton pendingText={channel === "email" ? "Sending…" : "Saving…"}>{channel === "email" ? "Send email" : "Add note"}</SubmitButton>
+          <SubmitButton pendingText={channel === "note" ? "Saving…" : "Sending…"}>{channel === "email" ? "Send email" : channel === "sms" ? "Send text" : "Add note"}</SubmitButton>
         </div>
       </form>
       <FormMessage state={surveyState.error || surveyState.message ? surveyState : state} />

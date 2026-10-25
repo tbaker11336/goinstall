@@ -7,6 +7,9 @@ const pgAdmin = process.env.PG_ADMIN_URL ?? "postgres://postgres:postgres@localh
 const e2eDb = pgAdmin.replace(/\/[^/]*$/, "/goinstall_e2e");
 // Emails are recorded here instead of sent (see lib/email.ts); tests read survey links from it.
 export const OUTBOX = `${process.cwd()}/.data/e2e-outbox.jsonl`;
+// Texts are recorded here instead of sent.
+export const SMS_OUTBOX = `${process.cwd()}/.data/e2e-sms.jsonl`;
+export const CRON_SECRET = "e2e-cron-secret";
 
 export default defineConfig({
   testDir: "./e2e",
@@ -25,7 +28,7 @@ export default defineConfig({
   webServer: [
   {
     // Fresh database with demo data, then the app with dev sign-in.
-    command: `mkdir -p .data && rm -f ${OUTBOX} && rm -rf .data/e2e-uploads && DATABASE_URL=${pgAdmin} pnpm --filter @goinstall/db reset-dev goinstall_e2e && pnpm exec next dev --port ${port}`,
+    command: `mkdir -p .data && rm -f ${OUTBOX} ${SMS_OUTBOX} && rm -rf .data/e2e-uploads && DATABASE_URL=${pgAdmin} pnpm --filter @goinstall/db reset-dev goinstall_e2e && pnpm exec next dev --port ${port}`,
     url: `http://localhost:${port}/login`,
     reuseExistingServer: false,
     timeout: 180_000,
@@ -41,6 +44,16 @@ export default defineConfig({
       PAYMENTS_FAKE: "true",
       STRIPE_SECRET_KEY: "",
       STRIPE_WEBHOOK_SECRET: "",
+      SMS_OUTBOX_FILE: SMS_OUTBOX,
+      TWILIO_ACCOUNT_SID: "",
+      TWILIO_AUTH_TOKEN: "",
+      CRON_SECRET,
+      // A made-up plan for the tests; the real price is GoInstall's to set.
+      SMS_PLAN_MONTHLY_PENCE: "1500",
+      SMS_PLAN_INCLUDED_TEXTS: "200",
+      SMS_EXTRA_TEXT_PENCE: "6",
+      STRIPE_SMS_PRICE_ID: "price_e2e_sms",
+      PLATFORM_ADMIN_EMAILS: "alex@brightside.test",
     },
   },
   {

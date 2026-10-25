@@ -1,4 +1,4 @@
-import { Check, Mail, MessageCircle, Settings2, StickyNote } from "lucide-react";
+import { Check, Mail, MessageCircle, MessageSquareText, Settings2, StickyNote } from "lucide-react";
 import Link from "next/link";
 import { EmptyState } from "@/components/domain";
 import { describeEvent } from "@/lib/events";
@@ -6,7 +6,7 @@ import { cn, formatDateTime } from "@/lib/utils";
 
 export interface ThreadMessage {
   id: string;
-  channel: "email" | "whatsapp" | "note" | "system";
+  channel: "email" | "whatsapp" | "sms" | "note" | "system";
   direction: "inbound" | "outbound" | "internal";
   subject: string | null;
   body: string;
@@ -27,12 +27,13 @@ export interface ThreadEvent {
 export const THREAD_TABS = [
   { key: "all", label: "All" },
   { key: "email", label: "Email" },
+  { key: "sms", label: "SMS" },
   { key: "note", label: "Notes" },
 ] as const;
 export type ThreadTab = (typeof THREAD_TABS)[number]["key"];
 
-const ICONS = { email: Mail, whatsapp: MessageCircle, note: StickyNote, system: Settings2 };
-const CHANNEL_LABELS = { email: "Email", whatsapp: "WhatsApp", note: "Note", system: "System" };
+const ICONS = { email: Mail, whatsapp: MessageCircle, sms: MessageSquareText, note: StickyNote, system: Settings2 };
+const CHANNEL_LABELS = { email: "Email", whatsapp: "WhatsApp", sms: "SMS", note: "Note", system: "System" };
 
 /**
  * Unified thread: messages on every channel plus system events. "chat" (the
@@ -110,7 +111,7 @@ export function Thread({
       <ol className="flex min-h-[420px] flex-col gap-[18px] bg-[#fcfcfd] p-6 max-md:p-4">
         {items.length === 0 && (
           <li>
-            <EmptyState>{tab === "email" ? "No emails yet." : "Nothing here yet."}</EmptyState>
+            <EmptyState>{tab === "email" ? "No emails yet." : tab === "sms" ? "No texts yet." : "Nothing here yet."}</EmptyState>
           </li>
         )}
         {items.map((item) =>
@@ -149,7 +150,7 @@ function MessageItem({ m }: { m: ThreadMessage }) {
         <span
           className={cn(
             "inline-flex size-4 items-center justify-center rounded-[4px]",
-            m.channel === "whatsapp" ? "bg-success-tint text-success-text" : note ? "bg-warning-pill text-warning-text" : "bg-info-tint text-info-text",
+            m.channel === "whatsapp" || m.channel === "sms" ? "bg-success-tint text-success-text" : note ? "bg-warning-pill text-warning-text" : "bg-info-tint text-info-text",
           )}
         >
           <Icon className="size-[11px]" strokeWidth={2.2} aria-hidden />

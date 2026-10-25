@@ -18,7 +18,7 @@ export default async function TeamSettingsPage() {
   const { members, teams, me } = await asUser(
     async (tx, s) => {
       const [members, teams] = await Promise.all([
-        tx.selectFrom("users").select(["id", "full_name", "email", "role", "team_id", "is_active"]).orderBy("is_active", "desc").orderBy("full_name").execute(),
+        tx.selectFrom("users").select(["id", "full_name", "email", "phone", "role", "team_id", "is_active"]).orderBy("is_active", "desc").orderBy("full_name").execute(),
         tx.selectFrom("teams").select(["id", "name", "colour"]).orderBy("name").execute(),
       ]);
       return { members, teams, me: s.userId };
@@ -67,6 +67,7 @@ export default async function TeamSettingsPage() {
                           </option>
                         ))}
                       </Select>
+                      <Input name="phone" type="tel" defaultValue={m.phone ?? ""} placeholder="Mobile" aria-label={`Mobile number for ${m.full_name} (for text notifications)`} className="w-36" />
                       <Select name="is_active" defaultValue={String(m.is_active)} aria-label={`Status for ${m.full_name}`} className="w-32">
                         <option value="true">Active</option>
                         <option value="false">Deactivated</option>

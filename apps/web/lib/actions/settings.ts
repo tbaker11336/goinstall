@@ -1,6 +1,7 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
+import { ukMobileE164 } from "@goinstall/core";
 import { pgErrorCode, sql, withService } from "@goinstall/db";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -135,11 +136,19 @@ const memberSchema = z.object({
   role: roleSchema,
   team_id: teamId,
   is_active: z.enum(["true", "false"]).transform((v) => v === "true"),
+  // For text notifications; blank clears it.
+  phone: z
+    .string()
+    .trim()
+    .max(30)
+    .optional()
+    .transform((v) => v || null)
+    .refine((v) => v === null || ukMobileE164(v) !== null, "Enter a UK mobile number, e.g. 07700 900123"),
 });
 
 export async function updateMemberAction(userId: string, _: ActionResult, form: FormData): Promise<ActionResult> {
   const parsed = memberSchema.safeParse(Object.fromEntries(form));
-  if (!parsed.success) return { error: "Check the role and team." };
+  if (!parsed.success) return { error: parsed.error.issues.find((i) => i.path[0] === "phone")?.message ?? "Check the role and team." };
   const id = z.uuid().parse(userId);
   return asUser(
     async (tx, session) => {

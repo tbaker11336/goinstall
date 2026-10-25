@@ -6,6 +6,7 @@ import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import type { Session } from "./auth";
 import { db } from "./db";
+import { notifyCustomer, notifyTeam } from "./notify";
 import { emailSender, fromAddress } from "./email";
 import { fileStore } from "./files";
 
@@ -55,7 +56,7 @@ async function booking(tx: Tx, id: string) {
  * Apply one queued capture. `completed` collects projects whose install was
  * just finished, for the follow-up work that runs once the sync commits.
  */
-export async function applyOp(tx: Tx, session: Session, op: SyncOp, completed: Set<string> = new Set()): Promise<OpResult> {
+export async function applyOp(tx: Tx, session: Session, op: SyncOp, completed: Set<string> = new Set(), followUps: (() => Promise<void>)[] = []): Promise<OpResult> {
   const ok = (note?: string): OpResult => ({ opId: op.opId, ok: true, note });
   const fail = (error: string): OpResult => ({ opId: op.opId, ok: false, error });
   const when = new Date(op.capturedAt);
@@ -127,6 +128,7 @@ export async function applyOp(tx: Tx, session: Session, op: SyncOp, completed: S
       if (op.issue) {
         const k = await tx.selectFrom("kit_items").select(["project_id", "company_id", "description"]).where("id", "=", op.kitItemId).executeTakeFirstOrThrow();
         await serviceNote(k.company_id, k.project_id, `${session.fullName} reported ${k.description} ${op.issue}${op.note ? `: ${op.note}` : ""}`, "kit_issue");
+        followUps.push(() => notifyTeam(k.company_id, "kit_issue", { projectId: k.project_id, link: `/projects/${k.project_id}/kit`, data: { detail: `${session.fullName} reported ${k.description} ${op.issue}${op.note ? ` (${op.note})` : ""}` } }));
       }
       return ok();
     }
@@ -135,26 +137,17 @@ export async function applyOp(tx: Tx, session: Session, op: SyncOp, completed: S
       if (!b?.project_id) return fail("Job not found");
       // Installers can't write customer messages directly; the server does it once it knows they're on the job.
       if (Date.now() - when.getTime() > 3_600_000) return ok("too old to send");
+      // Once per job every two hours (a double tap or a resend doesn't repeat it).
+      const window = Math.floor(when.getTime() / 7_200_000) % 30_000;
       await withService(db(), async (s) => {
-        const p = await s
-          .selectFrom("projects as p")
-          .innerJoin("contacts as c", (j) => j.onRef("c.id", "=", "p.contact_id").onRef("c.company_id", "=", "p.company_id"))
-          .innerJoin("companies as co", "co.id", "p.company_id")
-          .select(["p.id", "c.id as contact_id", "c.name", "c.email", "co.name as company_name", "co.email as company_email", "co.email_sender"])
-          .where("p.id", "=", b.project_id!)
-          .where("p.company_id", "=", b.company_id)
-          .executeTakeFirstOrThrow();
-        const already = await s.selectFrom("messages").select("id").where("project_id", "=", p.id).where("company_id", "=", b.company_id).where("subject", "like", "On my way%").where("created_at", ">", sql<Date>`now() - interval '2 hours'`).executeTakeFirst();
-        if (already || !p.email) return;
-        const subject = `On my way: ${p.company_name}`;
-        const body = `Hi ${firstName(p.name)},\n\n${firstName(session.fullName)} from ${p.company_name} is on the way and should be with you in about ${op.etaMinutes} minutes.\n\n${p.company_name}`;
-        const m = await s
-          .insertInto("messages")
-          .values({ company_id: b.company_id, contact_id: p.contact_id, project_id: p.id, channel: "email", direction: "outbound", subject, body, sent_by: session.userId, to_address: p.email, delivery_status: "queued", created_by: session.userId })
-          .returning("id")
-          .executeTakeFirstOrThrow();
-        const r = await emailSender().send({ from: fromAddress(p.company_name, p.email_sender), to: p.email, replyTo: p.company_email ?? undefined, subject, text: body, html: textToHtml(body), idempotencyKey: `omw-${op.opId}`, tags: { kind: "on_my_way" } });
-        await s.updateTable("messages").set(r.ok ? { delivery_status: "sent", provider_message_id: r.providerId } : { delivery_status: "failed", delivery_error: r.error }).where("id", "=", m.id).execute();
+        const p = await s.selectFrom("projects").select(["id", "contact_id"]).where("id", "=", b.project_id!).where("company_id", "=", b.company_id).executeTakeFirstOrThrow();
+        await notifyCustomer(s, b.company_id, "on_my_way", {
+          contactId: p.contact_id,
+          projectId: p.id,
+          sentBy: session.userId,
+          once: { entityId: b.id, step: window },
+          data: { installer: firstName(session.fullName), eta: `in about ${op.etaMinutes} minutes` },
+        });
       });
       return ok();
     }
