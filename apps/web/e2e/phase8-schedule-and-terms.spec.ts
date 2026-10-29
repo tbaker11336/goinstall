@@ -57,8 +57,7 @@ test("EV install: no scaffold, declined in the app, rescheduled and the customer
   // The office sees it on the calendar.
   await page.goto(`/schedule?view=day&date=${todayUk()}`);
   await expect(page.getByRole("heading", { name: /\d{4}$/, level: 2 }).first()).toBeVisible();
-  const event = page.getByRole("button", { name: /EV charger installation/ }).first();
-  await expect(event).toContainText("Owen Lewis");
+  const event = page.getByRole("button", { name: /^All day EV charger installation Owen Lewis/ });
   await event.click();
   const dialog = page.getByRole("dialog", { name: "EV charger installation" });
   await expect(dialog.getByText("Dan Hughes: declined (Van in for repair)")).toBeVisible();
@@ -81,13 +80,14 @@ test("EV install: no scaffold, declined in the app, rescheduled and the customer
   // Week and month views, and the team filter.
   await page.goto(`/schedule?view=week&date=${next}`);
   await expect(page.getByRole("heading", { name: /^Week of / })).toBeVisible();
-  await expect(page.getByRole("button", { name: /EV charger installation/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^EV charger installation Owen Lewis/ })).toBeVisible();
   await page.getByRole("navigation", { name: "Calendar view" }).getByRole("link", { name: "month" }).click();
   await page.waitForURL(/view=month/);
   await expect(page.getByRole("table")).toBeVisible();
   await page.getByLabel("Team").selectOption({ label: "Install team A" });
   await page.waitForURL(/team=/);
-  await expect(page.getByRole("button", { name: /EV charger installation/ }).first()).toBeVisible();
+  // Month cells show just the title.
+  await expect(page.getByRole("button", { name: /^(✕ Declined: )?EV charger installation$/ }).first()).toBeVisible();
 
   // The moved job asks Dan again (in the app, the next day it's on).
   await app.reload();
