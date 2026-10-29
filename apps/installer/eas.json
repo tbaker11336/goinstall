@@ -1,0 +1,20 @@
+{
+  "cli": { "version": ">= 16.0.0", "appVersionSource": "remote" },
+  "build": {
+    "preview": {
+      "distribution": "internal",
+      "environment": "preview",
+      "android": { "buildType": "apk" },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://goinstall-staging.vercel.app",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://bbznhrzyvuwhrhghawvr.supabase.co",
+        "EXPO_PUBLIC_DEV_SIGN_IN": "false"
+      }
+    },
+    "testflight": {
+      "extends": "preview",
+      "distribution": "store",
+      "autoIncrement": true
+    }
+  }
+}

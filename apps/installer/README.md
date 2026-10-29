@@ -21,3 +21,14 @@ overwritten values kept in history).
 
 Serial scanning uses the camera on phones; the web build takes typed serials.
 Voice notes use the phone keyboard's dictation.
+
+## Test builds on a phone (EAS)
+
+`eas.json` has a `preview` build pointing at staging. The Supabase anon key
+(public by design) is an EAS environment variable,
+`EXPO_PUBLIC_SUPABASE_ANON_KEY`, in the `preview` environment.
+
+- Android: `npx eas-cli build --profile preview --platform android` gives an
+  APK download link; open it on the phone to install.
+- iPhone: needs an Apple Developer account. `npx eas-cli build --profile
+  testflight --platform ios --auto-submit` sends it to TestFlight.
