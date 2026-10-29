@@ -51,7 +51,6 @@ export async function saveInvoiceSettingsAction(_: ActionResult, form: FormData)
         bank_sort_code: sortCode,
         bank_account_number: account,
         payment_terms: text("payment_terms", 2000),
-        terms_and_conditions: text("terms_and_conditions", 50_000),
       })
       .where("id", "=", session.companyId)
       .execute();

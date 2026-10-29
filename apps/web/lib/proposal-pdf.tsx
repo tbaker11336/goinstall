@@ -146,10 +146,11 @@ function ProposalPdf({ p, x }: { p: ProposalView; x: PdfExtras }) {
             Accepted by {x.acceptance.name} on {formatDate(x.acceptance.at, { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}.
           </Text>
         )}
-        {p.terms && (
+        {(p.terms || p.termsFile) && (
           <View style={s.terms}>
             <Text style={[s.bold, { color: INK, marginBottom: 4 }]}>Terms and conditions</Text>
-            <Text>{p.terms}</Text>
+            {p.termsFile && <Text style={{ marginBottom: 4 }}>Our full terms and conditions are in the separate PDF sent with this proposal and linked on your proposal page.</Text>}
+            {p.terms && <Text>{p.terms}</Text>}
           </View>
         )}
         {footer}

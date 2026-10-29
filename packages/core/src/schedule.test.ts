@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { allDaySpan, bookingDates, findClashes, icalFeed, weekStart } from "./schedule";
+import { allDaySpan, bookingDates, bookingTitle, calendarRange, findClashes, icalFeed, installBookingTypes, needsScaffold, weekStart } from "./schedule";
 
 describe("schedule", () => {
   it("finds the Monday and spans working days", () => {
@@ -18,6 +18,35 @@ describe("schedule", () => {
     // Booked on a Sunday: that Sunday counts, then Monday.
     expect(bookingDates(...(Object.values(allDaySpan("2026-10-25", 1)) as [string, string]))).toEqual(["2026-10-25"]);
     expect(bookingDates(...(Object.values(allDaySpan("2026-10-25", 2)) as [string, string]))).toEqual(["2026-10-25", "2026-10-26"]);
+  });
+
+  it("works out the dates each calendar view shows", () => {
+    expect(calendarRange("day", "2026-10-29")).toMatchObject({ from: "2026-10-29", to: "2026-10-30", days: ["2026-10-29"], prev: "2026-10-28", next: "2026-10-30" });
+    const w = calendarRange("week", "2026-10-29"); // a Thursday
+    expect(w).toMatchObject({ from: "2026-10-26", to: "2026-11-02", prev: "2026-10-19", next: "2026-11-02" });
+    expect(w.days).toHaveLength(7);
+    // October 2026 starts on a Thursday and ends on a Saturday: Mon 28 Sep to Sun 1 Nov.
+    const m = calendarRange("month", "2026-10-15");
+    expect(m).toMatchObject({ from: "2026-09-28", to: "2026-11-02", prev: "2026-09-01", next: "2026-11-01" });
+    expect(m.days).toHaveLength(35);
+    expect(calendarRange("month", "2026-01-31").prev).toBe("2025-12-01");
+  });
+
+  it("names bookings by what they are", () => {
+    expect(bookingTitle("install", ["ev"])).toBe("EV charger installation");
+    expect(bookingTitle("install", ["solar", "battery"])).toBe("Solar and battery installation");
+    expect(bookingTitle("install", ["solar", "battery", "ev"])).toBe("Solar, battery and EV charger installation");
+    expect(bookingTitle("survey", ["ev"])).toBe("EV charger survey");
+    expect(bookingTitle("scaffold_up", ["solar"])).toBe("Scaffold up");
+    expect(bookingTitle("task", [], "Collect from depot")).toBe("Collect from depot");
+    expect(bookingTitle("install", [])).toBe("Installation");
+  });
+
+  it("offers scaffold only on solar projects", () => {
+    expect(installBookingTypes(["solar", "battery"])).toEqual(["install", "scaffold_up", "scaffold_down"]);
+    expect(installBookingTypes(["ev"])).toEqual(["install"]);
+    expect(installBookingTypes(["battery"])).toEqual(["install"]);
+    expect(needsScaffold(["ev", "solar"])).toBe(true);
   });
 
   it("flags double-booked teams and people only", () => {

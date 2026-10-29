@@ -1,57 +1,68 @@
-import { addDays, ukDate, weekStart } from "@goinstall/core";
-import Link from "next/link";
+import { bookingDates, bookingTitle, calendarRange, ukDate, type CalendarView } from "@goinstall/core";
 import { z } from "zod";
 import { PageHeader } from "@/components/domain";
-import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { WeekGrid } from "@/components/week-grid";
 import { asUser } from "@/lib/auth";
-import { loadBookings, loadPeople } from "@/lib/schedule";
-import { gridFor, weekColumns } from "@/lib/schedule-grid";
-import { formatDate } from "@/lib/utils";
+import { loadBookings, loadPeople, type ScheduleBooking } from "@/lib/schedule";
 import { CalendarLink } from "./calendar-links";
+import { ScheduleCalendar, type CalendarEvent } from "./schedule-calendar";
 
 export const metadata = { title: "Schedule" };
 
-export default async function SchedulePage({ searchParams }: { searchParams: Promise<{ week?: string }> }) {
-  const { week } = await searchParams;
-  const monday = week && z.iso.date().safeParse(week).success ? weekStart(week) : weekStart(ukDate(new Date()));
+const VIEWS = ["day", "week", "month"] as const;
+const londonTime = (d: Date) => new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", hour: "2-digit", minute: "2-digit", hour12: false }).format(d);
+
+/** One calendar for every booking: day, week or month, optionally for one team. */
+export default async function SchedulePage({ searchParams }: { searchParams: Promise<{ view?: string; date?: string; team?: string; week?: string }> }) {
+  const sp = await searchParams;
+  const view: CalendarView = VIEWS.includes(sp.view as CalendarView) ? (sp.view as CalendarView) : "week";
+  const raw = sp.date ?? sp.week; // ?week= links from before the calendar changed
+  const date = raw && z.iso.date().safeParse(raw).success ? raw : ukDate(new Date());
+  const range = calendarRange(view, date);
+  const team = sp.team && z.uuid().safeParse(sp.team).success ? sp.team : null;
+
   const { bookings, people, isAdmin } = await asUser(async (tx, s) => ({
-    bookings: await loadBookings(tx, { from: monday, to: addDays(monday, 7) }),
+    bookings: await loadBookings(tx, { from: range.from, to: range.to }),
     people: await loadPeople(tx),
     isAdmin: s.role === "admin",
   }));
-  const { rows, items } = gridFor(monday, bookings, people.teams, { linkProjects: true });
-  const clashes = items.filter((i) => i.clash).length;
+
+  const members = team ? new Set(people.users.filter((u) => u.team_id === team).map((u) => u.id)) : null;
+  const onTeam = (b: ScheduleBooking) => !team || b.assignments.some((a) => a.teamId === team || (a.userId && members!.has(a.userId)));
+  const events: CalendarEvent[] = bookings.filter(onTeam).map((b) => ({
+    id: b.id,
+    type: b.type,
+    title: bookingTitle(b.type, b.products, b.title),
+    customer: b.contactName,
+    address: b.address,
+    projectId: b.projectId,
+    dates: bookingDates(b.startsAt, b.endsAt),
+    allDay: b.allDay,
+    time: b.allDay ? null : `${londonTime(b.startsAt)}–${londonTime(b.endsAt)}`,
+    startTime: b.allDay ? null : londonTime(b.startsAt),
+    people: b.assignments.map((a) => ({ role: a.role, name: a.name })),
+    teamId: b.assignments.find((a) => a.role === "team")?.teamId ?? null,
+    status: b.status,
+    notifiedAt: b.customerNotifiedAt?.toISOString() ?? null,
+    confirmedAt: b.customerConfirmedAt?.toISOString() ?? null,
+    clash: b.clashes.length > 0,
+    notes: b.notes,
+    responses: b.responses,
+  }));
+
   return (
     <>
-      <PageHeader title="Schedule" description="Every team's surveys, installs and scaffolding across all projects." />
+      <PageHeader title="Schedule" description="Every survey, installation and scaffold booking. Click a booking to see it, move it or tell the customer." />
       <div className="flex flex-col gap-6">
-        <Card>
-          <CardHeader className="flex-wrap">
-            <CardTitle>Week of {formatDate(monday, { day: "numeric", month: "long" })}</CardTitle>
-            <nav aria-label="Week" className="flex gap-2">
-              <Link href={`?week=${addDays(monday, -7)}`} className={buttonVariants({ variant: "outline", size: "sm" })} aria-label="Previous week">
-                ‹
-              </Link>
-              <Link href="/schedule" className={buttonVariants({ variant: "outline", size: "sm" })}>
-                Today
-              </Link>
-              <Link href={`?week=${addDays(monday, 7)}`} className={buttonVariants({ variant: "outline", size: "sm" })} aria-label="Next week">
-                ›
-              </Link>
-            </nav>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            {clashes > 0 && (
-              <p role="alert" className="rounded-md bg-warning-tint px-3 py-2 text-sm font-semibold text-warning-text">
-                {clashes} booking{clashes === 1 ? " is" : "s are"} double-booked this week.
-              </p>
-            )}
-            <WeekGrid days={weekColumns(monday)} rows={rows} bookings={items} caption={`All bookings, week of ${monday}`} />
-            <p className="text-xs text-muted-foreground">Drag to move a booking, or open the project to change it.</p>
-          </CardContent>
-        </Card>
+        <ScheduleCalendar
+          view={view}
+          date={date}
+          today={ukDate(new Date())}
+          range={range}
+          events={events}
+          teams={people.teams.map((t) => ({ id: t.id, name: t.name }))}
+          team={team}
+        />
         {isAdmin && people.teams.length > 0 && (
           <Card>
             <CardHeader className="flex-col items-start">

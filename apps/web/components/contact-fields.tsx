@@ -1,4 +1,5 @@
 import { PRODUCTS, productLabel, SOURCES, type Product } from "@/components/domain";
+import { AddressFields } from "@/components/address-fields";
 import { Field, Input, Select } from "@/components/ui/input";
 
 interface ContactValues {
@@ -30,7 +31,18 @@ export function ProductCheckboxes({ name = "products", selected = [], legend = "
   );
 }
 
-export function ContactFields({ values = {}, staff, extraSources = [] }: { values?: ContactValues; staff: { id: string; full_name: string }[]; extraSources?: string[] }) {
+export function ContactFields({
+  values = {},
+  staff,
+  extraSources = [],
+  withLocation = false,
+}: {
+  values?: ContactValues;
+  staff: { id: string; full_name: string }[];
+  extraSources?: string[];
+  /** New enquiries: a picked Google address also sets the project's map position. */
+  withLocation?: boolean;
+}) {
   const sources = [...new Set([...SOURCES, ...extraSources, ...(values.source ? [values.source] : [])])];
   return (
     <div className="grid gap-4 sm:grid-cols-2">
@@ -43,19 +55,7 @@ export function ContactFields({ values = {}, staff, extraSources = [] }: { value
       <Field label="Email" htmlFor="email">
         <Input id="email" name="email" type="email" defaultValue={values.email ?? ""} />
       </Field>
-      <Field label="Address" htmlFor="address_line1" className="sm:col-span-2">
-        <Input id="address_line1" name="address_line1" defaultValue={values.address_line1 ?? ""} />
-      </Field>
-      <Field label="Address line 2" htmlFor="address_line2" className="sm:col-span-2">
-        <Input id="address_line2" name="address_line2" defaultValue={values.address_line2 ?? ""} />
-      </Field>
-      <Field label="Town" htmlFor="town">
-        <Input id="town" name="town" defaultValue={values.town ?? ""} />
-      </Field>
-      <Field label="Postcode" htmlFor="postcode">
-        <Input id="postcode" name="postcode" defaultValue={values.postcode ?? ""} autoCapitalize="characters" />
-      </Field>
-      <input type="hidden" name="county" value={values.county ?? ""} />
+      <AddressFields values={values} withLocation={withLocation} />
       <Field label="Source" htmlFor="source">
         <Select id="source" name="source" defaultValue={values.source ?? ""}>
           <option value="">Not known</option>

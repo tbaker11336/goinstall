@@ -23,9 +23,13 @@ test("design → proposal → send → accept and sign → deposit paid", async 
   await page.getByLabel("Account name").fill("Brightside Solar Ltd");
   await page.getByLabel("Sort code").fill("12-34-56");
   await page.getByLabel("Account number").fill("12345678");
-  await page.getByLabel("Terms and conditions").fill("Test terms.");
   await page.getByRole("button", { name: "Save invoice and quote settings" }).click();
   await expect(page.getByText("Invoice and quote settings saved.")).toBeVisible();
+  await page.goto("/settings/terms");
+  await page.getByLabel("Terms and conditions").fill("Test terms.");
+  await page.getByRole("button", { name: "Save terms" }).click();
+  await expect(page.getByText(/Terms saved\./)).toBeVisible();
+  await page.goto("/settings/invoices");
   await page.getByRole("button", { name: "Connect Stripe" }).click();
   await expect(page.getByText("Connected")).toBeVisible();
 

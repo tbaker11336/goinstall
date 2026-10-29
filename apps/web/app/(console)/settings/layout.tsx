@@ -12,6 +12,7 @@ const SECTIONS = [
   { href: "/settings/design", label: "Design rules" },
   { href: "/settings/surveys", label: "Surveys & templates" },
   { href: "/settings/invoices", label: "Invoices & quotes" },
+  { href: "/settings/terms", label: "Terms & conditions" },
   { href: "/settings/checklists", label: "Install checklists" },
   { href: "/settings/marketing", label: "Marketing" },
 ];

@@ -11,6 +11,7 @@ import {
   EMPTY_MARKUP,
   evaluateSolarDesign,
   fillArea,
+  movePanel,
   formatPence,
   MARKER_CODES,
   MARKER_KINDS,
@@ -30,7 +31,7 @@ import {
   type SiteMarkup,
   type StringPlan,
 } from "@goinstall/core";
-import { AlertTriangle, Cable, Check, Download, Grid2x2, Images, MapPin, Minus, MousePointer2, OctagonX, Plus, Ruler, Sparkles, Spline, Triangle, Zap } from "lucide-react";
+import { AlertTriangle, Cable, Check, ChevronDown, ChevronUp, Download, Grid2x2, Images, MapPin, Minus, MousePointer2, OctagonX, Plus, Ruler, Sparkles, Spline, Triangle, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Select } from "@/components/ui/input";
@@ -123,6 +124,9 @@ export function SolarDesigner(props: SolarDesignerProps) {
   const [planStrings, setPlanStrings] = useState<StringPlan | null>(props.initial.stringPlan ?? null);
   const [selectedSeg, setSelectedSeg] = useState<string | null>(props.initial.segments.find((s) => s.used)?.id ?? null);
   const [selectedPanel, setSelectedPanel] = useState<{ seg: string; i: number } | null>(null);
+  // Drag-and-drop of one placed panel (Select tool).
+  const [panelMove, setPanelMove] = useState<{ seg: string; i: number; from: Point; to: Point } | null>(null);
+  const [roofsOpen, setRoofsOpen] = useState(true);
   const [selectedItem, setSelectedItem] = useState<PlanItem>(null);
   const [tool, setTool] = useState<Tool>("select");
   const [activeString, setActiveString] = useState(1);
@@ -294,6 +298,19 @@ export function SolarDesigner(props: SolarDesignerProps) {
     }
   }
 
+  /** Move a placed panel; false (and a message) when it won't fit there. */
+  function tryMove(segId: string, i: number, by: { dx: number; dy: number }): boolean {
+    const s = segments.find((x) => x.id === segId);
+    if (!s) return false;
+    const moved = movePanel(polygonOf(s), s.panels, i, by, { setback: setback ?? 0, obstructions: s.obstructions });
+    if (!moved) {
+      flash("The panel doesn't fit there (edge setback, another panel or an obstruction).");
+      return false;
+    }
+    updateSeg(segId, (x) => ({ ...x, panels: x.panels.map((q, j) => (j === i ? moved : q)) }));
+    return true;
+  }
+
   // --- Plan gestures: draw roof, measure, cable, mark. ---
   const planPoint = (e: { clientX: number; clientY: number }) => (svgRef.current ? toLocal(svgRef.current, e.clientX, e.clientY) : null);
   /** Snap cable points to a marker within 0.6 m, so a run starts and ends on the equipment. */
@@ -365,6 +382,13 @@ export function SolarDesigner(props: SolarDesignerProps) {
         setDrag(null);
         setHover(null);
       } else if (e.key === "Enter" && draft) finishCable(draft);
+      else if (selectedPanel && tool === "select" && e.key.startsWith("Arrow")) {
+        // The keyboard alternative to dragging a panel: 10 cm a press, 50 cm with Shift.
+        e.preventDefault();
+        const step = e.shiftKey ? 0.5 : 0.1;
+        const by = { dx: e.key === "ArrowLeft" ? -step : e.key === "ArrowRight" ? step : 0, dy: e.key === "ArrowUp" ? -step : e.key === "ArrowDown" ? step : 0 };
+        tryMove(selectedPanel.seg, selectedPanel.i, by);
+      }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -475,22 +499,45 @@ export function SolarDesigner(props: SolarDesignerProps) {
             ))}
             {s.panels.map((p, i) => {
               const on = selectedPanel?.seg === s.id && selectedPanel.i === i;
+              const dragging = panelMove?.seg === s.id && panelMove.i === i;
+              const by = dragging ? { dx: panelMove.to.x - panelMove.from.x, dy: panelMove.to.y - panelMove.from.y } : null;
+              const fits = by ? movePanel(polygonOf(s), s.panels, i, by, { setback: setback ?? 0, obstructions: s.obstructions }) !== null : true;
               return (
                 <g key={i} pointerEvents={live(tool === "select")}>
                   <rect
-                    x={p.x}
-                    y={p.y}
+                    x={by ? p.x + by.dx : p.x}
+                    y={by ? p.y + by.dy : p.y}
                     width={p.w}
                     height={p.h}
                     fill="#1f2a44"
-                    stroke={on ? "#ffffff" : p.s ? stringColour(p.s) : "#5b6b8c"}
-                    strokeWidth={on ? 0.12 : p.s ? 0.09 : 0.03}
+                    opacity={dragging ? 0.8 : 1}
+                    stroke={!fits ? "#D92D20" : on ? "#ffffff" : p.s ? stringColour(p.s) : "#5b6b8c"}
+                    strokeWidth={on || dragging ? 0.12 : p.s ? 0.09 : 0.03}
+                    style={tool === "select" ? { cursor: dragging ? "grabbing" : "grab" } : undefined}
                     onPointerDown={(e) => {
                       if (tool !== "select") return;
                       e.stopPropagation();
+                      const at = toLocal(e.currentTarget, e.clientX, e.clientY);
+                      if (!at) return;
+                      e.currentTarget.setPointerCapture?.(e.pointerId);
                       setSelectedSeg(s.id);
-                      setSelectedPanel(on ? null : { seg: s.id, i });
+                      setPanelMove({ seg: s.id, i, from: at, to: at });
                     }}
+                    onPointerMove={(e) => {
+                      if (!dragging) return;
+                      const at = toLocal(e.currentTarget, e.clientX, e.clientY);
+                      if (at) setPanelMove({ ...panelMove, to: at });
+                    }}
+                    onPointerUp={() => {
+                      if (!dragging) return;
+                      setPanelMove(null);
+                      const d = { dx: panelMove.to.x - panelMove.from.x, dy: panelMove.to.y - panelMove.from.y };
+                      // Barely moved: a click, which selects (or deselects) the panel.
+                      if (Math.hypot(d.dx, d.dy) < 0.15) return setSelectedPanel(on ? null : { seg: s.id, i });
+                      tryMove(s.id, i, d);
+                      setSelectedPanel({ seg: s.id, i });
+                    }}
+                    onPointerCancel={() => setPanelMove(null)}
                   >
                     <title>{`${s.label} panel ${i + 1}${p.s ? `, string ${p.s}` : ""}`}</title>
                   </rect>
@@ -737,7 +784,20 @@ export function SolarDesigner(props: SolarDesignerProps) {
 
         <div className="relative bg-[#dce5d2]">
           <div className="pointer-events-none absolute top-4 left-4 z-10 flex max-w-[60%] flex-col gap-2">
-            {segments.map((s) => (
+            {segments.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setRoofsOpen((o) => !o)}
+                aria-expanded={roofsOpen}
+                aria-controls="roof-list"
+                className="pointer-events-auto inline-flex w-fit items-center gap-1.5 rounded-md border bg-card px-3 py-1.5 text-sm font-semibold text-ink-2 shadow-[0_1px_2px_rgba(16,24,40,0.06)]"
+              >
+                {roofsOpen ? <ChevronUp className="size-4" aria-hidden /> : <ChevronDown className="size-4" aria-hidden />}
+                Roofs ({segments.length})
+              </button>
+            )}
+            <div id="roof-list" className="contents">
+            {segments.filter((s) => roofsOpen || s.id === selectedSeg).map((s) => (
               <button
                 key={s.id}
                 type="button"
@@ -752,6 +812,7 @@ export function SolarDesigner(props: SolarDesignerProps) {
                 {s.label.split(" · ")[0]} · {facing(s.azimuth)} · {Math.round(s.pitch)}° · {s.used ? `${s.panels.length} panels` : "not used"}
               </button>
             ))}
+            </div>
             {seg?.obstructions.map((o, i) => (
               <span key={i} className="w-fit rounded-md border border-warning-border bg-warning-tint px-3 py-1.5 text-sm font-semibold text-warning-text">
                 {o.label}
@@ -803,6 +864,7 @@ export function SolarDesigner(props: SolarDesignerProps) {
           {selectedPanel && (
             <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-xl bg-foreground px-4 py-2 text-sm font-semibold text-white">
               1 panel selected
+              <span className="font-normal text-white/70 max-sm:hidden">Drag or use the arrow keys to move</span>
               <button
                 type="button"
                 className="rounded-md bg-white/15 px-3 py-1.5"

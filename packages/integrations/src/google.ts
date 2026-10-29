@@ -50,6 +50,32 @@ export interface AddressSuggestion {
   secondary: string;
 }
 
+/** A UK address split into the fields GoInstall stores. */
+export interface AddressParts {
+  line1: string;
+  line2: string;
+  town: string;
+  county: string;
+  postcode: string;
+}
+
+type AddressComponent = { longText?: string; shortText?: string; types?: string[] };
+
+/** Google's address components → line 1 (number and street), line 2, post town, county, postcode. */
+export function addressParts(components: readonly AddressComponent[]): AddressParts {
+  const get = (...types: string[]) => components.find((c) => types.some((t) => c.types?.includes(t)))?.longText ?? "";
+  const premise = [get("subpremise"), get("premise")].filter(Boolean).join(", ");
+  const street = [get("street_number"), get("route")].filter(Boolean).join(" ");
+  const line1 = street || premise;
+  return {
+    line1,
+    line2: street && premise ? premise : get("neighborhood", "sublocality"),
+    town: get("postal_town") || get("locality"),
+    county: get("administrative_area_level_2"),
+    postcode: get("postal_code").toUpperCase(),
+  };
+}
+
 export interface GoogleMapsClient {
   geocode(address: string): Promise<LatLng | null>;
   /**
@@ -57,7 +83,7 @@ export interface GoogleMapsClient {
    * chosen place's lookup as one session when both carry the same token.
    */
   autocomplete(input: string, sessionToken: string): Promise<AddressSuggestion[]>;
-  placeLocation(placeId: string, sessionToken?: string): Promise<{ at: LatLng; address: string } | null>;
+  placeLocation(placeId: string, sessionToken?: string): Promise<{ at: LatLng; address: string; parts: AddressParts } | null>;
   buildingInsights(at: LatLng): Promise<SolarLookup>;
   /** Satellite image URL including the key: fetch it server-side only. */
   staticMapUrl(center: LatLng, opts?: { zoom?: number; size?: number }): string;
@@ -169,13 +195,13 @@ export function createGoogleMapsClient({ apiKey, fetch: fetchImpl = fetch }: { a
     async placeLocation(placeId, sessionToken) {
       const q = sessionToken ? `?${new URLSearchParams({ sessionToken })}` : "";
       const res = await fetchImpl(`https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}${q}`, {
-        headers: { "X-Goog-Api-Key": apiKey, "X-Goog-FieldMask": "location,formattedAddress" },
+        headers: { "X-Goog-Api-Key": apiKey, "X-Goog-FieldMask": "location,formattedAddress,addressComponents" },
       });
-      const body = (await res.json()) as { location?: { latitude: number; longitude: number }; formattedAddress?: string; error?: { status?: string; message: string } };
+      const body = (await res.json()) as { location?: { latitude: number; longitude: number }; formattedAddress?: string; addressComponents?: AddressComponent[]; error?: { status?: string; message: string } };
       if (res.status === 404 || body.error?.status === "NOT_FOUND") return null;
       if (!res.ok) throw new Error(`Places API: ${body.error?.message ?? res.status}`);
       if (!body.location) return null;
-      return { at: { lat: body.location.latitude, lng: body.location.longitude }, address: body.formattedAddress ?? "" };
+      return { at: { lat: body.location.latitude, lng: body.location.longitude }, address: body.formattedAddress ?? "", parts: addressParts(body.addressComponents ?? []) };
     },
     async buildingInsights(at) {
       const params = new URLSearchParams({ "location.latitude": at.lat.toFixed(6), "location.longitude": at.lng.toFixed(6), requiredQuality: "MEDIUM", key: apiKey });

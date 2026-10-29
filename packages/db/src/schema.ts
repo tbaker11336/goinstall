@@ -15,6 +15,8 @@ export type ArrayTypeImpl<T> = T extends ColumnType<infer S, infer I, infer U>
   ? ColumnType<S[], I[], U[]>
   : T[];
 
+export type BookingResponse = "accepted" | "declined";
+
 export type BookingStatus = "cancelled" | "completed" | "confirmed" | "in_progress" | "tentative";
 
 export type BookingType = "install" | "scaffold_down" | "scaffold_up" | "survey" | "task";
@@ -94,6 +96,20 @@ export interface BookingAssignments {
   team_id: string | null;
   updated_at: Generated<Timestamp>;
   user_id: string | null;
+}
+
+export interface BookingResponses {
+  booking_id: string;
+  company_id: Generated<string>;
+  created_at: Generated<Timestamp>;
+  created_by: Generated<string | null>;
+  for_starts_at: Timestamp;
+  id: Generated<string>;
+  reason: string | null;
+  responded_at: Generated<Timestamp>;
+  response: BookingResponse;
+  updated_at: Generated<Timestamp>;
+  user_id: string;
 }
 
 export interface Bookings {
@@ -231,6 +247,7 @@ export interface Companies {
   shared_visit_discount_pence: Int8 | null;
   stripe_account_id: string | null;
   terms_and_conditions: string | null;
+  terms_file_id: string | null;
   town: string | null;
   updated_at: Generated<Timestamp>;
   vat_number: string | null;
@@ -627,6 +644,7 @@ export interface Proposals {
   subtotal_pence: Generated<Int8>;
   summary: Generated<Json>;
   terms: string | null;
+  terms_file_id: string | null;
   title: Generated<string>;
   token_expires_at: Timestamp | null;
   token_hash: string | null;
@@ -883,6 +901,7 @@ export interface Users {
 export interface DB {
   activity_log: ActivityLog;
   booking_assignments: BookingAssignments;
+  booking_responses: BookingResponses;
   bookings: Bookings;
   calc_tables: CalcTables;
   checklist_item_history: ChecklistItemHistory;

@@ -29,6 +29,8 @@ export const NOTIFICATION_EVENTS = [
   { key: "proposal_accepted", audience: "internal", label: "Proposal accepted and signed", to: "Project owner", channels: ["in_app", "email", "sms"], defaults: ["in_app", "email"] },
   { key: "payment_received", audience: "internal", label: "Deposit or balance paid", to: "Project owner", channels: ["in_app", "email", "sms"], defaults: ["in_app", "email"] },
   { key: "job_assigned", audience: "internal", label: "Job booked or changed for an installer", to: "Installers on the job", channels: ["in_app", "email", "sms"], defaults: ["in_app"] },
+  { key: "job_accepted", audience: "internal", label: "Installer accepted a job", to: "Project owner, or admins and office", channels: ["in_app", "email", "sms"], defaults: ["in_app"] },
+  { key: "job_declined", audience: "internal", label: "Installer declined a job", to: "Project owner, or admins and office", channels: ["in_app", "email", "sms"], defaults: ["in_app", "email"] },
   { key: "kit_issue", audience: "internal", label: "Installer reported missing or damaged kit", to: "Project owner", channels: ["in_app", "email", "sms"], defaults: ["in_app", "email"] },
   { key: "job_completed", audience: "internal", label: "Install completed in the app", to: "Project owner", channels: ["in_app", "email", "sms"], defaults: ["in_app"] },
   { key: "customer_reply", audience: "internal", label: "Customer replied by text", to: "Project owner", channels: ["in_app", "email", "sms"], defaults: ["in_app"] },
@@ -161,6 +163,8 @@ export interface MessageData {
   when?: string;
   installer?: string;
   eta?: string;
+  /** Why an installer declined a job. */
+  reason?: string;
   detail?: string;
 }
 
@@ -169,6 +173,9 @@ export function notificationText(key: string, d: MessageData): { title: string; 
   const hi = d.customerFirstName ? `Hi ${d.customerFirstName}, ` : "Hi, ";
   const site = d.site ? ` at ${d.site}` : "";
   const who = d.customerName ?? "The customer";
+  // "the solar installation", "the EV charger installation".
+  const job = d.detail ? (/^EV\b/.test(d.detail) ? d.detail : `${d.detail[0]!.toLowerCase()}${d.detail.slice(1)}`) : "job";
+  const reason = d.reason ? ` Reason: ${d.reason.trim()}${/[.!?]$/.test(d.reason.trim()) ? "" : "."}` : "";
   switch (key) {
     case "new_enquiry":
       return { title: `New enquiry${site}`, body: `A new enquiry came in${site}.${d.detail ? ` ${d.detail}` : ""}`, sms: `GoInstall: new enquiry${site}.` };
@@ -186,6 +193,14 @@ export function notificationText(key: string, d: MessageData): { title: string; 
       return { title: `Kit problem reported${site}`, body: `${d.detail ?? "An installer reported a kit problem"}${site}.`, sms: `GoInstall: kit problem reported${site}.` };
     case "job_completed":
       return { title: `Install completed${site}`, body: `The install${site} was completed in the app.${d.detail ? ` ${d.detail}` : ""}`, sms: `GoInstall: install completed${site}.` };
+    case "job_accepted":
+      return { title: `Job accepted${site}`, body: `${d.installer ?? "The installer"} accepted the ${job}${site}${d.when ? ` on ${d.when}` : ""}.`, sms: `GoInstall: ${d.installer ?? "installer"} accepted the job${site}.` };
+    case "job_declined":
+      return {
+        title: `Job declined${site}`,
+        body: `${d.installer ?? "The installer"} can't do the ${job}${site}${d.when ? ` on ${d.when}` : ""}.${reason} Rebook it on the Schedule.`,
+        sms: `GoInstall: ${d.installer ?? "installer"} declined the job${site}. Rebook it on the Schedule.`,
+      };
     case "customer_reply":
       return { title: `Text from the customer${site}`, body: d.detail ?? "The customer replied by text.", sms: `GoInstall: customer text${site}.` };
     case "survey_reminder":

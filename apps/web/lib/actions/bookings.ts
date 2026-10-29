@@ -1,14 +1,15 @@
 "use server";
 
-import { allDaySpan, BOOKING_TYPE_LABELS, bookingDates, firstName, surveyKindsFor } from "@goinstall/core";
+import { allDaySpan, BOOKING_TYPE_LABELS, bookingDates, bookingTitle, firstName, needsScaffold, surveyKindsFor } from "@goinstall/core";
 import { sql, type Tx } from "@goinstall/db";
 import { textToHtml } from "@goinstall/integrations";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { asUser } from "@/lib/auth";
-import { notifyBooking } from "@/lib/notify";
 import { emailConfigured, emailSender, fromAddress } from "@/lib/email";
+import { notifyBooking } from "@/lib/notify";
 import { calendarFeedUrl, newCalendarNonce } from "@/lib/schedule";
+import { sendSms } from "@/lib/sms";
 import type { ActionResult } from "./crm";
 
 const uuid = z.uuid();
@@ -54,8 +55,9 @@ export async function saveBookingAction(projectId: string, bookingId: string | n
     : allDaySpan(d.start_date, d.days);
   let saved: { companyId: string; bookingId: string; actor: string } | null = null;
   const result = await asUser(async (tx, session) => {
-    const project = await tx.selectFrom("projects").select("id").where("id", "=", projectId).executeTakeFirst();
+    const project = await tx.selectFrom("projects").select(["id", "products"]).where("id", "=", projectId).executeTakeFirst();
     if (!project) return { error: "Project not found" };
+    if ((d.type === "scaffold_up" || d.type === "scaffold_down") && !needsScaffold(project.products)) return { error: "Scaffold is only booked for solar projects." };
     let id = bookingId;
     if (id) {
       const b = await tx
@@ -229,4 +231,88 @@ export async function teamCalendarLinkAction(teamId: string, rotate = false): Pr
     revalidatePath("/schedule");
     return { url: calendarFeedUrl(teamId, nonce) };
   }, ["admin"]);
+}
+
+const rescheduleSchema = z.object({
+  date: z.iso.date("Choose a date"),
+  // Timed bookings (surveys) keep their length and move to this time.
+  time: z.union([z.literal(""), z.iso.time()]).optional(),
+  team_id: optionalId,
+});
+
+/** Calendar › event › Reschedule: a new date (and time, for timed bookings), and for installs the team. */
+export async function rescheduleBookingAction(bookingId: string, _: ActionResult, form: FormData): Promise<ActionResult> {
+  if (!uuid.safeParse(bookingId).success) return { error: "Booking not found" };
+  const parsed = rescheduleSchema.safeParse(Object.fromEntries(form));
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message };
+  const { date, time, team_id } = parsed.data;
+  const done = await asUser(async (tx, session) => {
+    const b = await tx.selectFrom("bookings").select(["id", "type", "starts_at", "ends_at", "all_day", "project_id"]).where("id", "=", bookingId).executeTakeFirst();
+    if (!b) return { error: "Booking not found" };
+    let startsAt: Date;
+    let endsAt: Date;
+    if (b.all_day) {
+      // Same number of working days from the new first date.
+      const days = bookingDates(b.starts_at, b.ends_at).filter((d) => ![0, 6].includes(new Date(`${d}T00:00:00Z`).getUTCDay())).length || 1;
+      const span = allDaySpan(date, days);
+      startsAt = new Date(span.startsAt);
+      endsAt = new Date(span.endsAt);
+    } else {
+      const hhmm = time || new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", hour: "2-digit", minute: "2-digit", hour12: false }).format(b.starts_at);
+      startsAt = new Date(`${date}T${hhmm}:00${londonOffset(date)}`);
+      endsAt = new Date(startsAt.getTime() + (b.ends_at.getTime() - b.starts_at.getTime()));
+    }
+    await tx.updateTable("bookings").set({ starts_at: startsAt, ends_at: endsAt, customer_confirmed_at: null }).where("id", "=", bookingId).execute();
+    if (b.type === "install" && form.has("team_id")) await setAssignment(tx, bookingId, "team", { teamId: team_id });
+    if (b.project_id) revalidatePath(`/projects/${b.project_id}`, "layout");
+    revalidatePath("/schedule");
+    return { companyId: session.companyId, actor: session.userId };
+  });
+  if ("error" in done) return { error: done.error };
+  await notifyBooking(done.companyId, bookingId, done.actor);
+  return { message: "Moved. Let the customer know with Notify customer." };
+}
+
+/** Calendar › event › Notify customer: email (and text, with the SMS add-on) the date of this one booking. */
+export async function notifyBookingCustomerAction(bookingId: string): Promise<ActionResult> {
+  if (!uuid.safeParse(bookingId).success) return { error: "Booking not found" };
+  return asUser(async (tx, session) => {
+    const b = await tx
+      .selectFrom("bookings as b")
+      .innerJoin("projects as p", (j) => j.onRef("p.id", "=", "b.project_id").onRef("p.company_id", "=", "b.company_id"))
+      .innerJoin("contacts as c", (j) => j.onRef("c.id", "=", "p.contact_id").onRef("c.company_id", "=", "p.company_id"))
+      .innerJoin("companies as co", "co.id", "b.company_id")
+      .select(["b.id", "b.type", "b.starts_at", "b.ends_at", "b.all_day", "b.title", "p.id as project_id", "p.products", "p.site_address_line1", "c.id as contact_id", "c.name", "c.email", "c.phone", "co.id as company_id", "co.name as company_name", "co.email as company_email", "co.email_sender"])
+      .where("b.id", "=", bookingId)
+      .executeTakeFirst();
+    if (!b) return { error: "This booking isn't for a customer's project." };
+    const days = bookingDates(b.starts_at, b.ends_at);
+    const time = b.all_day ? null : new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", hour: "numeric", minute: "2-digit", hour12: true }).format(b.starts_at).replace(" ", "");
+    const when = days.length > 1 ? `${fmtDay(days[0]!)} to ${fmtDay(days.at(-1)!)}` : `${fmtDay(days[0]!)}${time ? ` at ${time}` : ""}`;
+    const what = bookingTitle(b.type, b.products ?? [], b.title);
+    // "your solar installation", "your EV charger installation".
+    const thing = what.startsWith("EV") ? what : `${what[0]!.toLowerCase()}${what.slice(1)}`;
+    const subject = `${what}: ${when}`;
+    const arrival = b.type === "survey" ? "" : b.all_day ? " The team usually arrives between 8 and 9am." : "";
+    const body = `Hi ${firstName(b.name)},\n\nYour ${thing} at ${b.site_address_line1 ?? "your home"} is booked for ${when}.${arrival} If that no longer works, just reply to this email.\n\n${session.fullName}\n${b.company_name}`;
+    const sent: string[] = [];
+    if (b.email) {
+      const m = await tx
+        .insertInto("messages")
+        .values({ contact_id: b.contact_id, project_id: b.project_id, channel: "email", direction: "outbound", subject, body, sent_by: session.userId, to_address: b.email, delivery_status: "queued" })
+        .returning("id")
+        .executeTakeFirstOrThrow();
+      const r = await emailSender().send({ from: fromAddress(b.company_name, b.email_sender), to: b.email, replyTo: session.email || b.company_email || undefined, subject, text: body, html: textToHtml(body), idempotencyKey: m.id, tags: { kind: "booking_notice" } });
+      await tx.updateTable("messages").set(r.ok ? { delivery_status: "sent", provider_message_id: r.providerId } : { delivery_status: "failed", delivery_error: r.error }).where("id", "=", m.id).execute();
+      if (r.ok) sent.push(emailConfigured() ? `emailed ${b.email}` : "email recorded (sending isn't set up here)");
+    }
+    const text = await sendSms(tx, { companyId: b.company_id, to: b.phone, body: `${b.company_name}: your ${thing} is booked for ${when}. Reply to this number if that doesn't work.`, contactId: b.contact_id, projectId: b.project_id, sentBy: session.userId });
+    if (text.ok) sent.push("texted");
+    if (!sent.length) return { error: `${b.name} has no email address${b.phone ? "" : " or mobile number"}. Add one on the contact page.` };
+    await tx.updateTable("bookings").set({ customer_notified_at: sql<Date>`now()` }).where("id", "=", bookingId).execute();
+    await tx.insertInto("activity_log").values({ project_id: b.project_id, contact_id: b.contact_id, actor_id: session.userId, event: "booking_notified", payload: { booking: bookingId, type: b.type } }).execute();
+    revalidatePath("/schedule");
+    revalidatePath(`/projects/${b.project_id}`, "layout");
+    return { message: `${b.name} ${sent.join(" and ")}.` };
+  });
 }

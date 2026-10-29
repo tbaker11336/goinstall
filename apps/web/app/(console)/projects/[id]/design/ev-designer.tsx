@@ -3,11 +3,14 @@
 import { evaluateEvDesign, formatPence, parseAmps, type CableRow, type DesignSettings } from "@goinstall/core";
 import { Cable, Check, Info, MousePointer2, PlugZap, Undo2, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Select } from "@/components/ui/input";
 import { saveEvDesignAction, type EvDesignPayload } from "@/lib/actions/ev-design";
+import { relocateSiteAction } from "@/lib/actions/site";
 import { cn, timeAgo } from "@/lib/utils";
+import { AddressSearch } from "./address-search";
 import type { EvInitial } from "./ev-data";
+import { PLAN_EXTENT_M, PlanMap } from "./plan-map";
 import type { CatalogueOption } from "./solar-designer";
 
 type Tool = "select" | "charger" | "supply" | "route";
@@ -16,6 +19,11 @@ export interface EvDesignerProps {
   projectId: string;
   initial: EvInitial;
   aerial: { url: string; widthM: number } | null;
+  /** The site on Google's map, when the browser key is set. */
+  position: { lat: number; lng: number } | null;
+  mapsBrowserKey: string | null;
+  /** Address search needs the server-side Google key. */
+  canSearch: boolean;
   chargers: CatalogueOption[];
   rules: { cables: CableRow[] | null; settings: DesignSettings };
   survey: { mainFuse: string | null; phases: 1 | 3; earthing: string | null; chargerLocation: string | null; cableRunM: number | null; tethered: string | null };
@@ -38,7 +46,7 @@ export function EvDesigner(props: EvDesignerProps) {
   const init = props.initial;
   const [d, setD] = useState<EvDesignPayload>(() => ({
     ...init,
-    background: init.background === "aerial" && !props.aerial ? "plain" : init.background,
+    background: init.background === "aerial" && !props.aerial && !(props.mapsBrowserKey && props.position) ? "plain" : init.background,
     chargerProductId: init.chargerProductId ?? props.chargers[0]?.id ?? null,
     mainFuseA: init.mainFuseA ?? parseAmps(props.survey.mainFuse),
     phases: init.version ? init.phases : props.survey.phases,
@@ -54,7 +62,33 @@ export function EvDesigner(props: EvDesignerProps) {
   const first = useRef(true);
   const set = <K extends keyof EvDesignPayload>(k: K, v: EvDesignPayload[K]) => setD((x) => ({ ...x, [k]: v }));
 
-  const measured = d.background !== "photo";
+  // Cable length: measured from the drawn route, or entered by hand (always by hand on a survey photo, which isn't to scale).
+  const [lengthByHand, setLengthByHand] = useState(init.version ? !init.routeLengthMeasured : false);
+  const measured = d.background !== "photo" && !lengthByHand;
+  const [position, setPosition] = useState(props.position);
+  const [aerial, setAerial] = useState(props.aerial);
+  const [mapError, setMapError] = useState<string | null>(null);
+  const [searching, setSearching] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const onMapFail = useCallback((m: string) => setMapError(m), []);
+  const useMap = Boolean(props.mapsBrowserKey && position && !mapError && d.background === "aerial");
+
+  async function runSearch(query: string, place?: { placeId: string; sessionToken: string }) {
+    if (searching) return;
+    setSearching(true);
+    const r = await relocateSiteAction(props.projectId, query, place, { roof: false });
+    setSearching(false);
+    if (r.error || !r.position) return setMessage(r.error ?? "Nothing found.");
+    setPosition(r.position);
+    setAerial({ url: `/api/maps/aerial/${props.projectId}?at=${r.position.lat.toFixed(6)},${r.position.lng.toFixed(6)}`, widthM: r.aerialWidthM! });
+    if (d.background !== "aerial") set("background", "aerial");
+    setMessage(`Moved to ${query}. Place the supply and charger on the map.`);
+  }
+  useEffect(() => {
+    if (!message) return;
+    const t = setTimeout(() => setMessage(null), 4000);
+    return () => clearTimeout(t);
+  }, [message]);
   const charger = props.chargers.find((c) => c.id === d.chargerProductId) ?? null;
   const result = useMemo(
     () =>
@@ -119,12 +153,38 @@ export function EvDesigner(props: EvDesignerProps) {
     setTool("select");
   }
 
-  const size = props.aerial && d.background === "aerial" ? props.aerial.widthM : d.background === "photo" ? 100 : 30;
+  // On the live map the markers are drawn for a 30 m view; zoom the map for detail.
+  const size = useMap ? 30 : aerial && d.background === "aerial" ? aerial.widthM : d.background === "photo" ? 100 : 30;
   const viewBox = d.background === "photo" ? "0 0 100 75" : `${-size / 2} ${-size / 2} ${size} ${size}`;
   const k = size / 100; // marker scale
   const photo = props.photos[photoIndex] ?? null;
   const vdOk = result.voltDropPct !== null && result.voltDropLimitPct !== null && result.voltDropPct <= result.voltDropLimitPct;
   const savedLabel = save.state === "saving" ? "Saving…" : save.state === "error" ? `Not saved: ${save.error}` : save.at ? `Saved ${timeAgo(save.at)}` : "Not saved yet";
+
+  const shapes = (
+    <>
+      {d.route.length > 1 && (
+        <polyline points={d.route.map((p) => `${p.x},${p.y}`).join(" ")} fill="none" stroke="#DC6803" strokeWidth={0.5 * k} strokeLinejoin="round" strokeDasharray={`${1.2 * k} ${0.6 * k}`} pointerEvents="none" />
+      )}
+      {d.route.slice(1, -1).map((p, i) => (
+        <circle key={i} cx={p.x} cy={p.y} r={0.5 * k} fill="#DC6803" pointerEvents="none" />
+      ))}
+      {d.supplyPoint && (
+        <g transform={`translate(${d.supplyPoint.x} ${d.supplyPoint.y})`} pointerEvents="none">
+          <rect x={-2.2 * k} y={-2.2 * k} width={4.4 * k} height={4.4 * k} rx={0.8 * k} fill="#fff" stroke="#101828" strokeWidth={0.35 * k} />
+          {[-1, -0.35, 0.35, 1].map((x) => (
+            <line key={x} x1={x * k} y1={-1.1 * k} x2={x * k} y2={1.1 * k} stroke="#101828" strokeWidth={0.3 * k} />
+          ))}
+        </g>
+      )}
+      {d.chargerPoint && (
+        <g transform={`translate(${d.chargerPoint.x} ${d.chargerPoint.y})`} pointerEvents="none">
+          <circle r={2.6 * k} fill="#0B7A62" stroke="#fff" strokeWidth={0.4 * k} />
+          <path d={`M${0.3 * k} ${-1.6 * k} L${-1 * k} ${0.3 * k} H${0} L${-0.3 * k} ${1.6 * k} L${1 * k} ${-0.3 * k} H${0} Z`} fill="#fff" />
+        </g>
+      )}
+    </>
+  );
 
   const tools = [
     { key: "select", label: "Select", icon: MousePointer2 },
@@ -136,6 +196,7 @@ export function EvDesigner(props: EvDesignerProps) {
   return (
     <div className="grid items-start gap-6 xl:grid-cols-[1fr_380px]">
       <section aria-label="Site plan" className="flex min-w-0 flex-col overflow-hidden rounded-lg border bg-card">
+        {props.canSearch && <AddressSearch searching={searching} onSearch={runSearch} />}
         <div className="flex flex-wrap items-center gap-1.5 border-b px-4 py-3" role="toolbar" aria-label="EV design tools">
           {tools.map((t) => (
             <button
@@ -161,7 +222,7 @@ export function EvDesigner(props: EvDesignerProps) {
           <label className="ml-auto inline-flex items-center gap-2 text-sm font-semibold text-ink-2">
             View
             <Select value={d.background} onChange={(e) => set("background", e.target.value as EvDesignPayload["background"])} className="h-10 w-auto">
-              {props.aerial && <option value="aerial">Aerial</option>}
+              {(aerial || (props.mapsBrowserKey && position)) && <option value="aerial">{props.mapsBrowserKey && position ? "Map" : "Aerial"}</option>}
               <option value="plain">Plan</option>
               {props.photos.length > 0 && <option value="photo">Survey photo</option>}
             </Select>
@@ -194,9 +255,24 @@ export function EvDesigner(props: EvDesignerProps) {
               </span>
             )}
           </div>
-          <svg ref={svgRef} viewBox={viewBox} className={cn("block w-full touch-none select-none", d.background === "photo" ? "aspect-[4/3]" : "aspect-square max-h-[720px]", tool !== "select" && "cursor-crosshair")} role="img" aria-label="Site plan with supply, charger and cable route">
+          {useMap ? (
+            <PlanMap
+              apiKey={props.mapsBrowserKey!}
+              centre={position!}
+              capture={tool !== "select"}
+              svgRef={svgRef}
+              label="Site plan with supply, charger and cable route"
+              onFail={onMapFail}
+              className="relative aspect-square max-h-[720px] w-full"
+            >
+              {/* Placing tools take the pointer over the map; Select leaves it free to pan and zoom. */}
+              {tool !== "select" && <rect x={-PLAN_EXTENT_M} y={-PLAN_EXTENT_M} width={PLAN_EXTENT_M * 2} height={PLAN_EXTENT_M * 2} fill="transparent" pointerEvents="all" onPointerDown={onPlan} aria-hidden />}
+              {shapes}
+            </PlanMap>
+          ) : (
+            <svg ref={svgRef} viewBox={viewBox} className={cn("block w-full touch-none select-none", d.background === "photo" ? "aspect-[4/3]" : "aspect-square max-h-[720px]", tool !== "select" && "cursor-crosshair")} role="img" aria-label="Site plan with supply, charger and cable route">
             <rect x={-500} y={-500} width={1000} height={1000} fill="#dce5d2" onPointerDown={onPlan} />
-            {d.background === "aerial" && props.aerial && <image href={props.aerial.url} x={-size / 2} y={-size / 2} width={size} height={size} onPointerDown={onPlan} />}
+            {d.background === "aerial" && aerial && <image href={aerial.url} x={-size / 2} y={-size / 2} width={size} height={size} onPointerDown={onPlan} />}
             {d.background === "photo" && photo && <image href={photo.url} x={0} y={0} width={100} height={75} preserveAspectRatio="xMidYMid slice" onPointerDown={onPlan} />}
             {d.background === "plain" && (
               <g opacity={0.35} pointerEvents="none">
@@ -208,33 +284,21 @@ export function EvDesigner(props: EvDesignerProps) {
                 ))}
               </g>
             )}
-            {d.route.length > 1 && (
-              <polyline points={d.route.map((p) => `${p.x},${p.y}`).join(" ")} fill="none" stroke="#DC6803" strokeWidth={0.5 * k} strokeLinejoin="round" strokeDasharray={`${1.2 * k} ${0.6 * k}`} pointerEvents="none" />
-            )}
-            {d.route.slice(1, -1).map((p, i) => (
-              <circle key={i} cx={p.x} cy={p.y} r={0.5 * k} fill="#DC6803" pointerEvents="none" />
-            ))}
-            {d.supplyPoint && (
-              <g transform={`translate(${d.supplyPoint.x} ${d.supplyPoint.y})`} pointerEvents="none">
-                <rect x={-2.2 * k} y={-2.2 * k} width={4.4 * k} height={4.4 * k} rx={0.8 * k} fill="#fff" stroke="#101828" strokeWidth={0.35 * k} />
-                {[-1, -0.35, 0.35, 1].map((x) => (
-                  <line key={x} x1={x * k} y1={-1.1 * k} x2={x * k} y2={1.1 * k} stroke="#101828" strokeWidth={0.3 * k} />
-                ))}
-              </g>
-            )}
-            {d.chargerPoint && (
-              <g transform={`translate(${d.chargerPoint.x} ${d.chargerPoint.y})`} pointerEvents="none">
-                <circle r={2.6 * k} fill="#0B7A62" stroke="#fff" strokeWidth={0.4 * k} />
-                <path d={`M${0.3 * k} ${-1.6 * k} L${-1 * k} ${0.3 * k} H${0} L${-0.3 * k} ${1.6 * k} L${1 * k} ${-0.3 * k} H${0} Z`} fill="#fff" />
-              </g>
-            )}
-          </svg>
+            {shapes}
+            </svg>
+          )}
           {tool !== "select" && (
             <p role="status" className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-lg bg-foreground px-4 py-2 text-sm font-semibold text-white">
               {tool === "charger" ? "Click where the charger goes" : tool === "supply" ? "Click the consumer unit or supply point" : "Click along the cable route, then Finish at charger"}
             </p>
           )}
-          {!measured && <p className="absolute right-4 bottom-4 rounded-md bg-card px-3 py-1.5 text-xs font-semibold text-ink-3">Photos aren&apos;t to scale: enter the route length</p>}
+          {d.background === "photo" && <p className="absolute right-4 bottom-4 rounded-md bg-card px-3 py-1.5 text-xs font-semibold text-ink-3">Photos aren&apos;t to scale: enter the cable length</p>}
+          {mapError && d.background === "aerial" && <p className="absolute right-4 bottom-4 max-w-xs rounded-md bg-card px-3 py-1.5 text-xs font-semibold text-warning-text">Google&apos;s map didn&apos;t load ({mapError}); showing the still image.</p>}
+          {message && (
+            <p role="status" className="absolute bottom-16 left-1/2 z-10 max-w-md -translate-x-1/2 rounded-lg bg-card px-4 py-2 text-center text-sm font-medium shadow-[0_4px_12px_rgba(16,24,40,0.12)]">
+              {message}
+            </p>
+          )}
         </div>
       </section>
 
@@ -313,10 +377,23 @@ export function EvDesigner(props: EvDesignerProps) {
           <h2 id="ev-cable" className="text-[17px] font-bold">
             Cable
           </h2>
+          {d.background !== "photo" && (
+            <Segmented
+              label="Cable length"
+              value={lengthByHand ? "hand" : "drawn"}
+              options={[["drawn", "From the drawing"], ["hand", "Enter by hand"]]}
+              onChange={(v) => {
+                const hand = v === "hand";
+                setLengthByHand(hand);
+                // Start the typed length from what's drawn, so it's a tweak rather than a blank.
+                setD((x) => ({ ...x, routeLengthM: hand && x.routeLengthM === null && result.lengthM !== null ? result.lengthM : x.routeLengthM }));
+              }}
+            />
+          )}
           {measured ? (
-            <Row label="Route" value={result.lengthM !== null ? `${result.lengthM} m · measured` : "Draw the route"} />
+            <Row label="Route" value={result.lengthM !== null ? `${result.lengthM} m · measured from the drawing` : "Draw the route"} />
           ) : (
-            <NumberField label="Route length (m)" value={d.routeLengthM} onChange={(v) => set("routeLengthM", v)} />
+            <NumberField label="Cable needed (m)" value={d.routeLengthM} onChange={(v) => set("routeLengthM", v)} hint={d.route.length > 1 ? "Used for sizing and the kit list; the drawn route is kept on the plan." : "Include the route, any rises and drops, and the ends."} />
           )}
           {(d.routeMethods.length ? d.routeMethods : [d.routeMethods[0] ?? ""]).map((m, i) => (
             <label key={i} className="flex flex-col gap-1 text-[13px] font-semibold text-ink-2">

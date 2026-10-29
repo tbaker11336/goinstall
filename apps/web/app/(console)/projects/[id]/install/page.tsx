@@ -1,4 +1,4 @@
-import { addDays, BOOKING_TYPE_LABELS, bookingDates, PAPERWORK_STATUS_LABELS, TIMING_LABELS, ukDate, weekStart, type PaperworkStatus, type PaperworkTiming } from "@goinstall/core";
+import { addDays, BOOKING_TYPE_LABELS, bookingDates, installBookingTypes, PAPERWORK_STATUS_LABELS, TIMING_LABELS, ukDate, weekStart, type PaperworkStatus, type PaperworkTiming } from "@goinstall/core";
 import { Check, FileText } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -246,7 +246,7 @@ export default async function InstallPage({ params, searchParams }: { params: Pr
             <CardContent className="flex flex-col gap-4">
               <WeekGrid days={weekColumns(monday)} rows={rows} bookings={gridItems} caption={`Team bookings, week of ${monday}`} />
               <p className="text-xs text-muted-foreground">Drag a booking to move it, or change it with the forms below.</p>
-              {(["install", "scaffold_up", "scaffold_down"] as const).map((k) => (
+              {installBookingTypes(project.products).map((k) => (
                 <BookingForm key={k} projectId={id} kind={k} booking={mine.find((b) => b.type === k)} teams={people.teams} users={people.users} />
               ))}
               {(mine.some((b) => b.type === "survey") || project.stage === "survey" || project.stage === "enquiry") && (

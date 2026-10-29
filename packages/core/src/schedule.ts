@@ -140,4 +140,54 @@ export function icalFeed(name: string, events: readonly CalendarEvent[]): string
   return `${lines.map(fold).join("\r\n")}\r\n`;
 }
 
+/** Scaffold goes up for roof work only: solar projects. EV and battery-only jobs don't get it. */
+export function needsScaffold(products: readonly string[]): boolean {
+  return products.includes("solar");
+}
+
+/** The bookings a project's Install tab offers, in order. */
+export function installBookingTypes(products: readonly string[]): ("install" | "scaffold_up" | "scaffold_down")[] {
+  return needsScaffold(products) ? ["install", "scaffold_up", "scaffold_down"] : ["install"];
+}
+
 export const BOOKING_TYPE_LABELS = { survey: "Survey", install: "Install", scaffold_up: "Scaffold up", scaffold_down: "Scaffold down", task: "Task" } as const;
+
+// ---------------------------------------------------------------------------
+// The Schedule calendar
+// ---------------------------------------------------------------------------
+
+export type CalendarView = "day" | "week" | "month";
+
+/**
+ * The dates a calendar view shows around `date` (YYYY-MM-DD): one day, a
+ * Monday-to-Sunday week, or the month's full weeks (Monday start). `to` is
+ * exclusive; `prev`/`next` are the dates the arrows go to.
+ */
+export function calendarRange(view: CalendarView, date: string): { from: string; to: string; days: string[]; prev: string; next: string } {
+  if (view === "day") return { from: date, to: addDays(date, 1), days: [date], prev: addDays(date, -1), next: addDays(date, 1) };
+  if (view === "week") {
+    const from = weekStart(date);
+    return { from, to: addDays(from, 7), days: Array.from({ length: 7 }, (_, i) => addDays(from, i)), prev: addDays(from, -7), next: addDays(from, 7) };
+  }
+  const first = `${date.slice(0, 7)}-01`;
+  const from = weekStart(first);
+  const nextMonth = new Date(Date.UTC(Number(date.slice(0, 4)), Number(date.slice(5, 7)), 1)).toISOString().slice(0, 10);
+  const lastWeek = weekStart(addDays(nextMonth, -1));
+  const to = addDays(lastWeek, 7);
+  const days: string[] = [];
+  for (let d = from; d < to; d = addDays(d, 1)) days.push(d);
+  const prevMonth = new Date(Date.UTC(Number(date.slice(0, 4)), Number(date.slice(5, 7)) - 2, 1)).toISOString().slice(0, 10);
+  return { from, to, days, prev: prevMonth, next: nextMonth };
+}
+
+const PRODUCT_WORDS: Record<string, string> = { solar: "Solar", battery: "battery", ev: "EV charger" };
+
+/** What a booking is, in words: "Solar and battery installation", "EV charger survey", "Scaffold up". */
+export function bookingTitle(type: keyof typeof BOOKING_TYPE_LABELS, products: readonly string[], title?: string | null): string {
+  if (type === "task") return title || "Task";
+  if (type === "scaffold_up" || type === "scaffold_down") return BOOKING_TYPE_LABELS[type];
+  const words = ["solar", "battery", "ev"].filter((p) => products.includes(p)).map((p) => PRODUCT_WORDS[p]!);
+  const what = words.length ? words.join(words.length > 2 ? ", " : " and ").replace(/, (?=[^,]*$)/, " and ") : "";
+  const label = what ? `${what[0]!.toUpperCase()}${what.slice(1)} ${type === "install" ? "installation" : "survey"}` : type === "install" ? "Installation" : "Site survey";
+  return label;
+}

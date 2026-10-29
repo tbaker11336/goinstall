@@ -8,6 +8,7 @@ import { z } from "zod";
 import { asUser, type Session } from "@/lib/auth";
 import { ensureDepositInvoice, recordInvoicePayment } from "@/lib/deposits";
 import { emailConfigured, emailSender, fromAddress } from "@/lib/email";
+import { fileStore } from "@/lib/files";
 import { notifyTeam } from "@/lib/notify";
 import { captureLayout } from "@/lib/proposal-layout";
 import { designInputs, hashToken, newLinkNonce, PROPOSAL_LINK_DAYS, proposalToken, proposalUrl, refreshProposalFinance } from "@/lib/proposals";
@@ -82,7 +83,7 @@ export async function createProposalAction(projectId: string): Promise<{ error?:
       keep = (await tx.selectFrom("proposal_lines").selectAll().where("proposal_id", "=", proposalId).where("origin", "=", "custom").execute()).map(lineFromRow);
       await tx
         .updateTable("proposals")
-        .set({ summary: JSON.stringify(summary), solar_design_id: solar?.id ?? null, ev_design_id: ev?.id ?? null })
+        .set({ summary: JSON.stringify(summary), solar_design_id: solar?.id ?? null, ev_design_id: ev?.id ?? null, terms: company.terms_and_conditions, terms_file_id: company.terms_file_id })
         .where("id", "=", proposalId)
         .execute();
     } else {
@@ -103,6 +104,7 @@ export async function createProposalAction(projectId: string): Promise<{ error?:
           deposit_pct: latest ? Number(latest.deposit_pct) : Number(company.default_deposit_pct),
           valid_until: validUntil ? validUntil.toISOString().slice(0, 10) : null,
           terms: company.terms_and_conditions,
+          terms_file_id: company.terms_file_id,
         })
         .returning("id")
         .executeTakeFirstOrThrow();
@@ -165,7 +167,8 @@ async function emailProposal(tx: Tx, session: Session, proposalId: string, kind:
     .innerJoin("projects as pj", "pj.id", "pr.project_id")
     .innerJoin("contacts as c", "c.id", "pj.contact_id")
     .innerJoin("companies as co", "co.id", "pr.company_id")
-    .select(["pr.id", "pr.status", "pr.number", "pr.version", "pr.total_pence", "pr.link_nonce", "pr.project_id", "pr.valid_until", "pj.stage", "pj.contact_id", "c.name", "c.email", "co.name as company_name", "co.email as company_email", "co.email_sender", "co.document_prefix"])
+    .leftJoin("files as tf", (j) => j.onRef("tf.id", "=", "pr.terms_file_id").onRef("tf.company_id", "=", "pr.company_id"))
+    .select(["tf.path as terms_path", "tf.original_name as terms_name", "pr.id", "pr.status", "pr.number", "pr.version", "pr.total_pence", "pr.link_nonce", "pr.project_id", "pr.valid_until", "pj.stage", "pj.contact_id", "c.name", "c.email", "co.name as company_name", "co.email as company_email", "co.email_sender", "co.document_prefix"])
     .where("pr.id", "=", proposalId)
     .executeTakeFirst();
   if (!p) return { error: "Proposal not found" };
@@ -180,7 +183,7 @@ async function emailProposal(tx: Tx, session: Session, proposalId: string, kind:
   const subject = kind === "send" ? `Your proposal from ${p.company_name} (${ref})` : `A reminder about your proposal from ${p.company_name}`;
   const body =
     kind === "send"
-      ? `Hi ${firstName(p.name)},\n\nThanks for your time. Your proposal is ready to view online:\n\n${url}\n\nYou can download it as a PDF, and accept and sign it on the same page when you're ready.${p.valid_until ? ` It's valid until ${new Date(p.valid_until).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}.` : ""}\n\nAny questions, just reply to this email.\n\n${session.fullName}\n${p.company_name}`
+      ? `Hi ${firstName(p.name)},\n\nThanks for your time. Your proposal is ready to view online:\n\n${url}\n\nYou can download it as a PDF, and accept and sign it on the same page when you're ready.${p.terms_path ? " Our terms and conditions are attached." : ""}${p.valid_until ? ` It's valid until ${new Date(p.valid_until).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}.` : ""}\n\nAny questions, just reply to this email.\n\n${session.fullName}\n${p.company_name}`
       : `Hi ${firstName(p.name)},\n\nJust checking you received your proposal. You can view it, download the PDF and accept it here:\n\n${url}\n\nHappy to answer any questions.\n\n${session.fullName}\n${p.company_name}`;
 
   if (kind === "send") {
@@ -209,7 +212,10 @@ async function emailProposal(tx: Tx, session: Session, proposalId: string, kind:
     .executeTakeFirstOrThrow();
   await tx.insertInto("activity_log").values({ project_id: p.project_id, contact_id: p.contact_id, event: kind === "send" ? "proposal_sent" : "proposal_reminder", payload: { reference: proposalReference(p.document_prefix, p.number, p.version) } }).execute();
 
-  const result = await emailSender().send({ from: fromAddress(p.company_name, p.email_sender), to: p.email, replyTo: session.email || p.company_email || undefined, subject, text: body, html: textToHtml(body), idempotencyKey: m.id, tags: { kind: `proposal_${kind}` } });
+  // The terms PDF goes with the proposal itself (not reminders): it's also linked on the page.
+  const attachments =
+    kind === "send" && p.terms_path ? [{ filename: (p.terms_name ?? "Terms and conditions.pdf").replace(/[^\w .()-]/g, "_"), content: await fileStore().get(p.terms_path), contentType: "application/pdf" }] : undefined;
+  const result = await emailSender().send({ from: fromAddress(p.company_name, p.email_sender), to: p.email, replyTo: session.email || p.company_email || undefined, subject, text: body, html: textToHtml(body), attachments, idempotencyKey: m.id, tags: { kind: `proposal_${kind}` } });
   await tx
     .updateTable("messages")
     .set(result.ok ? { delivery_status: "sent", provider_message_id: result.providerId } : { delivery_status: "failed", delivery_error: result.error })

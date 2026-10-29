@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createTwilio, twilioSignature, verifyTwilioSignature, googleYearlyEstimateKwh, createResendDomains, createStripePayments, signStripePayload, verifyStripeWebhook, createGoogleMapsClient, createMemoryFileStore, createOfflineSupplier, createPvgisClient, metresPerPixel, parseBuildingInsights, toLocalMetres, createRecordingSender, pvgisAspect, createResendSender, createSupabaseFileStore, textToHtml } from "./index";
+import { addressParts, createTwilio, twilioSignature, verifyTwilioSignature, googleYearlyEstimateKwh, createResendDomains, createStripePayments, signStripePayload, verifyStripeWebhook, createGoogleMapsClient, createMemoryFileStore, createOfflineSupplier, createPvgisClient, metresPerPixel, parseBuildingInsights, toLocalMetres, createRecordingSender, pvgisAspect, createResendSender, createSupabaseFileStore, textToHtml } from "./index";
 
 describe("textToHtml", () => {
   it("escapes HTML, keeps paragraphs and links URLs", () => {
@@ -146,13 +146,32 @@ describe("Google Solar", () => {
       calls.push({ url, init });
       if (url.endsWith(":autocomplete"))
         return new Response(JSON.stringify({ suggestions: [{ placePrediction: { placeId: "abc", text: { text: "18 Rotherfield Road, Bristol, UK" }, structuredFormat: { mainText: { text: "18 Rotherfield Road" }, secondaryText: { text: "Bristol, UK" } } } }, { queryPrediction: {} }] }));
-      return new Response(JSON.stringify({ location: { latitude: 51.47, longitude: -2.61 }, formattedAddress: "18 Rotherfield Rd, Bristol BS1, UK" }));
+      return new Response(
+        JSON.stringify({
+          location: { latitude: 51.47, longitude: -2.61 },
+          formattedAddress: "18 Rotherfield Rd, Bristol BS1, UK",
+          addressComponents: [
+            { longText: "18", types: ["street_number"] },
+            { longText: "Rotherfield Road", types: ["route"] },
+            { longText: "Bristol", types: ["postal_town"] },
+            { longText: "City of Bristol", types: ["administrative_area_level_2", "political"] },
+            { longText: "bs1 6qf", types: ["postal_code"] },
+          ],
+        }),
+      );
     }) as unknown as typeof fetch;
     const client = createGoogleMapsClient({ apiKey: "k", fetch: fetchImpl });
     expect(await client.autocomplete("18 rotherf", "tok")).toEqual([{ placeId: "abc", main: "18 Rotherfield Road", secondary: "Bristol, UK" }]);
     expect(JSON.parse(String(calls[0]!.init!.body))).toMatchObject({ input: "18 rotherf", sessionToken: "tok", includedRegionCodes: ["gb"] });
     expect((calls[0]!.init!.headers as Record<string, string>)["X-Goog-Api-Key"]).toBe("k");
-    expect(await client.placeLocation("abc", "tok")).toEqual({ at: { lat: 51.47, lng: -2.61 }, address: "18 Rotherfield Rd, Bristol BS1, UK" });
+    expect(await client.placeLocation("abc", "tok")).toEqual({
+      at: { lat: 51.47, lng: -2.61 },
+      address: "18 Rotherfield Rd, Bristol BS1, UK",
+      parts: { line1: "18 Rotherfield Road", line2: "", town: "Bristol", county: "City of Bristol", postcode: "BS1 6QF" },
+    });
+    // A named house with no number: the name is line 1.
+    expect(addressParts([{ longText: "Rose Cottage", types: ["premise"] }, { longText: "Henley-on-Thames", types: ["postal_town"] }])).toMatchObject({ line1: "Rose Cottage", line2: "", town: "Henley-on-Thames" });
+    expect(addressParts([{ longText: "Flat 2", types: ["subpremise"] }, { longText: "Mill House", types: ["premise"] }, { longText: "4", types: ["street_number"] }, { longText: "Mill Lane", types: ["route"] }])).toMatchObject({ line1: "4 Mill Lane", line2: "Flat 2, Mill House" });
     expect(calls[1]!.url).toBe("https://places.googleapis.com/v1/places/abc?sessionToken=tok");
     const refused = createGoogleMapsClient({ apiKey: "k", fetch: (async () => new Response(JSON.stringify({ error: { message: "Places API (New) has not been used in project" } }), { status: 403 })) as unknown as typeof fetch });
     await expect(refused.autocomplete("18", "t")).rejects.toThrow(/Places API: Places API \(New\) has not been used/);

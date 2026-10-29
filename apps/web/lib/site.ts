@@ -11,7 +11,11 @@ const fakeGoogle: GoogleMapsClient = {
   geocode: async () => ({ lat: 51.4545, lng: -2.5879 }),
   autocomplete: async (input) =>
     ["Rotherfield Road, Bristol, UK", "Rotherfield Avenue, Bath, UK", "Rotherfield Close, Bristol, UK"].map((rest, i) => ({ placeId: `fake-${i}`, main: `${input.match(/^\d+/)?.[0] ?? "1"} ${rest.split(",")[0]}`, secondary: rest.split(", ").slice(1).join(", ") })),
-  placeLocation: async (placeId) => ({ at: { lat: 51.4545 + Number(placeId.slice(5)) * 0.001, lng: -2.5879 }, address: placeId }),
+  placeLocation: async (placeId) => ({
+    at: { lat: 51.4545 + Number(placeId.slice(5)) * 0.001, lng: -2.5879 },
+    address: placeId,
+    parts: { line1: "18 Rotherfield Road", line2: "", town: "Bristol", county: "", postcode: "BS3 1AA" },
+  }),
   buildingInsights: async () => ({ status: "no_coverage", raw: {} }),
   staticMapUrl: () => "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=",
 };

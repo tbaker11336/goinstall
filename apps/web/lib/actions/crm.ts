@@ -54,13 +54,16 @@ const enquirySchema = z.object({
   ...contactFields,
   products: z.array(productSchema).min(1, "Choose at least one product"),
   note: optional,
+  // From a picked Google address: where the map starts.
+  lat: z.coerce.number().min(49).max(61).optional(),
+  lng: z.coerce.number().min(-9).max(2.5).optional(),
 });
 
 /** "+ New enquiry": create the contact and its first project together. */
 export async function createEnquiryAction(_: ActionResult, form: FormData): Promise<ActionResult> {
   const parsed = enquirySchema.safeParse(formObject(form));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message };
-  const { products, note, ...contact } = parsed.data;
+  const { products, note, lat, lng, ...contact } = parsed.data;
 
   const { projectId, companyId, owner, me } = await asUser(async (tx, session) => {
     const owner = contact.owner_id ?? session.userId;
@@ -80,6 +83,7 @@ export async function createEnquiryAction(_: ActionResult, form: FormData): Prom
         site_town: contact.town,
         site_county: contact.county,
         site_postcode: contact.postcode,
+        ...(lat !== undefined && lng !== undefined ? { lat, lng } : {}),
       })
       .returning("id")
       .executeTakeFirstOrThrow();

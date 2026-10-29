@@ -1,5 +1,5 @@
 import "server-only";
-import { firstName } from "@goinstall/core";
+import { bookingDates, bookingTitle, firstName } from "@goinstall/core";
 import { sql, withService, type Tx } from "@goinstall/db";
 import { textToHtml } from "@goinstall/integrations";
 import { randomUUID } from "node:crypto";
@@ -44,6 +44,9 @@ export const opSchema = z.discriminatedUnion("type", [
   }),
   z.object({ opId: z.string().max(64), type: z.literal("kit_issue"), kitItemId: z.uuid(), issue: z.enum(["missing", "damaged"]).nullable(), note: z.string().max(500).nullable(), capturedAt: at }),
   z.object({ opId: z.string().max(64), type: z.literal("on_my_way"), bookingId: z.uuid(), etaMinutes: z.number().int().min(1).max(600), capturedAt: at }),
+  z
+    .object({ opId: z.string().max(64), type: z.literal("booking_response"), bookingId: z.uuid(), response: z.enum(["accepted", "declined"]), reason: z.string().trim().max(500).nullable(), capturedAt: at })
+    .refine((o) => o.response === "accepted" || Boolean(o.reason), { message: "Say why you can't do the job", path: ["reason"] }),
 ]);
 export type SyncOp = z.infer<typeof opSchema>;
 export type OpResult = { opId: string; ok: boolean; note?: string; error?: string };
@@ -130,6 +133,29 @@ export async function applyOp(tx: Tx, session: Session, op: SyncOp, completed: S
         await serviceNote(k.company_id, k.project_id, `${session.fullName} reported ${k.description} ${op.issue}${op.note ? `: ${op.note}` : ""}`, "kit_issue");
         followUps.push(() => notifyTeam(k.company_id, "kit_issue", { projectId: k.project_id, link: `/projects/${k.project_id}/kit`, data: { detail: `${session.fullName} reported ${k.description} ${op.issue}${op.note ? ` (${op.note})` : ""}` } }));
       }
+      return ok();
+    }
+    case "booking_response": {
+      const b = await tx.selectFrom("bookings").select(["id", "project_id", "company_id", "type", "starts_at", "ends_at", "status", "title"]).where("id", "=", op.bookingId).executeTakeFirst();
+      if (!b || b.status === "cancelled") return fail("Job not found");
+      const reason = op.response === "declined" ? op.reason : null;
+      // A later answer replaces an earlier one; the booking's start records which dates it was for.
+      await tx
+        .insertInto("booking_responses")
+        .values({ booking_id: b.id, user_id: session.userId, response: op.response, reason, for_starts_at: b.starts_at, responded_at: when })
+        .onConflict((oc) => oc.columns(["company_id", "booking_id", "user_id"]).doUpdateSet({ response: op.response, reason, for_starts_at: b.starts_at, responded_at: when }))
+        .execute();
+      const p = b.project_id ? await tx.selectFrom("projects").select(["products", "site_address_line1"]).where("id", "=", b.project_id).executeTakeFirst() : null;
+      const days = bookingDates(b.starts_at, b.ends_at);
+      const fmt = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+      followUps.push(() =>
+        notifyTeam(b.company_id, op.response === "accepted" ? "job_accepted" : "job_declined", {
+          projectId: b.project_id,
+          link: `/schedule?view=day&date=${days[0]}`,
+          exclude: session.userId,
+          data: { installer: session.fullName, detail: bookingTitle(b.type, p?.products ?? [], b.title), site: p?.site_address_line1 ?? undefined, when: days.length > 1 ? `${fmt(days[0]!)} to ${fmt(days.at(-1)!)}` : fmt(days[0]!), reason: reason ?? undefined },
+        }),
+      );
       return ok();
     }
     case "on_my_way": {

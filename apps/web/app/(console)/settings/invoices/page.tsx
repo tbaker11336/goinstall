@@ -1,4 +1,5 @@
 import { CATEGORY_LABELS, formatPence, PRODUCT_CATEGORIES } from "@goinstall/core";
+import Link from "next/link";
 import { ActionForm, SubmitButton } from "@/components/forms";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -32,7 +33,6 @@ export default async function InvoiceSettingsPage({ searchParams }: { searchPara
           "bank_sort_code",
           "bank_account_number",
           "payment_terms",
-          "terms_and_conditions",
           "stripe_account_id",
         ])
         .where("id", "=", s.companyId)
@@ -85,9 +85,13 @@ export default async function InvoiceSettingsPage({ searchParams }: { searchPara
                 aria-describedby="shared_visit_discount-hint"
               />
             </Field>
-            <Field label="Terms and conditions" htmlFor="terms_and_conditions" className="sm:col-span-2" hint="Shown on every proposal and accepted with it.">
-              <Textarea id="terms_and_conditions" name="terms_and_conditions" rows={6} defaultValue={c.terms_and_conditions ?? ""} aria-describedby="terms_and_conditions-hint" />
-            </Field>
+            <p className="text-sm text-ink-3 sm:col-span-2">
+              Terms and conditions for proposals are under{" "}
+              <Link href="/settings/terms" className="font-medium text-primary underline">
+                Terms &amp; conditions
+              </Link>
+              .
+            </p>
           </CardContent>
         </Card>
 

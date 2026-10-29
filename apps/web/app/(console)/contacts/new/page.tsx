@@ -17,7 +17,7 @@ export default async function NewEnquiryPage() {
       <Card>
         <CardContent className="p-6">
           <ActionForm action={createEnquiryAction} className="grid gap-6">
-            <ContactFields staff={staff} />
+            <ContactFields staff={staff} withLocation />
             <ProductCheckboxes />
             <Field label="Notes (optional)" htmlFor="note">
               <Textarea id="note" name="note" placeholder="What they asked for, best time to call…" />

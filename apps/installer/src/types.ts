@@ -68,6 +68,8 @@ export interface Job {
   startedAt: string | null;
   completedAt: string | null;
   signoffName: string | null;
+  /** My accept/decline for the job's current dates; null means not answered yet. */
+  myResponse: { response: "accepted" | "declined"; reason: string | null; at: string } | null;
   address: string;
   postcode: string | null;
   lat: number | null;
@@ -110,7 +112,8 @@ export type Op =
   | { opId: string; type: "booking_status"; bookingId: string; status: "in_progress" | "completed"; capturedAt: string }
   | { opId: string; type: "signoff"; bookingId: string; name: string; signaturePaths: string[]; capturedAt: string }
   | { opId: string; type: "kit_issue"; kitItemId: string; issue: "missing" | "damaged" | null; note: string | null; capturedAt: string }
-  | { opId: string; type: "on_my_way"; bookingId: string; etaMinutes: number; capturedAt: string };
+  | { opId: string; type: "on_my_way"; bookingId: string; etaMinutes: number; capturedAt: string }
+  | { opId: string; type: "booking_response"; bookingId: string; response: "accepted" | "declined"; reason: string | null; capturedAt: string };
 
 export interface PendingFile {
   id: string;

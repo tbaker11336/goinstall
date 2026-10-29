@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { autoAssignStrings, cableLength, cableTotals, checkStrings, drawnStrings, fillArea, panelsInArea, polylineLength, sldModel, type PanelRect } from "./site-plan";
+import { autoAssignStrings, cableLength, cableTotals, checkStrings, drawnStrings, fillArea, movePanel, panelsInArea, polylineLength, sldModel, type PanelRect } from "./site-plan";
 import { evaluateSolarDesign } from "./solar-design";
 
 const roof = [
@@ -16,7 +16,37 @@ const inv = { ac_kw: 5, mppt_count: 2, mppt_min_v: 120, mppt_max_v: 500, max_inp
 const arr = (id: string, panels: PanelRect[], over: Partial<{ pitch: number; azimuth: number }> = {}) => ({ id, label: `Roof ${id} · south`, pitch: 35, azimuth: 180, used: true, panels, ...over });
 const n = (count: number, s?: number): PanelRect[] => Array.from({ length: count }, (_, i) => ({ x: i * 1.2, y: 0, w: 1.1, h: 1.7, s }));
 
+describe("movePanel", () => {
+  it("moves a panel when it still fits, snapped to 5 cm, and refuses otherwise", () => {
+    const panels: PanelRect[] = [
+      { x: 0.5, y: 0.5, w: 1.1, h: 1.7, s: 2 },
+      { x: 2, y: 0.5, w: 1.1, h: 1.7 },
+    ];
+    expect(movePanel(roof, panels, 1, { dx: 3.03, dy: 1.01 }, { setback: 0.3 })).toEqual({ x: 5.05, y: 1.5, w: 1.1, h: 1.7 });
+    expect(movePanel(roof, panels, 0, { dx: 0, dy: 0 }, { setback: 0.3 })).toMatchObject({ s: 2 }); // keeps its string
+    expect(movePanel(roof, panels, 1, { dx: -1, dy: 0 }, { setback: 0.3 })).toBeNull(); // onto the other panel
+    expect(movePanel(roof, panels, 1, { dx: 8, dy: 0 }, { setback: 0.3 })).toBeNull(); // off the roof
+    expect(movePanel(roof, panels, 1, { dx: 2, dy: 0 }, { setback: 0.3, obstructions: [{ x: 4, y: 1, w: 0.8, h: 0.8 }] })).toBeNull();
+  });
+});
+
 describe("fillArea", () => {
+  it("lays a single row along a thin drag, starting where the drag began", () => {
+    // Drag left to right along the roof, barely moving up or down.
+    const row = fillArea(roof, { from: { x: 0.5, y: 2.4 }, to: { x: 9.5, y: 2.6 } }, panel, { setback: 0.3, gap: 0.02 });
+    expect(row).toHaveLength(8);
+    expect(new Set(row.map((p) => p.y)).size).toBe(1);
+    expect(row[0]!.y).toBeCloseTo(2.4 - 1.7 / 2, 3);
+    // Near the edge the row is nudged inside the setback rather than dropped.
+    const edge = fillArea(roof, { from: { x: 0.5, y: 0.2 }, to: { x: 4, y: 0.25 } }, panel, { setback: 0.3, gap: 0.02 });
+    expect(edge.length).toBeGreaterThan(0);
+    expect(edge.every((p) => p.y >= 0.3)).toBe(true);
+    // A thin drag up the slope lays a column.
+    const col = fillArea(roof, { from: { x: 5, y: 0.4 }, to: { x: 5.1, y: 4.7 } }, panel, { setback: 0.3, gap: 0.02 });
+    expect(col).toHaveLength(2);
+    expect(new Set(col.map((p) => p.x)).size).toBe(1);
+  });
+
   it("fills the dragged rectangle within the setback, from the start corner", () => {
     const placed = fillArea(roof, { from: { x: 0, y: 0 }, to: { x: 6, y: 4 } }, panel, { setback: 0.3, gap: 0.02 });
     // Every panel inside the roof and the setback, no overlaps.

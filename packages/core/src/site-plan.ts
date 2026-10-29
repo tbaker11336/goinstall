@@ -114,10 +114,21 @@ export function fillArea(
   // Clamp to the roof inside its setback, so a drag that starts on the edge still lines up from the setback.
   const rx = roof.map((p) => p.x);
   const ry = roof.map((p) => p.y);
-  const minX = Math.max(Math.min(area.from.x, area.to.x), Math.min(...rx) + opts.setback);
-  const maxX = Math.min(Math.max(area.from.x, area.to.x), Math.max(...rx) - opts.setback);
-  const minY = Math.max(Math.min(area.from.y, area.to.y), Math.min(...ry) + opts.setback);
-  const maxY = Math.min(Math.max(area.from.y, area.to.y), Math.max(...ry) - opts.setback);
+  const lo = { x: Math.min(...rx) + opts.setback, y: Math.min(...ry) + opts.setback };
+  const hi = { x: Math.max(...rx) - opts.setback, y: Math.max(...ry) - opts.setback };
+  /**
+   * One side of the drag: the dragged span clamped to the roof. A drag
+   * thinner than a panel is a line: it becomes one panel's depth centred on
+   * where the drag started, nudged inside the roof, so dragging along the
+   * roof lays a single row (or column).
+   */
+  const span = (a: number, b: number, size: number, min: number, max: number): [number, number] => {
+    if (Math.abs(b - a) >= size) return [Math.max(Math.min(a, b), min), Math.min(Math.max(a, b), max)];
+    const start = Math.min(Math.max(a - size / 2, min), max - size);
+    return [start, start + size + 1e-9];
+  };
+  const [minX, maxX] = span(area.from.x, area.to.x, w, lo.x, hi.x);
+  const [minY, maxY] = span(area.from.y, area.to.y, h, lo.y, hi.y);
   if (maxX <= minX || maxY <= minY) return [];
   const cols = Math.floor((maxX - minX + gap + 1e-9) / (w + gap));
   const rows = Math.floor((maxY - minY + gap + 1e-9) / (h + gap));
@@ -137,6 +148,28 @@ export function fillArea(
     }
   }
   return placed;
+}
+
+/**
+ * Drag-and-drop a placed panel by (dx, dy) metres, snapped to 5 cm. Null
+ * when it would leave the roof's setback or overlap another panel or an
+ * obstruction, so the designer puts it back.
+ */
+export function movePanel(
+  roof: readonly Point[],
+  panels: readonly PanelRect[],
+  index: number,
+  by: { dx: number; dy: number },
+  opts: { setback: number; obstructions?: readonly Obstruction[] },
+): PanelRect | null {
+  const p = panels[index];
+  if (!p) return null;
+  const snap = (v: number) => Math.round(v * 20) / 20;
+  const moved = { ...p, x: snap(p.x + by.dx), y: snap(p.y + by.dy) };
+  if (!rectFits(moved, roof, opts.setback)) return null;
+  if (opts.obstructions?.some((o) => overlaps(moved, o, opts.setback))) return null;
+  if (panels.some((o, i) => i !== index && overlaps(moved, o, 0))) return null;
+  return moved;
 }
 
 /** Indexes of panels whose centre lies inside the dragged rectangle. */

@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { addDays, dayLabel, jobDates, PRODUCT_LABEL, timeOf, TYPE_LABEL, ukDate, longDay } from "../format";
 import type { Nav } from "../nav";
-import { useStore } from "../store";
+import { useMyResponse, useStore } from "../store";
 import { colors } from "../theme";
 import type { Job } from "../types";
 import { Card, H1, Muted, Section, SyncBadge, Tag } from "../ui";
@@ -12,8 +12,10 @@ function JobCard({ job, day, next, onPress }: { job: Job; day: string; next: boo
   const dates = jobDates(job);
   const dayN = dates.indexOf(day) + 1;
   const done = st.local.status[job.id] === "completed" || Boolean(job.completedAt);
+  const answer = useMyResponse(job);
+  const ask = !done && !answer;
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={`${TYPE_LABEL[job.type]}, ${job.address || job.title}${next ? ", next" : ""}${done ? ", completed" : ""}`} onPress={onPress} testID="job-card">
+    <Pressable accessibilityRole="button" accessibilityLabel={`${TYPE_LABEL[job.type]}, ${job.address || job.title}${next ? ", next" : ""}${done ? ", completed" : ""}${ask ? ", needs your answer" : answer?.response === "declined" ? ", declined" : ""}`} onPress={onPress} testID="job-card">
       <Card highlight={next} style={{ flexDirection: "row", gap: 16, opacity: done ? 0.6 : 1 }}>
         <View style={{ width: 64, alignItems: "center" }}>
           <Text style={{ fontSize: 18, fontWeight: "700" }}>{job.allDay ? "08:30" : timeOf(job.startsAt)}</Text>
@@ -28,6 +30,12 @@ function JobCard({ job, day, next, onPress }: { job: Job; day: string; next: boo
               </View>
             )}
             {done && <Text style={{ color: colors.successText, fontWeight: "700" }}>✓ Done</Text>}
+            {ask && (
+              <View style={{ backgroundColor: "#FFFAEB", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 }}>
+                <Text style={{ color: "#B54708", fontWeight: "700", fontSize: 13 }}>ACCEPT?</Text>
+              </View>
+            )}
+            {!done && answer?.response === "declined" && <Text style={{ color: "#B42318", fontWeight: "700" }}>Declined</Text>}
           </View>
           <Muted>{[job.address, job.customer?.name].filter(Boolean).join(" · ")}</Muted>
           {job.products.length > 0 && (

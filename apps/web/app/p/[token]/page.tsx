@@ -102,7 +102,7 @@ export default async function PublicProposalPage({ params, searchParams }: { par
               Happy to go ahead? Accept below and {c.company_name} will be in touch to book your installation.
               {Number(c.deposit_pence) > 0 && ` A deposit of ${formatPence(Number(c.deposit_pence))} confirms your booking.`}
             </p>
-            <AcceptForm token={token} customerName={p.contactName} hasTerms={Boolean(c.terms)} />
+            <AcceptForm token={token} customerName={p.contactName} hasTerms={Boolean(c.terms || c.terms_file_id)} />
           </>
         ) : depositPaid ? (
           <>

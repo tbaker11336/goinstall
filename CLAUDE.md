@@ -35,6 +35,14 @@ design rules: never invent rule values).
   `SMS_PLAN_*` env settings: never invent them. GoInstall staff
   (`PLATFORM_ADMIN_EMAILS`) attach the number at `/platform/sms` once
   Twilio approves the business.
+- Installers accept or decline each job in the app (a decline needs a
+  reason); the office sees answers on the Schedule and is notified. Moving
+  a job asks again. Installers don't create bookings themselves.
+- Scaffold up/down bookings are for solar projects only.
+- Terms and conditions: text and/or a PDF in Settings › Terms & conditions,
+  attached to every proposal (and its email) and accepted on signing.
+- Schedule: one calendar (day / week / month) with a team filter; clicking a
+  booking shows it with Reschedule and Notify customer.
 - Calendar sync: a private iCal feed link per team (Google, Outlook and
   Apple subscribe to it); no account connections for now.
 

@@ -1,10 +1,71 @@
 import { useState } from "react";
 import { Linking, Platform, Pressable, ScrollView, Text, View } from "react-native";
-import { jobDates, timeOf, TYPE_LABEL, ukDate } from "../format";
+import { jobDates, longDay, timeOf, TYPE_LABEL, ukDate } from "../format";
 import type { Nav } from "../nav";
-import { useStore } from "../store";
+import { useMyResponse, useStore } from "../store";
 import { colors } from "../theme";
-import { BackLink, Button, Card, Checkbox, H1, H2, Muted, RoofSketch } from "../ui";
+import { BackLink, Button, Card, Checkbox, Field, H1, H2, Muted, RoofSketch } from "../ui";
+import type { Job } from "../types";
+
+/** Accept or decline the job (for its current dates). A decline needs a reason so the office can rebook. */
+function Answer({ job }: { job: Job }) {
+  const st = useStore();
+  const answer = useMyResponse(job);
+  const [declining, setDeclining] = useState(false);
+  const [changing, setChanging] = useState(false);
+  const [reason, setReason] = useState("");
+  const dates = jobDates(job);
+  const when = dates.length > 1 ? `${longDay(new Date(`${dates[0]}T12:00:00Z`))} to ${longDay(new Date(`${dates.at(-1)}T12:00:00Z`))}` : `${longDay(new Date(`${dates[0]}T12:00:00Z`))}${job.allDay ? "" : ` at ${timeOf(job.startsAt)}`}`;
+
+  if (answer && !changing)
+    return (
+      <View testID="job-answer" style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 14, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, backgroundColor: answer.response === "accepted" ? colors.accentTint : "#FEF3F2" }}>
+        <Text style={{ flexShrink: 1, fontWeight: "600", color: answer.response === "accepted" ? colors.accentStrong : "#B42318" }}>
+          {answer.response === "accepted" ? "You accepted this job" : `You declined: ${answer.reason ?? ""}`}
+        </Text>
+        <Pressable accessibilityRole="button" onPress={() => setChanging(true)}>
+          <Text style={{ fontWeight: "600", color: colors.primary }}>Change</Text>
+        </Pressable>
+      </View>
+    );
+
+  return (
+    <Card highlight>
+      <H2>Can you do this job?</H2>
+      <Muted style={{ marginBottom: 12 }}>{when}</Muted>
+      {declining ? (
+        <View style={{ gap: 10 }}>
+          <Field label="Why can't you do it?" value={reason} onChangeText={setReason} placeholder="e.g. On holiday that week" multiline testID="decline-reason" />
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            <Button label="Back" variant="outline" onPress={() => setDeclining(false)} style={{ flex: 1 }} />
+            <Button
+              label="Send decline"
+              disabled={!reason.trim()}
+              onPress={() => {
+                st.respond(job, "declined", reason.trim());
+                setDeclining(false);
+                setChanging(false);
+              }}
+              style={{ flex: 1 }}
+            />
+          </View>
+        </View>
+      ) : (
+        <View style={{ flexDirection: "row", gap: 10 }}>
+          <Button label="Decline" variant="outline" onPress={() => setDeclining(true)} style={{ flex: 1 }} />
+          <Button
+            label="Accept"
+            onPress={() => {
+              st.respond(job, "accepted", null);
+              setChanging(false);
+            }}
+            style={{ flex: 1 }}
+          />
+        </View>
+      )}
+    </Card>
+  );
+}
 
 function Action({ label, icon, onPress, active, disabled }: { label: string; icon: string; onPress: () => void; active?: boolean; disabled?: boolean }) {
   return (
@@ -67,6 +128,7 @@ export function JobScreen({ nav, id }: { nav: Nav; id: string }) {
         </Muted>
       </View>
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 120 }}>
+        {status !== "completed" && <Answer job={job} />}
         <View style={{ flexDirection: "row", gap: 10, marginBottom: 14 }}>
           <Action label="Navigate" icon="➤" onPress={() => void Linking.openURL(mapsUrl!)} disabled={!job.address} />
           <Action label="Call" icon="✆" onPress={() => void Linking.openURL(`tel:${job.customer?.phone ?? ""}`)} disabled={!job.customer?.phone} />

@@ -280,6 +280,9 @@ export default async function DesignPage({
           projectId={id}
           initial={data.ev!}
           aerial={aerial}
+          position={position}
+          mapsBrowserKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY || null}
+          canSearch={Boolean(googleMaps())}
           chargers={byCat("ev_charger")}
           rules={{ cables: rules.cables, settings: rules.settings }}
           survey={{

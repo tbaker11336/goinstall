@@ -17,9 +17,12 @@ export interface ScheduleBooking {
   customerConfirmedAt: Date | null;
   customerNotifiedAt: Date | null;
   address: string | null;
+  contactName: string | null;
   products: string[];
   assignments: { role: string; teamId: string | null; userId: string | null; name: string }[];
   clashes: { with: string; resource: string }[];
+  /** Installers' accept/decline for the booking's current dates. */
+  responses: { name: string; response: "accepted" | "declined"; reason: string | null }[];
 }
 
 /** Bookings overlapping [from, to), with assignments and clash warnings. */
@@ -27,7 +30,8 @@ export async function loadBookings(tx: Tx, range: { from: string; to: string; pr
   let q = tx
     .selectFrom("bookings as b")
     .leftJoin("projects as p", "p.id", "b.project_id")
-    .select(["b.id", "b.project_id", "b.type", "b.status", "b.title", "b.starts_at", "b.ends_at", "b.all_day", "b.notes", "b.customer_confirmed_at", "b.customer_notified_at", "p.site_address_line1", "p.site_town", "p.products"])
+    .leftJoin("contacts as c", "c.id", "p.contact_id")
+    .select(["c.name as contact_name", "b.id", "b.project_id", "b.type", "b.status", "b.title", "b.starts_at", "b.ends_at", "b.all_day", "b.notes", "b.customer_confirmed_at", "b.customer_notified_at", "p.site_address_line1", "p.site_town", "p.products"])
     .where("b.status", "!=", "cancelled")
     .orderBy("b.starts_at");
   q = range.projectId ? q.where("b.project_id", "=", range.projectId) : q.where("b.starts_at", "<", new Date(`${range.to}T00:00:00Z`)).where("b.ends_at", ">", new Date(`${range.from}T00:00:00Z`));
@@ -40,6 +44,15 @@ export async function loadBookings(tx: Tx, range: { from: string; to: string; pr
         .leftJoin("users as u", "u.id", "a.user_id")
         .select(["a.booking_id", "a.role", "a.team_id", "a.user_id", "t.name as team_name", "u.full_name"])
         .where("a.booking_id", "in", ids)
+        .execute()
+    : [];
+  const answers = ids.length
+    ? await tx
+        .selectFrom("booking_responses as r")
+        .innerJoin("users as u", "u.id", "r.user_id")
+        .select(["r.booking_id", "r.response", "r.reason", "r.for_starts_at", "u.full_name"])
+        .where("r.booking_id", "in", ids)
+        .orderBy("r.responded_at")
         .execute()
     : [];
   const bookable: Bookable[] = rows.map((r) => ({
@@ -67,11 +80,14 @@ export async function loadBookings(tx: Tx, range: { from: string; to: string; pr
     customerConfirmedAt: r.customer_confirmed_at,
     customerNotifiedAt: r.customer_notified_at,
     address: [r.site_address_line1, r.site_town].filter(Boolean).join(", ") || null,
+    contactName: r.contact_name,
     products: r.products ?? [],
     assignments: assignments
       .filter((a) => a.booking_id === r.id)
       .map((a) => ({ role: a.role, teamId: a.team_id, userId: a.user_id, name: a.team_name ?? a.full_name ?? "" })),
     clashes: clashes.get(r.id) ?? [],
+    // An answer for earlier dates doesn't count once the booking has moved.
+    responses: answers.filter((a) => a.booking_id === r.id && a.for_starts_at.getTime() === r.starts_at.getTime()).map((a) => ({ name: a.full_name, response: a.response, reason: a.reason })),
   }));
 }
 

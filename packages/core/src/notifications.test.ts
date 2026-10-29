@@ -69,3 +69,12 @@ describe("SMS", () => {
     expect(smsSegments(t.sms)).toBeLessThanOrEqual(2);
   });
 });
+
+describe("job answers", () => {
+  it("tells the office who declined, why, and what to do", () => {
+    const t = notificationText("job_declined", { companyName: "Brightside Solar", installer: "Dan Hughes", detail: "EV charger installation", site: "27 Henleaze Gardens", when: "Tue 3 Nov", reason: "On holiday that week" });
+    expect(t.title).toBe("Job declined at 27 Henleaze Gardens");
+    expect(t.body).toBe("Dan Hughes can't do the EV charger installation at 27 Henleaze Gardens on Tue 3 Nov. Reason: On holiday that week. Rebook it on the Schedule.");
+    expect(notificationText("job_accepted", { companyName: "Brightside Solar", installer: "Dan Hughes", detail: "Solar installation" }).body).toBe("Dan Hughes accepted the solar installation.");
+  });
+});

@@ -61,6 +61,8 @@ export async function jobsFor(tx: Tx, session: Session, range: { from: Date; to:
     tx.selectFrom("survey_questions").select(["survey_kind", "key", "label", "help", "type", "options", "products", "section", "position", "required"]).where("archived_at", "is", null).orderBy("position").execute(),
     tx.selectFrom("photo_categories").select(["survey_kind", "key", "label", "products", "required", "position"]).where("archived_at", "is", null).orderBy("position").execute(),
   ]);
+  // My answers; one for earlier dates (the job was moved since) doesn't count.
+  const answers = bookingIds.length ? await tx.selectFrom("booking_responses").select(["booking_id", "response", "reason", "for_starts_at", "responded_at"]).where("booking_id", "in", bookingIds).where("user_id", "=", session.userId).execute() : [];
   const surveyIds = surveys.map((s) => s.id);
   const fields = surveyIds.length ? await tx.selectFrom("survey_fields").select(["survey_id", "key", "value", "source", "updated_at"]).where("survey_id", "in", surveyIds).execute() : [];
 
@@ -100,6 +102,10 @@ export async function jobsFor(tx: Tx, session: Session, range: { from: Date; to:
         startedAt: b.started_at,
         completedAt: b.completed_at,
         signoffName: b.signoff_name,
+        myResponse: (() => {
+          const a = answers.find((x) => x.booking_id === b.id && x.for_starts_at.getTime() === b.starts_at.getTime());
+          return a ? { response: a.response, reason: a.reason, at: a.responded_at } : null;
+        })(),
         address: [b.site_address_line1, b.site_address_line2, b.site_town, b.site_postcode].filter(Boolean).join(", "),
         postcode: b.site_postcode,
         lat: b.lat,

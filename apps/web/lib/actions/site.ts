@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import type { AddressSuggestion } from "@goinstall/integrations";
+import type { AddressParts, AddressSuggestion } from "@goinstall/integrations";
 import { asUser, requireSession } from "@/lib/auth";
 import { aerialWidthM, googleMaps, roofData, segmentsFromInsights, type DesignSegment } from "@/lib/site";
 
@@ -24,6 +24,21 @@ export async function suggestAddressesAction(input: string, sessionToken: string
   }
 }
 
+/** The chosen suggestion's address fields and location, for filling in a form. */
+export async function addressDetailsAction(placeId: string, sessionToken: string): Promise<{ error?: string; parts?: AddressParts; at?: { lat: number; lng: number } }> {
+  await requireSession();
+  const p = placeSchema.safeParse({ placeId, sessionToken });
+  if (!p.success) return { error: "Choose the address again." };
+  const maps = googleMaps();
+  if (!maps) return { error: "Address lookup needs the Google Maps key." };
+  try {
+    const place = await maps.placeLocation(p.data.placeId, p.data.sessionToken);
+    return place ? { parts: place.parts, at: place.at } : { error: "Google couldn't find that address. Type it in instead." };
+  } catch (e) {
+    return { error: `Google refused the address lookup: ${googleError(e)}` };
+  }
+}
+
 /**
  * Postcode / address search on the design map: moves the site centre there
  * and loads Google's roof data for it. The site address itself is unchanged.
@@ -33,6 +48,8 @@ export async function relocateSiteAction(
   query: string,
   /** A suggestion picked from the dropdown: its exact location, no geocoding. */
   place?: { placeId: string; sessionToken?: string },
+  /** EV designs don't need roof data: skip the (billed) Solar API call; solar fetches it when next opened. */
+  opts: { roof?: boolean } = {},
 ): Promise<{ error?: string; position?: { lat: number; lng: number }; aerialWidthM?: number; roofStatus?: string; segments?: DesignSegment[] }> {
   if (!z.uuid().safeParse(projectId).success) return { error: "Project not found" };
   const q = querySchema.safeParse(query);
@@ -53,8 +70,9 @@ export async function relocateSiteAction(
     if (!updated) return { error: "Project not found" };
     // Roof data belongs to the old position: fetch it again for the new one.
     await tx.deleteFrom("roof_data_cache").where("project_id", "=", projectId).execute();
-    const roof = await roofData(tx, projectId, at);
     revalidatePath(`/projects/${projectId}/design`);
+    if (opts.roof === false) return { position: at, aerialWidthM: aerialWidthM(at.lat) };
+    const roof = await roofData(tx, projectId, at);
     return { position: at, aerialWidthM: aerialWidthM(at.lat), roofStatus: roof.status, segments: roof.insights ? segmentsFromInsights(roof.insights, at) : [] };
   });
 }

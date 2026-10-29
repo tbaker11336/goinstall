@@ -39,7 +39,7 @@ export async function designInputs(tx: Tx, projectId: string) {
     tx.selectFrom("ev_designs").selectAll().where("project_id", "=", projectId).where("is_active", "=", true).executeTakeFirst(),
     tx
       .selectFrom("companies")
-      .select(["id", "name", "vat_rates", "shared_visit_discount_pence", "default_deposit_pct", "proposal_valid_days", "terms_and_conditions", "document_prefix"])
+      .select(["id", "name", "vat_rates", "shared_visit_discount_pence", "default_deposit_pct", "proposal_valid_days", "terms_and_conditions", "terms_file_id", "document_prefix"])
       .executeTakeFirstOrThrow(),
   ]);
   const ids = [solar?.panel_product_id, solar?.inverter_product_id, solar?.battery_product_id, ev?.charger_product_id].filter((x): x is string => Boolean(x));
@@ -151,7 +151,10 @@ export async function proposalContent(tx: Tx, proposalId: string, companyId?: st
     .innerJoin("projects as p", (j) => j.onRef("p.id", "=", "pr.project_id").onRef("p.company_id", "=", "pr.company_id"))
     .innerJoin("contacts as c", (j) => j.onRef("c.id", "=", "p.contact_id").onRef("c.company_id", "=", "p.company_id"))
     .innerJoin("companies as co", "co.id", "pr.company_id")
+    .leftJoin("files as tf", (j) => j.onRef("tf.id", "=", "pr.terms_file_id").onRef("tf.company_id", "=", "pr.company_id"))
     .select([
+      "tf.path as terms_file_path",
+      "tf.original_name as terms_file_name",
       "pr.id",
       "pr.number",
       "pr.version",
@@ -166,6 +169,7 @@ export async function proposalContent(tx: Tx, proposalId: string, companyId?: st
       "pr.deposit_pence",
       "pr.valid_until",
       "pr.terms",
+      "pr.terms_file_id",
       "pr.accepted_at",
       "pr.accepted_name",
       "pr.project_id",
@@ -247,10 +251,16 @@ export async function refreshProposalFinance(tx: Tx, proposalId: string) {
   await tx.updateTable("proposals").set({ summary: JSON.stringify({ ...summary, finance }) }).where("id", "=", proposalId).execute();
 }
 
-/** The proposal view with a short-lived URL for its saved layout image. */
+/** The proposal view with short-lived URLs for its saved layout image and terms PDF. */
 export async function proposalViewWithLayout(c: ProposalContent): Promise<ProposalView> {
   const view = proposalView(c);
   const path = view.summary.layout?.path;
-  if (path) view.layoutUrl = (await signedUrls([path], 3600)).get(path) ?? null;
+  const termsPath = c.proposal.terms_file_path;
+  const urls = await signedUrls([path, termsPath].filter((x): x is string => Boolean(x)), 3600);
+  if (path) view.layoutUrl = urls.get(path) ?? null;
+  if (termsPath) {
+    const url = urls.get(termsPath);
+    if (url) view.termsFile = { url, name: c.proposal.terms_file_name ?? "Terms and conditions.pdf" };
+  }
   return view;
 }

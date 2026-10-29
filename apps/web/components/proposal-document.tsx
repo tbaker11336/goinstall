@@ -18,6 +18,8 @@ export interface ProposalView {
   layoutUrl?: string | null;
   lines: { id: string; section: string; description: string; quantity: number; unitPricePence: number; vatRate: number }[];
   terms: string | null;
+  /** The company's terms PDF attached to this proposal (signed URL). */
+  termsFile?: { url: string; name: string } | null;
 }
 
 const SECTIONS: ProposalSection[] = ["solar", "battery", "ev", "installation"];
@@ -180,11 +182,24 @@ export function ProposalDocument({ p }: { p: ProposalView }) {
       <EnvironmentSection s={p.summary} />
       <AssumptionsSection s={p.summary} />
 
-      {p.terms && (
-        <details className="border-t pt-4 text-sm">
-          <summary className="cursor-pointer font-semibold">Terms and conditions</summary>
-          <p className="mt-2 whitespace-pre-line text-ink-3">{p.terms}</p>
-        </details>
+      {(p.terms || p.termsFile) && (
+        <section aria-labelledby="terms-heading" className="flex flex-col gap-2 border-t pt-4 text-sm">
+          <h2 id="terms-heading" className="font-semibold">
+            Terms and conditions
+          </h2>
+          {p.termsFile && (
+            <a href={p.termsFile.url} target="_blank" rel="noopener" className="inline-flex w-fit items-center gap-2 rounded-md border px-3 py-2 font-medium text-primary hover:bg-muted">
+              Read the terms and conditions (PDF)
+              <span className="sr-only">: {p.termsFile.name}, opens in a new tab</span>
+            </a>
+          )}
+          {p.terms && (
+            <details>
+              <summary className="cursor-pointer text-ink-2">{p.termsFile ? "Summary of the terms" : "Show the terms"}</summary>
+              <p className="mt-2 whitespace-pre-line text-ink-3">{p.terms}</p>
+            </details>
+          )}
+        </section>
       )}
     </article>
   );

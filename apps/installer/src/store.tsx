@@ -4,7 +4,7 @@ import { randomUUID } from "expo-crypto";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { saveBlob, formPart, removeBlob } from "./blobs";
 import { API_URL } from "./config";
-import type { Bundle, Captured, Op, PendingFile, SurveyKind } from "./types";
+import type { Bundle, Captured, Job, Op, PendingFile, SurveyKind } from "./types";
 
 /**
  * Offline-first state. Everything the installer captures is saved on the
@@ -22,7 +22,11 @@ interface Local {
   status: Record<string, "in_progress" | "completed">;
   signoff: Record<string, { name: string; signatureFileId: string | null }>;
   kitChecked: Record<string, boolean>;
+  /** Accept/decline made on this phone, with the job start it was for. Optional: older saved state has none. */
+  responses?: Record<string, JobResponse & { forStartsAt: string }>;
 }
+
+export type JobResponse = { response: "accepted" | "declined"; reason: string | null };
 
 interface Persisted {
   token: string | null;
@@ -59,6 +63,7 @@ interface Store extends Persisted {
   setKitChecked(kitId: string, checked: boolean): void;
   reportKit(kitId: string, issue: "missing" | "damaged" | null, note: string | null): void;
   onMyWay(bookingId: string, etaMinutes: number): void;
+  respond(job: Pick<Job, "id" | "startsAt">, response: "accepted" | "declined", reason: string | null): void;
 }
 
 const Ctx = createContext<Store | null>(null);
@@ -246,10 +251,23 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       onMyWay(bookingId, etaMinutes) {
         enqueue({ opId: randomUUID(), type: "on_my_way", bookingId, etaMinutes, capturedAt: now() });
       },
+      respond(job, response, reason) {
+        update((s) => ({ ...s, local: { ...s.local, responses: { ...(s.local.responses ?? {}), [job.id]: { response, reason, forStartsAt: job.startsAt } } } }));
+        // Only the latest answer for a job needs sending.
+        enqueue({ opId: randomUUID(), type: "booking_response", bookingId: job.id, response, reason, capturedAt: now() }, (o) => o.type === "booking_response" && o.bookingId === job.id);
+      },
     };
   }, [state, ready, online, syncing, error, update, enqueue, sync]);
 
   return <Ctx.Provider value={store}>{children}</Ctx.Provider>;
+}
+
+/** My answer to a job for its current dates: this phone's if newer, else the server's. */
+export function useMyResponse(job: Pick<Job, "id" | "startsAt" | "myResponse">): JobResponse | null {
+  const s = useStore();
+  const mine = s.local.responses?.[job.id];
+  if (mine && mine.forStartsAt === job.startsAt) return mine;
+  return job.myResponse ? { response: job.myResponse.response, reason: job.myResponse.reason } : null;
 }
 
 /** Captured state for a step: the phone's copy if there is one, else the server's. */

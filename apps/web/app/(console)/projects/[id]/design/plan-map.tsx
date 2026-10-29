@@ -65,6 +65,7 @@ export function PlanMap({
   const map = useRef<google.maps.Map | null>(null);
   const overlay = useRef<google.maps.OverlayView | null>(null);
   const centreRef = useRef(centre);
+  const captureRef = useRef(capture);
   const [layer, setLayer] = useState<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -74,7 +75,8 @@ export function PlanMap({
         if (cancelled || !host.current || map.current) return;
         const m = new google.maps.Map(host.current, {
           center: centreRef.current,
-          zoom: 20,
+          // Close enough to see each panel; scroll or pinch for more.
+          zoom: 21,
           maxZoom: 22,
           minZoom: 15,
           mapTypeId: "satellite",
@@ -95,7 +97,16 @@ export function PlanMap({
         m.addListener("tilt_changed", () => m.getTilt() !== 0 && m.setTilt(0));
         const div = document.createElement("div");
         div.style.position = "absolute";
-        google.maps.OverlayView.preventMapHitsAndGesturesFrom(div);
+        // The plan covers the whole view, so it can't simply swallow every
+        // event (that also blocked wheel and pinch zoom). Presses on a shape,
+        // or anywhere while a drawing tool is on, stay with the plan so the
+        // map doesn't pan; the wheel and two-finger gestures always reach the map.
+        const keep = (e: Event) => {
+          if (e instanceof TouchEvent && e.touches.length > 1) return;
+          const onShape = e.target instanceof Element && e.target !== div && e.target.tagName.toLowerCase() !== "svg";
+          if (captureRef.current || onShape) e.stopPropagation();
+        };
+        for (const type of ["pointerdown", "mousedown", "touchstart", "click", "dblclick", "contextmenu"]) div.addEventListener(type, keep);
         class Plan extends google.maps.OverlayView {
           onAdd() {
             this.getPanes()!.overlayMouseTarget.appendChild(div);
@@ -136,6 +147,7 @@ export function PlanMap({
   }, [centre]);
 
   useEffect(() => {
+    captureRef.current = capture;
     map.current?.setOptions({ draggableCursor: capture ? "crosshair" : null });
   }, [capture]);
 
