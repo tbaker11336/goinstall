@@ -6,7 +6,18 @@ import { sql, type Tx } from "@goinstall/db";
 export const AERIAL_ZOOM = 20;
 export const AERIAL_SIZE_PX = 640;
 
+/** A local stand-in for trying the design map without a key (GOOGLE_FAKE=true, never on Vercel). */
+const fakeGoogle: GoogleMapsClient = {
+  geocode: async () => ({ lat: 51.4545, lng: -2.5879 }),
+  autocomplete: async (input) =>
+    ["Rotherfield Road, Bristol, UK", "Rotherfield Avenue, Bath, UK", "Rotherfield Close, Bristol, UK"].map((rest, i) => ({ placeId: `fake-${i}`, main: `${input.match(/^\d+/)?.[0] ?? "1"} ${rest.split(",")[0]}`, secondary: rest.split(", ").slice(1).join(", ") })),
+  placeLocation: async (placeId) => ({ at: { lat: 51.4545 + Number(placeId.slice(5)) * 0.001, lng: -2.5879 }, address: placeId }),
+  buildingInsights: async () => ({ status: "no_coverage", raw: {} }),
+  staticMapUrl: () => "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=",
+};
+
 export function googleMaps(): GoogleMapsClient | null {
+  if (process.env.GOOGLE_FAKE === "true" && process.env.NODE_ENV !== "production" && !process.env.VERCEL) return fakeGoogle;
   const key = process.env.GOOGLE_MAPS_API_KEY;
   return key ? createGoogleMapsClient({ apiKey: key }) : null;
 }

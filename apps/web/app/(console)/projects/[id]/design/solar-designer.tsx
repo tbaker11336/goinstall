@@ -30,12 +30,13 @@ import {
   type SiteMarkup,
   type StringPlan,
 } from "@goinstall/core";
-import { AlertTriangle, Cable, Check, Download, Grid2x2, Images, MapPin, Minus, MousePointer2, OctagonX, Plus, Ruler, Search, Sparkles, Spline, Triangle, Zap } from "lucide-react";
+import { AlertTriangle, Cable, Check, Download, Grid2x2, Images, MapPin, Minus, MousePointer2, OctagonX, Plus, Ruler, Sparkles, Spline, Triangle, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Select } from "@/components/ui/input";
 import { saveSolarDesignAction, type SolarDesignPayload } from "@/lib/actions/design";
 import { relocateSiteAction } from "@/lib/actions/site";
+import { AddressSearch } from "./address-search";
 import { cn, timeAgo } from "@/lib/utils";
 import { SitePlanCard, StringsCard, type PlanItem } from "./designer-cards";
 import { PLAN_EXTENT_M, PlanMap } from "./plan-map";
@@ -146,7 +147,6 @@ export function SolarDesigner(props: SolarDesignerProps) {
   const [aerial, setAerial] = useState(props.aerial);
   const [roofStatus, setRoofStatus] = useState(props.roofStatus);
   const [mapError, setMapError] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
   const [searching, setSearching] = useState(false);
   const svgRef = useRef<SVGSVGElement>(null);
   const firstRender = useRef(true);
@@ -374,11 +374,10 @@ export function SolarDesigner(props: SolarDesignerProps) {
     setMarkup((m) => ({ ...m, markers: m.markers.map((k) => (k.id === id ? { ...k, x: r2(p.x), y: r2(p.y) } : k)) }));
   }
 
-  async function runSearch(e: React.FormEvent) {
-    e.preventDefault();
+  async function runSearch(search: string, place?: { placeId: string; sessionToken: string }) {
     if (searching) return;
     setSearching(true);
-    const r = await relocateSiteAction(props.projectId, search);
+    const r = await relocateSiteAction(props.projectId, search, place);
     setSearching(false);
     if (r.error || !r.position) return flash(r.error ?? "Nothing found.");
     setPosition(r.position);
@@ -644,28 +643,7 @@ export function SolarDesigner(props: SolarDesignerProps) {
   return (
     <div className="grid items-start gap-6 xl:grid-cols-[1fr_380px]">
       <section aria-label="Roof layout" className="flex min-w-0 flex-col overflow-hidden rounded-lg border bg-card">
-        {props.canSearch && (
-          <form onSubmit={runSearch} role="search" className="flex items-center gap-2 border-b px-4 py-2.5">
-            <label htmlFor="map-search" className="sr-only">
-              Search the map by postcode or address
-            </label>
-            <div className="relative flex-1">
-              <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-              <input
-                id="map-search"
-                type="search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search postcode or address"
-                autoComplete="off"
-                className="h-10 w-full rounded-md border border-input bg-card pr-3 pl-9 text-sm"
-              />
-            </div>
-            <button type="submit" disabled={searching || search.trim().length < 2} className="inline-flex h-10 items-center rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50">
-              {searching ? "Finding…" : "Go"}
-            </button>
-          </form>
-        )}
+        {props.canSearch && <AddressSearch searching={searching} onSearch={runSearch} />}
         <div className="flex flex-wrap items-center gap-1.5 border-b px-4 py-3" role="toolbar" aria-label="Design tools">
           {tools.map((t) => {
             const active = t.key === tool;
@@ -860,7 +838,7 @@ export function SolarDesigner(props: SolarDesignerProps) {
 
         {props.googleError && (
           <p role="alert" className="border-t bg-red-50 px-4 py-2.5 text-[13px] text-red-900">
-            Google refused the lookup: {props.googleError}. Check that the server key has the Geocoding, Solar and Maps Static APIs enabled, billing on, and no website restriction (Settings › Design rules › Check Google connection).
+            Google refused the lookup: {props.googleError}. Check that the server key has the Geocoding, Places (New), Solar and Maps Static APIs enabled, billing on, and no website restriction (Settings › Design rules › Check Google connection).
           </p>
         )}
         {mapError && <p className="border-t bg-warning-tint px-4 py-2.5 text-[13px] text-warning-text">The live Google map couldn&rsquo;t load ({mapError}), so the saved aerial image is shown. Check the browser key&rsquo;s website restrictions.</p>}

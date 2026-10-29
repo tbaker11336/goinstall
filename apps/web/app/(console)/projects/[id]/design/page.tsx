@@ -9,7 +9,7 @@ import { listCatalogue, type CatalogueProduct } from "@/lib/catalogue";
 import { loadDesignRules } from "@/lib/design-rules";
 import { loadEnergy } from "@/lib/energy";
 import { signedUrls } from "@/lib/files";
-import {
+import { googleMaps,
   aerialWidthM,
   ensureSitePosition,
   roofData,
@@ -254,7 +254,7 @@ export default async function DesignPage({
           aerial={aerial}
           position={position}
           mapsBrowserKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY || null}
-          canSearch={Boolean(process.env.GOOGLE_MAPS_API_KEY)}
+          canSearch={Boolean(googleMaps())}
           googleError={data.googleError}
           panels={byCat("panel")}
           inverters={byCat("inverter")}

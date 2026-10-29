@@ -140,6 +140,24 @@ describe("Google Solar", () => {
     expect(googleYearlyEstimateKwh({ configs: [], panelCapacityWatts: 400 }, 19, 445)).toBeNull();
   });
 
+  it("suggests UK addresses and looks up the chosen one", async () => {
+    const calls: { url: string; init?: RequestInit }[] = [];
+    const fetchImpl = (async (url: string, init?: RequestInit) => {
+      calls.push({ url, init });
+      if (url.endsWith(":autocomplete"))
+        return new Response(JSON.stringify({ suggestions: [{ placePrediction: { placeId: "abc", text: { text: "18 Rotherfield Road, Bristol, UK" }, structuredFormat: { mainText: { text: "18 Rotherfield Road" }, secondaryText: { text: "Bristol, UK" } } } }, { queryPrediction: {} }] }));
+      return new Response(JSON.stringify({ location: { latitude: 51.47, longitude: -2.61 }, formattedAddress: "18 Rotherfield Rd, Bristol BS1, UK" }));
+    }) as unknown as typeof fetch;
+    const client = createGoogleMapsClient({ apiKey: "k", fetch: fetchImpl });
+    expect(await client.autocomplete("18 rotherf", "tok")).toEqual([{ placeId: "abc", main: "18 Rotherfield Road", secondary: "Bristol, UK" }]);
+    expect(JSON.parse(String(calls[0]!.init!.body))).toMatchObject({ input: "18 rotherf", sessionToken: "tok", includedRegionCodes: ["gb"] });
+    expect((calls[0]!.init!.headers as Record<string, string>)["X-Goog-Api-Key"]).toBe("k");
+    expect(await client.placeLocation("abc", "tok")).toEqual({ at: { lat: 51.47, lng: -2.61 }, address: "18 Rotherfield Rd, Bristol BS1, UK" });
+    expect(calls[1]!.url).toBe("https://places.googleapis.com/v1/places/abc?sessionToken=tok");
+    const refused = createGoogleMapsClient({ apiKey: "k", fetch: (async () => new Response(JSON.stringify({ error: { message: "Places API (New) has not been used in project" } }), { status: 403 })) as unknown as typeof fetch });
+    await expect(refused.autocomplete("18", "t")).rejects.toThrow(/Places API: Places API \(New\) has not been used/);
+  });
+
   it("treats 404 as no coverage", async () => {
     const client = createGoogleMapsClient({ apiKey: "k", fetch: (async () => new Response(JSON.stringify({ error: { code: 404, status: "NOT_FOUND", message: "x" } }), { status: 404 })) as unknown as typeof fetch });
     expect((await client.buildingInsights({ lat: 1, lng: 1 })).status).toBe("no_coverage");

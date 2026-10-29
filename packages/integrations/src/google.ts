@@ -1,6 +1,6 @@
 /**
- * Google Maps Platform: geocoding, the Solar API (buildingInsights) and
- * Static Maps aerial images. The key stays server-side; images are proxied.
+ * Google Maps Platform: geocoding, address suggestions (Places API), the
+ * Solar API (buildingInsights) and Static Maps aerial images. The key stays server-side; images are proxied.
  * Solar API calls are billed, so callers cache responses per project.
  */
 
@@ -41,8 +41,23 @@ export interface BuildingInsights {
 
 export type SolarLookup = { status: "ok"; insights: BuildingInsights; raw: unknown } | { status: "no_coverage"; raw: unknown };
 
+/** One address in the search dropdown. */
+export interface AddressSuggestion {
+  placeId: string;
+  /** e.g. "18 Rotherfield Road". */
+  main: string;
+  /** e.g. "Bristol, UK". */
+  secondary: string;
+}
+
 export interface GoogleMapsClient {
   geocode(address: string): Promise<LatLng | null>;
+  /**
+   * UK address suggestions as the user types. Google bills the typing and the
+   * chosen place's lookup as one session when both carry the same token.
+   */
+  autocomplete(input: string, sessionToken: string): Promise<AddressSuggestion[]>;
+  placeLocation(placeId: string, sessionToken?: string): Promise<{ at: LatLng; address: string } | null>;
   buildingInsights(at: LatLng): Promise<SolarLookup>;
   /** Satellite image URL including the key: fetch it server-side only. */
   staticMapUrl(center: LatLng, opts?: { zoom?: number; size?: number }): string;
@@ -135,6 +150,32 @@ export function createGoogleMapsClient({ apiKey, fetch: fetchImpl = fetch }: { a
       if (body.status === "ZERO_RESULTS") return null;
       if (body.status !== "OK") throw new Error(`Geocoding failed: ${body.error_message ?? body.status}`);
       return body.results![0]!.geometry.location;
+    },
+    async autocomplete(input, sessionToken) {
+      const res = await fetchImpl("https://places.googleapis.com/v1/places:autocomplete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Goog-Api-Key": apiKey },
+        body: JSON.stringify({ input, sessionToken, includedRegionCodes: ["gb"], languageCode: "en-GB" }),
+      });
+      const body = (await res.json()) as {
+        suggestions?: { placePrediction?: { placeId: string; text?: { text: string }; structuredFormat?: { mainText?: { text: string }; secondaryText?: { text: string } } } }[];
+        error?: { message: string };
+      };
+      if (!res.ok) throw new Error(`Places API: ${body.error?.message ?? res.status}`);
+      return (body.suggestions ?? []).flatMap(({ placePrediction: p }) =>
+        p ? [{ placeId: p.placeId, main: p.structuredFormat?.mainText?.text ?? p.text?.text ?? "", secondary: p.structuredFormat?.secondaryText?.text ?? "" }] : [],
+      );
+    },
+    async placeLocation(placeId, sessionToken) {
+      const q = sessionToken ? `?${new URLSearchParams({ sessionToken })}` : "";
+      const res = await fetchImpl(`https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}${q}`, {
+        headers: { "X-Goog-Api-Key": apiKey, "X-Goog-FieldMask": "location,formattedAddress" },
+      });
+      const body = (await res.json()) as { location?: { latitude: number; longitude: number }; formattedAddress?: string; error?: { status?: string; message: string } };
+      if (res.status === 404 || body.error?.status === "NOT_FOUND") return null;
+      if (!res.ok) throw new Error(`Places API: ${body.error?.message ?? res.status}`);
+      if (!body.location) return null;
+      return { at: { lat: body.location.latitude, lng: body.location.longitude }, address: body.formattedAddress ?? "" };
     },
     async buildingInsights(at) {
       const params = new URLSearchParams({ "location.latitude": at.lat.toFixed(6), "location.longitude": at.lng.toFixed(6), requiredQuality: "MEDIUM", key: apiKey });

@@ -11,8 +11,8 @@ export interface GoogleCheck {
 
 /**
  * Check the server key works for each Google API GoInstall uses (Geocoding,
- * Solar, Maps Static), from the server. Reports Google's own error, never the
- * key. Three billed calls, so it's admin-only and run on demand.
+ * Places, Solar, Maps Static), from the server. Reports Google's own error,
+ * never the key. A few billed calls, so it's admin-only and run on demand.
  */
 export async function checkGoogle(): Promise<GoogleCheck> {
   const browserKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY ? "set" : "missing";
@@ -25,6 +25,12 @@ export async function checkGoogle(): Promise<GoogleCheck> {
     results.push({ api: "Geocoding API (addresses and postcode search)", ok: Boolean(at), detail: at ? "Working" : "No result for a test address" });
   } catch (e) {
     results.push({ api: "Geocoding API (addresses and postcode search)", ok: false, detail: message(e) });
+  }
+  try {
+    const s = await maps.autocomplete("Bristol Temple Meads", crypto.randomUUID());
+    results.push({ api: "Places API (New) (address suggestions while typing)", ok: s.length > 0, detail: s.length ? "Working" : "No suggestions for a test address" });
+  } catch (e) {
+    results.push({ api: "Places API (New) (address suggestions while typing)", ok: false, detail: message(e) });
   }
   at ??= { lat: 51.4492, lng: -2.5813 };
   try {
