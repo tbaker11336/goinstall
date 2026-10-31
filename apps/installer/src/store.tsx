@@ -4,6 +4,7 @@ import { randomUUID } from "expo-crypto";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { saveBlob, formPart, removeBlob } from "./blobs";
 import { API_URL } from "./config";
+import { unregisterPush } from "./push";
 import type { Bundle, Captured, Chat, ChatMessage, Job, Op, PendingFile, SurveyKind } from "./types";
 
 /**
@@ -221,6 +222,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         update((s) => ({ ...s, token }));
       },
       async signOut() {
+        await unregisterPush(state.token);
         update(() => EMPTY);
       },
       sync,

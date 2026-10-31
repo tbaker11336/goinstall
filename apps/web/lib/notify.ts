@@ -5,6 +5,7 @@ import { textToHtml } from "@goinstall/integrations";
 import { db } from "./db";
 import { emailSender, fromAddress } from "./email";
 import { env } from "./env";
+import { pushToUsers } from "./push";
 import { activeSms, sendSms } from "./sms";
 
 /**
@@ -73,9 +74,12 @@ export async function notifyTeam(
       const users = await tx.selectFrom("users").select(["id", "email", "phone", "full_name"]).where("company_id", "=", companyId).where("id", "in", ids).where("is_active", "=", true).execute();
       const text = notificationText(event, { companyName: c.name, ...(await projectWords(tx, companyId, p.projectId ?? null)), ...defined(p.data) });
       const link = p.link ?? (p.projectId ? `/projects/${p.projectId}` : null);
+      const pushes: Parameters<typeof pushToUsers>[2] = [];
       for (const u of users) {
         if (channels.includes("in_app")) {
           await tx.insertInto("notifications").values({ company_id: companyId, user_id: u.id, event, title: text.title, body: text.body, link, project_id: p.projectId ?? null, created_by: null }).execute();
+          // In-app also means the phone, for anyone signed in to the installer app.
+          pushes.push({ userId: u.id, title: text.title, body: text.body, data: { event, ...(p.projectId ? { projectId: p.projectId } : {}) } });
         }
         if (channels.includes("email") && u.email) {
           const url = absolute(link);
@@ -84,6 +88,7 @@ export async function notifyTeam(
         }
         if (channels.includes("sms")) await sendSms(tx, { companyId, to: u.phone, body: text.sms });
       }
+      await pushToUsers(tx, companyId, pushes);
     });
   } catch (err) {
     console.error(`notifyTeam ${event} failed`, err);

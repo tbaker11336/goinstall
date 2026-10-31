@@ -700,6 +700,18 @@ export interface PurchaseOrders {
   updated_at: Generated<Timestamp>;
 }
 
+export interface PushDevices {
+  company_id: Generated<string>;
+  created_at: Generated<Timestamp>;
+  created_by: Generated<string | null>;
+  id: Generated<string>;
+  last_seen_at: Generated<Timestamp>;
+  platform: string;
+  token: string;
+  updated_at: Generated<Timestamp>;
+  user_id: string;
+}
+
 export interface RoofDataCache {
   company_id: Generated<string>;
   created_by: Generated<string | null>;
@@ -954,6 +966,7 @@ export interface DB {
   proposals: Proposals;
   purchase_order_lines: PurchaseOrderLines;
   purchase_orders: PurchaseOrders;
+  push_devices: PushDevices;
   roof_data_cache: RoofDataCache;
   sms_accounts: SmsAccounts;
   solar_designs: SolarDesigns;

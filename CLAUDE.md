@@ -38,6 +38,11 @@ design rules: never invent rule values).
 - Installers accept or decline each job in the app (a decline needs a
   reason); the office sees answers on the Schedule and is notified. Moving
   a job asks again. Installers don't create bookings themselves.
+- Office ↔ installer messages are per job (app Messages tab, project Install
+  tab) and never reach the customer.
+- Push notifications: the "In-app" channel also pushes to the phones of
+  people signed in to the installer app (Expo push). Needs the app linked to
+  an Expo project (EAS) before phones can register.
 - Scaffold up/down bookings are for solar projects only.
 - Terms and conditions: text and/or a PDF in Settings › Terms & conditions,
   attached to every proposal (and its email) and accepted on signing.

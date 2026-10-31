@@ -42,6 +42,12 @@
           "cameraPermission": "Take photos of the install and scan serial numbers.",
           "photosPermission": "Attach photos of the install."
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#0B7A62"
+        }
       ]
     ]
   }

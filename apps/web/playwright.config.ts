@@ -8,6 +8,7 @@ const e2eDb = pgAdmin.replace(/\/[^/]*$/, "/goinstall_e2e");
 // Emails are recorded here instead of sent (see lib/email.ts); tests read survey links from it.
 export const OUTBOX = `${process.cwd()}/.data/e2e-outbox.jsonl`;
 // Texts are recorded here instead of sent.
+export const PUSH_OUTBOX = `${process.cwd()}/.data/e2e-push.jsonl`;
 export const SMS_OUTBOX = `${process.cwd()}/.data/e2e-sms.jsonl`;
 export const CRON_SECRET = "e2e-cron-secret";
 
@@ -28,7 +29,7 @@ export default defineConfig({
   webServer: [
   {
     // Fresh database with demo data, then the app with dev sign-in.
-    command: `mkdir -p .data && rm -f ${OUTBOX} ${SMS_OUTBOX} && rm -rf .data/e2e-uploads && DATABASE_URL=${pgAdmin} pnpm --filter @goinstall/db reset-dev goinstall_e2e && pnpm exec next dev --port ${port}`,
+    command: `mkdir -p .data && rm -f ${OUTBOX} ${SMS_OUTBOX} ${PUSH_OUTBOX} && rm -rf .data/e2e-uploads && DATABASE_URL=${pgAdmin} pnpm --filter @goinstall/db reset-dev goinstall_e2e && pnpm exec next dev --port ${port}`,
     url: `http://localhost:${port}/login`,
     reuseExistingServer: false,
     timeout: 180_000,
@@ -45,6 +46,7 @@ export default defineConfig({
       STRIPE_SECRET_KEY: "",
       STRIPE_WEBHOOK_SECRET: "",
       SMS_OUTBOX_FILE: SMS_OUTBOX,
+      PUSH_OUTBOX_FILE: PUSH_OUTBOX,
       TWILIO_ACCOUNT_SID: "",
       TWILIO_AUTH_TOKEN: "",
       CRON_SECRET,

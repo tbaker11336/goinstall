@@ -1,5 +1,5 @@
 import { StatusBar } from "expo-status-bar";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { BackHandler, Pressable, Text, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import type { Nav, Route } from "./src/nav";
@@ -7,6 +7,7 @@ import { Checklist } from "./src/screens/Checklist";
 import { JobScreen } from "./src/screens/Job";
 import { Jobs } from "./src/screens/Jobs";
 import { Login } from "./src/screens/Login";
+import { onNotificationTap, registerForPush, type PushStatus } from "./src/push";
 import { ChatScreen, Messages } from "./src/screens/Messages";
 import { Notifications } from "./src/screens/Notifications";
 import { Placeholder, Profile } from "./src/screens/Other";
@@ -26,6 +27,7 @@ const TABS: { route: Route; label: string; icon: string }[] = [
 function Shell() {
   const st = useStore();
   const chats = useChats();
+  const [, setPushStatus] = useState<PushStatus | null>(null);
   const [stack, setStack] = useState<Route[]>([{ name: "jobs" }]);
   const route = stack.at(-1)!;
   const back = useCallback(() => setStack((s) => (s.length > 1 ? s.slice(0, -1) : s)), []);
@@ -40,6 +42,25 @@ function Shell() {
     });
     return () => sub.remove();
   }, [stack.length, back]);
+
+  // Push: register this phone once signed in; a tap opens the job or its chat.
+  useEffect(() => {
+    if (st.token) void registerForPush(st.token).then(setPushStatus);
+  }, [st.token]);
+  const jobsRef = useRef(st.bundle?.jobs);
+  jobsRef.current = st.bundle?.jobs;
+  useEffect(
+    () =>
+      onNotificationTap((d) => {
+        void st.sync();
+        if (!d.projectId) return setStack([{ name: "alerts" }]);
+        if (d.event === "team_message") return setStack([{ name: "messages" }, { name: "chat", projectId: d.projectId }]);
+        const job = jobsRef.current?.find((j) => j.projectId === d.projectId && !j.completedAt) ?? jobsRef.current?.find((j) => j.projectId === d.projectId);
+        setStack(job ? [{ name: "jobs" }, { name: "job", id: job.id }] : [{ name: "alerts" }]);
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
 
   if (!st.ready) return null;
   if (!st.token) return <Login />;

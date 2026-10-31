@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { addressParts, createTwilio, twilioSignature, verifyTwilioSignature, googleYearlyEstimateKwh, createResendDomains, createStripePayments, signStripePayload, verifyStripeWebhook, createGoogleMapsClient, createMemoryFileStore, createOfflineSupplier, createPvgisClient, metresPerPixel, parseBuildingInsights, toLocalMetres, createRecordingSender, pvgisAspect, createResendSender, createSupabaseFileStore, textToHtml } from "./index";
+import { addressParts, createExpoPush, createTwilio, twilioSignature, verifyTwilioSignature, googleYearlyEstimateKwh, createResendDomains, createStripePayments, signStripePayload, verifyStripeWebhook, createGoogleMapsClient, createMemoryFileStore, createOfflineSupplier, createPvgisClient, metresPerPixel, parseBuildingInsights, toLocalMetres, createRecordingSender, pvgisAspect, createResendSender, createSupabaseFileStore, textToHtml } from "./index";
 
 describe("textToHtml", () => {
   it("escapes HTML, keeps paragraphs and links URLs", () => {
@@ -257,5 +257,24 @@ describe("Twilio", () => {
     expect(verifyTwilioSignature("12345", url, params, "0/KCTR6DLpKmkAf8muzZqo1nDgQ=")).toBe(true);
     expect(verifyTwilioSignature("12345", url, { ...params, Digits: "9" }, "0/KCTR6DLpKmkAf8muzZqo1nDgQ=")).toBe(false);
     expect(verifyTwilioSignature("12345", url, params, null)).toBe(false);
+  });
+});
+
+describe("Expo push", () => {
+  it("sends in batches and reports phones that have gone away", async () => {
+    const bodies: unknown[] = [];
+    const push = createExpoPush({
+      accessToken: "tok",
+      fetch: (async (_: string, init: RequestInit) => {
+        const sent = JSON.parse(String(init.body)) as unknown[];
+        bodies.push({ count: sent.length, auth: (init.headers as Record<string, string>).Authorization });
+        return new Response(JSON.stringify({ data: sent.map((_, i) => (i === 0 ? { status: "error", message: "gone", details: { error: "DeviceNotRegistered" } } : { status: "ok", id: `t${i}` })) }));
+      }) as unknown as typeof fetch,
+    });
+    const msgs = Array.from({ length: 150 }, (_, i) => ({ to: `ExponentPushToken[${i}]`, title: "Job booked", body: "Tue 3 Nov" }));
+    const r = await push.send(msgs);
+    expect(bodies).toEqual([{ count: 100, auth: "Bearer tok" }, { count: 50, auth: "Bearer tok" }]);
+    expect(r.invalidTokens).toEqual(["ExponentPushToken[0]", "ExponentPushToken[100]"]);
+    expect(r.sent).toBe(148);
   });
 });
