@@ -61,6 +61,19 @@ export async function jobsFor(tx: Tx, session: Session, range: { from: Date; to:
     tx.selectFrom("survey_questions").select(["survey_kind", "key", "label", "help", "type", "options", "products", "section", "position", "required"]).where("archived_at", "is", null).orderBy("position").execute(),
     tx.selectFrom("photo_categories").select(["survey_kind", "key", "label", "products", "required", "position"]).where("archived_at", "is", null).orderBy("position").execute(),
   ]);
+  // Each job's chat with the office, and where I've read up to.
+  const [chatRows, reads] = projectIds.length
+    ? await Promise.all([
+        tx
+          .selectFrom("team_messages as m")
+          .innerJoin("users as u", (j) => j.onRef("u.id", "=", "m.author_id").onRef("u.company_id", "=", "m.company_id"))
+          .select(["m.id", "m.project_id", "m.author_id", "u.full_name", "u.role", "m.body", "m.sent_at"])
+          .where("m.project_id", "in", projectIds)
+          .orderBy("m.sent_at")
+          .execute(),
+        tx.selectFrom("team_message_reads").select(["project_id", "read_at"]).where("project_id", "in", projectIds).where("user_id", "=", session.userId).execute(),
+      ])
+    : [[], []];
   // My answers; one for earlier dates (the job was moved since) doesn't count.
   const answers = bookingIds.length ? await tx.selectFrom("booking_responses").select(["booking_id", "response", "reason", "for_starts_at", "responded_at"]).where("booking_id", "in", bookingIds).where("user_id", "=", session.userId).execute() : [];
   const surveyIds = surveys.map((s) => s.id);
@@ -84,6 +97,19 @@ export async function jobsFor(tx: Tx, session: Session, range: { from: Date; to:
     checklist: steps,
     surveyQuestions: questions,
     photoCategories: categories,
+    chats: projectIds.map((pid) => {
+      const b = unique.find((x) => x.project_id === pid)!;
+      return {
+        projectId: pid,
+        title: [b.site_address_line1, b.site_town].filter(Boolean).join(", ") || b.contact_name || "Job",
+        customer: b.contact_name,
+        readAt: reads.find((r) => r.project_id === pid)?.read_at ?? null,
+        messages: chatRows
+          .filter((m) => m.project_id === pid)
+          .slice(-200)
+          .map((m) => ({ id: m.id, authorId: m.author_id, author: m.full_name, office: m.role === "admin" || m.role === "office", body: m.body, sentAt: m.sent_at })),
+      };
+    }),
     jobs: unique.map((b) => {
       const projectSurveys = surveys.filter((s) => s.project_id === b.project_id);
       const s = solar.find((x) => x.project_id === b.project_id);

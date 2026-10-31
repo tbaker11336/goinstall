@@ -1,6 +1,8 @@
 export type Route =
   | { name: "jobs" }
   | { name: "messages" }
+  | { name: "alerts" }
+  | { name: "chat"; projectId: string }
   | { name: "van" }
   | { name: "profile" }
   | { name: "job"; id: string }

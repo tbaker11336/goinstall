@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, Input, Select } from "@/components/ui/input";
+import { TeamChat } from "@/components/team-chat";
 import { WeekGrid } from "@/components/week-grid";
 import { saveBookingAction } from "@/lib/actions/bookings";
 import { GenerateAllButton } from "@/components/paperwork-client";
@@ -16,6 +17,7 @@ import { syncPaperwork } from "@/lib/paperwork";
 import { signedUrls } from "@/lib/files";
 import { loadBookings, loadPeople, type ScheduleBooking } from "@/lib/schedule";
 import { gridFor, weekColumns } from "@/lib/schedule-grid";
+import { loadChat, markChatRead } from "@/lib/team-chat";
 import { cn, formatDate, formatDateTime } from "@/lib/utils";
 import { CancelBookingButton, ConfirmNotifyButton, CustomerConfirmedToggle } from "./install-client";
 
@@ -194,10 +196,13 @@ export default async function InstallPage({ params, searchParams }: { params: Pr
     ]);
     const photoIds = items.flatMap((i) => i.photo_file_ids);
     const photos = photoIds.length ? await tx.selectFrom("files").select(["id", "path"]).where("id", "in", photoIds).execute() : [];
-    return { project, mine, monday, all, people, invoice, orders, solar, items, signoff, photos, paperwork };
+    const chat = await loadChat(tx, id);
+    // Opening the tab counts as reading the team's messages.
+    if (chat.length) await markChatRead(tx, id, session.userId);
+    return { project, mine, monday, all, people, invoice, orders, solar, items, signoff, photos, paperwork, chat, me: session.userId };
   });
   if (!data) notFound();
-  const { project, mine, monday, all, people, invoice, orders, solar, items, signoff, photos, paperwork } = data;
+  const { project, mine, monday, all, people, invoice, orders, solar, items, signoff, photos, paperwork, chat, me } = data;
   const g99 = paperwork.find((p) => p.kind === "g99_application");
   const started = paperwork.filter((p) => p.status !== "to_do").length;
 
@@ -281,6 +286,16 @@ export default async function InstallPage({ params, searchParams }: { params: Pr
                   />
                 )}
               </ul>
+            </CardContent>
+          </Card>
+
+          <Card id="team-chat">
+            <CardHeader className="flex-col items-start">
+              <CardTitle>Messages with the team</CardTitle>
+              <p className="text-sm text-ink-3">Chat with the installers booked on this job. They see it in the app&apos;s Messages tab; the customer never does.</p>
+            </CardHeader>
+            <CardContent>
+              <TeamChat projectId={id} me={me} messages={chat} />
             </CardContent>
           </Card>
 

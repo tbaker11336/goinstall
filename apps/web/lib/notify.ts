@@ -14,7 +14,7 @@ import { activeSms, sendSms } from "./sms";
  * notification must not undo the change it reports.
  */
 
-type Internal = Extract<NotificationEventKey, "new_enquiry" | "survey_completed" | "proposal_viewed" | "proposal_accepted" | "payment_received" | "job_assigned" | "job_accepted" | "job_declined" | "kit_issue" | "job_completed" | "customer_reply">;
+type Internal = Extract<NotificationEventKey, "new_enquiry" | "survey_completed" | "proposal_viewed" | "proposal_accepted" | "payment_received" | "job_assigned" | "job_accepted" | "job_declined" | "kit_issue" | "job_completed" | "customer_reply" | "team_message">;
 type External = Extract<NotificationEventKey, "survey_reminder" | "proposal_reminder" | "install_reminder" | "on_my_way">;
 
 async function companyFor(tx: Tx, companyId: string) {

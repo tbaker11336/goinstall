@@ -104,8 +104,28 @@ export interface PlanGeometry {
   bounds: { minX: number; minY: number; maxX: number; maxY: number };
 }
 
+export interface ChatMessage {
+  id: string;
+  authorId: string;
+  author: string;
+  office: boolean;
+  body: string;
+  sentAt: string;
+}
+
+/** One job's chat with the office. */
+export interface Chat {
+  projectId: string;
+  title: string;
+  customer: string | null;
+  readAt: string | null;
+  messages: ChatMessage[];
+}
+
 export interface Bundle {
   serverTime: string;
+  /** Optional: bundles saved before chat existed have none. */
+  chats?: Chat[];
   user: { id: string; name: string; role: string; companyName: string };
   checklist: ChecklistStep[];
   surveyQuestions: SurveyQuestion[];
@@ -132,6 +152,8 @@ export type Op =
   | { opId: string; type: "signoff"; bookingId: string; name: string; signaturePaths: string[]; capturedAt: string }
   | { opId: string; type: "kit_issue"; kitItemId: string; issue: "missing" | "damaged" | null; note: string | null; capturedAt: string }
   | { opId: string; type: "on_my_way"; bookingId: string; etaMinutes: number; capturedAt: string }
+  | { opId: string; type: "team_message"; id: string; projectId: string; body: string; capturedAt: string }
+  | { opId: string; type: "chat_read"; projectId: string; capturedAt: string }
   | { opId: string; type: "booking_response"; bookingId: string; response: "accepted" | "declined"; reason: string | null; capturedAt: string };
 
 export interface PendingFile {

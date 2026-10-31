@@ -33,6 +33,7 @@ export const NOTIFICATION_EVENTS = [
   { key: "job_declined", audience: "internal", label: "Installer declined a job", to: "Project owner, or admins and office", channels: ["in_app", "email", "sms"], defaults: ["in_app", "email"] },
   { key: "kit_issue", audience: "internal", label: "Installer reported missing or damaged kit", to: "Project owner", channels: ["in_app", "email", "sms"], defaults: ["in_app", "email"] },
   { key: "job_completed", audience: "internal", label: "Install completed in the app", to: "Project owner", channels: ["in_app", "email", "sms"], defaults: ["in_app"] },
+  { key: "team_message", audience: "internal", label: "New message about a job (office ↔ installers)", to: "Installers on the job, or the project owner", channels: ["in_app", "email", "sms"], defaults: ["in_app"] },
   { key: "customer_reply", audience: "internal", label: "Customer replied by text", to: "Project owner", channels: ["in_app", "email", "sms"], defaults: ["in_app"] },
   // External: the customer.
   { key: "survey_reminder", audience: "external", label: "Reminder to finish the online survey", to: "Customer", channels: ["email", "sms"], defaults: ["email"] },
@@ -201,6 +202,8 @@ export function notificationText(key: string, d: MessageData): { title: string; 
         body: `${d.installer ?? "The installer"} can't do the ${job}${site}${d.when ? ` on ${d.when}` : ""}.${reason} Rebook it on the Schedule.`,
         sms: `GoInstall: ${d.installer ?? "installer"} declined the job${site}. Rebook it on the Schedule.`,
       };
+    case "team_message":
+      return { title: `Message from ${d.installer ?? "the team"}${site}`, body: d.detail ?? "", sms: `GoInstall: new message from ${d.installer ?? "the team"}${site}.` };
     case "customer_reply":
       return { title: `Text from the customer${site}`, body: d.detail ?? "The customer replied by text.", sms: `GoInstall: customer text${site}.` };
     case "survey_reminder":

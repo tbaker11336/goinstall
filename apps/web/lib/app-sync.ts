@@ -7,6 +7,7 @@ import { z } from "zod";
 import type { Session } from "./auth";
 import { db } from "./db";
 import { notifyCustomer, notifyTeam } from "./notify";
+import { markChatRead, notifyChat, saveChatMessage } from "./team-chat";
 import { emailSender, fromAddress } from "./email";
 import { fileStore } from "./files";
 
@@ -47,6 +48,8 @@ export const opSchema = z.discriminatedUnion("type", [
   z
     .object({ opId: z.string().max(64), type: z.literal("booking_response"), bookingId: z.uuid(), response: z.enum(["accepted", "declined"]), reason: z.string().trim().max(500).nullable(), capturedAt: at })
     .refine((o) => o.response === "accepted" || Boolean(o.reason), { message: "Say why you can't do the job", path: ["reason"] }),
+  z.object({ opId: z.string().max(64), type: z.literal("team_message"), id: z.uuid(), projectId: z.uuid(), body: z.string().trim().min(1).max(2000), capturedAt: at }),
+  z.object({ opId: z.string().max(64), type: z.literal("chat_read"), projectId: z.uuid(), capturedAt: at }),
 ]);
 export type SyncOp = z.infer<typeof opSchema>;
 export type OpResult = { opId: string; ok: boolean; note?: string; error?: string };
@@ -156,6 +159,21 @@ export async function applyOp(tx: Tx, session: Session, op: SyncOp, completed: S
           data: { installer: session.fullName, detail: bookingTitle(b.type, p?.products ?? [], b.title), site: p?.site_address_line1 ?? undefined, when: days.length > 1 ? `${fmt(days[0]!)} to ${fmt(days.at(-1)!)}` : fmt(days[0]!), reason: reason ?? undefined },
         }),
       );
+      return ok();
+    }
+    case "team_message": {
+      // RLS only lets them write on jobs they're booked on.
+      const project = await tx.selectFrom("projects").select(["id", "company_id"]).where("id", "=", op.projectId).executeTakeFirst();
+      if (!project) return fail("Job not found");
+      // Sent time is the phone's, but never in the future.
+      const fresh = await saveChatMessage(tx, { id: op.id, projectId: op.projectId, authorId: session.userId, body: op.body, sentAt: when > new Date() ? new Date() : when });
+      if (fresh) followUps.push(() => notifyChat(project.company_id, op.projectId, { id: session.userId, name: session.fullName, staff: false }, op.body));
+      return ok();
+    }
+    case "chat_read": {
+      const project = await tx.selectFrom("projects").select("id").where("id", "=", op.projectId).executeTakeFirst();
+      if (!project) return fail("Job not found");
+      await markChatRead(tx, op.projectId, session.userId, when > new Date() ? new Date() : when);
       return ok();
     }
     case "on_my_way": {

@@ -4,7 +4,7 @@ import { randomUUID } from "expo-crypto";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { saveBlob, formPart, removeBlob } from "./blobs";
 import { API_URL } from "./config";
-import type { Bundle, Captured, Job, Op, PendingFile, SurveyKind } from "./types";
+import type { Bundle, Captured, Chat, ChatMessage, Job, Op, PendingFile, SurveyKind } from "./types";
 
 /**
  * Offline-first state. Everything the installer captures is saved on the
@@ -24,6 +24,9 @@ interface Local {
   kitChecked: Record<string, boolean>;
   /** Accept/decline made on this phone, with the job start it was for. Optional: older saved state has none. */
   responses?: Record<string, JobResponse & { forStartsAt: string }>;
+  /** Messages sent from this phone that the server hasn't sent back yet, and where I've read each chat up to. */
+  chatSent?: Record<string, { id: string; body: string; sentAt: string }[]>;
+  chatRead?: Record<string, string>;
 }
 
 export type JobResponse = { response: "accepted" | "declined"; reason: string | null };
@@ -64,6 +67,8 @@ interface Store extends Persisted {
   reportKit(kitId: string, issue: "missing" | "damaged" | null, note: string | null): void;
   onMyWay(bookingId: string, etaMinutes: number): void;
   respond(job: Pick<Job, "id" | "startsAt">, response: "accepted" | "declined", reason: string | null): void;
+  sendChat(projectId: string, body: string): void;
+  readChat(projectId: string): void;
 }
 
 const Ctx = createContext<Store | null>(null);
@@ -251,6 +256,17 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       onMyWay(bookingId, etaMinutes) {
         enqueue({ opId: randomUUID(), type: "on_my_way", bookingId, etaMinutes, capturedAt: now() });
       },
+      sendChat(projectId, body) {
+        const m = { id: randomUUID(), body, sentAt: now() };
+        update((s) => ({ ...s, local: { ...s.local, chatSent: { ...(s.local.chatSent ?? {}), [projectId]: [...(s.local.chatSent?.[projectId] ?? []), m] }, chatRead: { ...(s.local.chatRead ?? {}), [projectId]: m.sentAt } } }));
+        enqueue({ opId: randomUUID(), type: "team_message", id: m.id, projectId, body, capturedAt: m.sentAt });
+      },
+      readChat(projectId) {
+        const at = now();
+        update((s) => ({ ...s, local: { ...s.local, chatRead: { ...(s.local.chatRead ?? {}), [projectId]: at } } }));
+        // Only the latest read marker per chat needs sending.
+        enqueue({ opId: randomUUID(), type: "chat_read", projectId, capturedAt: at }, (o) => o.type === "chat_read" && o.projectId === projectId);
+      },
       respond(job, response, reason) {
         update((s) => ({ ...s, local: { ...s.local, responses: { ...(s.local.responses ?? {}), [job.id]: { response, reason, forStartsAt: job.startsAt } } } }));
         // Only the latest answer for a job needs sending.
@@ -260,6 +276,22 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, [state, ready, online, syncing, error, update, enqueue, sync]);
 
   return <Ctx.Provider value={store}>{children}</Ctx.Provider>;
+}
+
+/** A job's chat: the server's messages plus any still on their way from this phone, and how many are unread. */
+export function useChats(): (Chat & { pending: Set<string>; unread: number; last: string | null })[] {
+  const s = useStore();
+  const me = s.bundle?.user.id;
+  return (s.bundle?.chats ?? [])
+    .map((c) => {
+      const known = new Set(c.messages.map((m) => m.id));
+      const mine = (s.local.chatSent?.[c.projectId] ?? []).filter((m) => !known.has(m.id));
+      const messages: ChatMessage[] = [...c.messages, ...mine.map((m) => ({ id: m.id, authorId: me ?? "", author: "You", office: false, body: m.body, sentAt: m.sentAt }))];
+      const readAt = [c.readAt, s.local.chatRead?.[c.projectId]].filter((x): x is string => Boolean(x)).sort().at(-1) ?? null;
+      const unread = messages.filter((m) => m.authorId !== me && (!readAt || m.sentAt > readAt)).length;
+      return { ...c, messages, pending: new Set(mine.map((m) => m.id)), unread, last: messages.at(-1)?.sentAt ?? null };
+    })
+    .sort((a, b) => (b.last ?? "").localeCompare(a.last ?? ""));
 }
 
 /** My answer to a job for its current dates: this phone's if newer, else the server's. */

@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { allDaySpan, BOOKING_TYPE_LABELS, bookingDates, bookingTitle, firstName, needsScaffold, surveyKindsFor } from "@goinstall/core";
 import { sql, type Tx } from "@goinstall/db";
 import { textToHtml } from "@goinstall/integrations";
@@ -10,6 +11,7 @@ import { emailConfigured, emailSender, fromAddress } from "@/lib/email";
 import { notifyBooking } from "@/lib/notify";
 import { calendarFeedUrl, newCalendarNonce } from "@/lib/schedule";
 import { sendSms } from "@/lib/sms";
+import { notifyChat, saveChatMessage } from "@/lib/team-chat";
 import type { ActionResult } from "./crm";
 
 const uuid = z.uuid();
@@ -315,4 +317,21 @@ export async function notifyBookingCustomerAction(bookingId: string): Promise<Ac
     revalidatePath(`/projects/${b.project_id}`, "layout");
     return { message: `${b.name} ${sent.join(" and ")}.` };
   });
+}
+
+/** Install tab › Messages with the team: the office writes to the people on the job. */
+export async function sendTeamMessageAction(projectId: string, _: ActionResult, form: FormData): Promise<ActionResult> {
+  if (!uuid.safeParse(projectId).success) return { error: "Project not found" };
+  const body = z.string().trim().min(1, "Write a message").max(2000, "Keep it under 2,000 characters").safeParse(form.get("body") ?? "");
+  if (!body.success) return { error: body.error.issues[0]?.message };
+  const sent = await asUser(async (tx, session) => {
+    const p = await tx.selectFrom("projects").select("id").where("id", "=", projectId).executeTakeFirst();
+    if (!p) return null;
+    await saveChatMessage(tx, { id: randomUUID(), projectId, authorId: session.userId, body: body.data, sentAt: new Date() });
+    return { companyId: session.companyId, author: { id: session.userId, name: session.fullName, staff: true } };
+  });
+  if (!sent) return { error: "Project not found" };
+  await notifyChat(sent.companyId, projectId, sent.author, body.data);
+  revalidatePath(`/projects/${projectId}/install`);
+  return { message: "Sent." };
 }

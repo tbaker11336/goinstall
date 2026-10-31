@@ -872,6 +872,29 @@ export interface Surveys {
   updated_at: Generated<Timestamp>;
 }
 
+export interface TeamMessageReads {
+  company_id: Generated<string>;
+  created_at: Generated<Timestamp>;
+  created_by: Generated<string | null>;
+  id: Generated<string>;
+  project_id: string;
+  read_at: Generated<Timestamp>;
+  updated_at: Generated<Timestamp>;
+  user_id: string;
+}
+
+export interface TeamMessages {
+  author_id: string;
+  body: string;
+  company_id: Generated<string>;
+  created_at: Generated<Timestamp>;
+  created_by: Generated<string | null>;
+  id: string;
+  project_id: string;
+  sent_at: Generated<Timestamp>;
+  updated_at: Generated<Timestamp>;
+}
+
 export interface Teams {
   calendar_nonce: string | null;
   colour: string | null;
@@ -940,6 +963,8 @@ export interface DB {
   survey_fields: SurveyFields;
   survey_questions: SurveyQuestions;
   surveys: Surveys;
+  team_message_reads: TeamMessageReads;
+  team_messages: TeamMessages;
   teams: Teams;
   users: Users;
 }
