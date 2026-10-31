@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { autoAssignStrings, cableLength, cableTotals, checkStrings, drawnStrings, fillArea, movePanel, panelsInArea, polylineLength, sldModel, type PanelRect } from "./site-plan";
+import { autoAssignStrings, cableLength, cableTotals, checkStrings, drawnStrings, fillArea, movePanel, panelsInArea, planGeometry, polylineLength, sldModel, type PanelRect } from "./site-plan";
 import { evaluateSolarDesign } from "./solar-design";
 
 const roof = [
@@ -209,5 +209,22 @@ describe("sldModel", () => {
     expect(m.blanks).toContain("EV circuit protective device");
     expect(m.blanks).not.toContain("Main fuse rating");
     expect(m.blanks).not.toContain("EV cable size");
+  });
+});
+
+describe("planGeometry", () => {
+  it("draws a south-facing roof foreshortened by its pitch, centred on its origin", () => {
+    const g = planGeometry([{ label: "Roof A", origin: { x: 0, y: 0 }, azimuth: 180, pitch: 60, width: 10, depth: 4, panels: [{ x: 0, y: 0, w: 1, h: 2, s: 1 }] }]);
+    // cos 60° = 0.5: 4 m up the slope is 2 m on the plan.
+    expect(g.roofs[0]!.outline).toEqual([{ x: -5, y: -1 }, { x: 5, y: -1 }, { x: 5, y: 1 }, { x: -5, y: 1 }]);
+    expect(g.roofs[0]!.panels[0]).toEqual({ corners: [{ x: -5, y: -1 }, { x: -4, y: -1 }, { x: -4, y: 0 }, { x: -5, y: 0 }], string: 1 });
+    expect(g.bounds).toEqual({ minX: -5, minY: -1, maxX: 5, maxY: 1 });
+    expect(g.roofs[0]!.used).toBe(true);
+  });
+  it("turns an east-facing roof a quarter turn and moves it to its origin", () => {
+    const g = planGeometry([{ label: "Roof B", origin: { x: 20, y: 10 }, azimuth: 90, pitch: 0, width: 6, depth: 2, insetLeft: 1, panels: [] }]);
+    // The ridge runs north–south on the west side; the eaves face east.
+    expect(g.roofs[0]!.outline).toEqual([{ x: 19, y: 12 }, { x: 19, y: 7 }, { x: 21, y: 7 }, { x: 21, y: 13 }]);
+    expect(g.roofs[0]!.used).toBe(false);
   });
 });

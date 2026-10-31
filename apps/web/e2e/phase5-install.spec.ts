@@ -56,6 +56,9 @@ test("kit ordered, install booked, job completed offline in the app and synced",
   if (process.env.SHOT_DIR) await app.screenshot({ path: `${process.env.SHOT_DIR}/app-jobs.png` });
   await app.getByTestId("job-card").filter({ hasText: "Henleaze" }).click();
   await expect(app.getByText("Kit check")).toBeVisible();
+  // The real roof layout from the design, drawn from above.
+  await expect(app.getByLabel(/^Roof layout: Roof A, \d+ panels/)).toBeVisible();
+  if (process.env.SHOT_DIR) await app.getByLabel(/^Roof layout/).screenshot({ path: `${process.env.SHOT_DIR}/app-roof.png` });
 
   // Airplane mode from here.
   await app.context().setOffline(true);

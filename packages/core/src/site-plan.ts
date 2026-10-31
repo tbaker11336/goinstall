@@ -412,3 +412,76 @@ export function sldModel(input: SldInput): SldModel {
     blanks,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Plan geometry for read-only views (installer app, PDFs)
+// ---------------------------------------------------------------------------
+
+/** A roof face as the designer saves it (only the fields the plan needs). */
+export interface PlanSegment {
+  id?: string;
+  label: string;
+  origin: Point;
+  /** Degrees from north the face looks towards. */
+  azimuth: number;
+  pitch: number;
+  /** Along the ridge and up the slope, metres. */
+  width: number;
+  depth: number;
+  insetLeft?: number;
+  insetRight?: number;
+  used?: boolean;
+  panels: readonly { x: number; y: number; w: number; h: number; s?: number | null }[];
+  obstructions?: readonly { x: number; y: number; w: number; h: number; label?: string }[];
+}
+
+export interface PlanGeometry {
+  roofs: { label: string; used: boolean; outline: Point[]; panels: { corners: Point[]; string: number | null }[]; obstructions: Point[][]; centre: Point }[];
+  /** Box around everything, metres in plan space (x east, y south). */
+  bounds: { minX: number; minY: number; maxX: number; maxY: number };
+}
+
+/**
+ * Roof faces as seen from above, in plan metres: each face's roof-plane
+ * points are foreshortened by its pitch, turned to its azimuth and moved to
+ * its origin (the same transform the designer draws with).
+ */
+export function planGeometry(segments: readonly PlanSegment[]): PlanGeometry {
+  const toPlan = (s: PlanSegment) => {
+    const cos = Math.cos((s.pitch * Math.PI) / 180);
+    const a = ((s.azimuth - 180) * Math.PI) / 180;
+    return (p: Point): Point => {
+      const x = p.x - s.width / 2;
+      const y = (p.y - s.depth / 2) * cos;
+      return { x: Math.round((s.origin.x + x * Math.cos(a) - y * Math.sin(a)) * 1000) / 1000, y: Math.round((s.origin.y + x * Math.sin(a) + y * Math.cos(a)) * 1000) / 1000 };
+    };
+  };
+  const quad = (r: { x: number; y: number; w: number; h: number }) => [
+    { x: r.x, y: r.y },
+    { x: r.x + r.w, y: r.y },
+    { x: r.x + r.w, y: r.y + r.h },
+    { x: r.x, y: r.y + r.h },
+  ];
+  const roofs = segments.map((s) => {
+    const f = toPlan(s);
+    const outline = [
+      { x: s.insetLeft ?? 0, y: 0 },
+      { x: s.width - (s.insetRight ?? 0), y: 0 },
+      { x: s.width, y: s.depth },
+      { x: 0, y: s.depth },
+    ].map(f);
+    return {
+      label: s.label,
+      used: s.used ?? s.panels.length > 0,
+      outline,
+      panels: s.panels.map((p) => ({ corners: quad(p).map(f), string: p.s ?? null })),
+      obstructions: (s.obstructions ?? []).map((o) => quad(o).map(f)),
+      centre: f({ x: s.width / 2, y: s.depth / 2 }),
+    };
+  });
+  const pts = roofs.flatMap((r) => r.outline);
+  const bounds = pts.length
+    ? { minX: Math.min(...pts.map((p) => p.x)), minY: Math.min(...pts.map((p) => p.y)), maxX: Math.max(...pts.map((p) => p.x)), maxY: Math.max(...pts.map((p) => p.y)) }
+    : { minX: -5, minY: -5, maxX: 5, maxY: 5 };
+  return { roofs, bounds };
+}

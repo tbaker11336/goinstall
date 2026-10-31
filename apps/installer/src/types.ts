@@ -77,12 +77,31 @@ export interface Job {
   products: string[];
   customer: { name: string; phone: string | null } | null;
   design: {
-    solar: { panelCount: number; kWp: number; batteryCount: number; connectionForm: string | null; segments: unknown } | null;
-    ev: { routeLengthM: number | null; cableSizeMm2: number | null; route: unknown } | null;
+    solar: { panelCount: number; kWp: number; batteryCount: number; connectionForm: string | null; segments: unknown; plan?: PlanGeometry } | null;
+    ev: {
+      routeLengthM: number | null;
+      cableSizeMm2: number | null;
+      route: Point[];
+      supply?: Point | null;
+      charger?: Point | null;
+      supplyLabel?: string | null;
+      chargerLabel?: string | null;
+    } | null;
   };
   kit: { id: string; description: string; quantity: number; issue: string | null; issueNote: string | null }[];
   surveys: { id: string; kind: SurveyKind; fields: Record<string, { value: string | null; source: string; updatedAt: string }> }[];
   captured: Captured[];
+}
+
+export interface Point {
+  x: number;
+  y: number;
+}
+
+/** Roof faces from above, in metres (x east, y south), worked out by the server. */
+export interface PlanGeometry {
+  roofs: { label: string; used: boolean; outline: Point[]; panels: { corners: Point[]; string: number | null }[]; obstructions: Point[][]; centre: Point }[];
+  bounds: { minX: number; minY: number; maxX: number; maxY: number };
 }
 
 export interface Bundle {

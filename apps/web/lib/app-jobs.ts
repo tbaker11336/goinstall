@@ -1,5 +1,5 @@
 import "server-only";
-import type { ChecklistStep, ReadingField } from "@goinstall/core";
+import { planGeometry, type ChecklistStep, type PlanSegment, type ReadingField } from "@goinstall/core";
 import type { Tx } from "@goinstall/db";
 import type { Session } from "./auth";
 
@@ -54,7 +54,7 @@ export async function jobsFor(tx: Tx, session: Session, range: { from: Date; to:
     projectIds.length ? tx.selectFrom("surveys").select(["id", "project_id", "kind"]).where("project_id", "in", projectIds).execute() : [],
     projectIds.length ? tx.selectFrom("solar_designs").select(["project_id", "panel_count", "kwp", "segments", "battery_count", "connection_form"]).where("project_id", "in", projectIds).where("is_active", "=", true).execute() : [],
     session.role !== "subcontractor" && projectIds.length
-      ? tx.selectFrom("ev_designs").select(["project_id", "route_length_m", "cable_size_mm2", "route"]).where("project_id", "in", projectIds).where("is_active", "=", true).execute()
+      ? tx.selectFrom("ev_designs").select(["project_id", "route_length_m", "cable_size_mm2", "route", "supply_point", "charger_point", "supply_label", "charger_label"]).where("project_id", "in", projectIds).where("is_active", "=", true).execute()
       : [],
     bookingIds.length ? tx.selectFrom("checklist_items").selectAll().where("booking_id", "in", bookingIds).execute() : [],
     tx.selectFrom("checklist_templates").selectAll().where("archived_at", "is", null).orderBy("position").execute(),
@@ -113,8 +113,19 @@ export async function jobsFor(tx: Tx, session: Session, range: { from: Date; to:
         products: b.products ?? [],
         customer: b.contact_name ? { name: b.contact_name, phone: b.contact_phone } : null,
         design: {
-          solar: s ? { panelCount: s.panel_count, kWp: Number(s.kwp), batteryCount: s.battery_count, connectionForm: s.connection_form, segments: s.segments } : null,
-          ev: e ? { routeLengthM: e.route_length_m === null ? null : Number(e.route_length_m), cableSizeMm2: e.cable_size_mm2 === null ? null : Number(e.cable_size_mm2), route: e.route } : null,
+          // The plan is worked out here so the app only draws it (offline, no geometry code on the phone).
+          solar: s ? { panelCount: s.panel_count, kWp: Number(s.kwp), batteryCount: s.battery_count, connectionForm: s.connection_form, segments: s.segments, plan: planGeometry((s.segments ?? []) as unknown as PlanSegment[]) } : null,
+          ev: e
+            ? {
+                routeLengthM: e.route_length_m === null ? null : Number(e.route_length_m),
+                cableSizeMm2: e.cable_size_mm2 === null ? null : Number(e.cable_size_mm2),
+                route: e.route as { x: number; y: number }[],
+                supply: e.supply_point as { x: number; y: number } | null,
+                charger: e.charger_point as { x: number; y: number } | null,
+                supplyLabel: e.supply_label,
+                chargerLabel: e.charger_label,
+              }
+            : null,
         },
         kit: kit.filter((k) => k.project_id === b.project_id).map((k) => ({ id: k.id, description: k.description, quantity: Number(k.quantity), issue: k.issue, issueNote: k.issue_note })),
         surveys: projectSurveys.map((sv) => ({ id: sv.id, kind: sv.kind, fields: Object.fromEntries(fields.filter((f) => f.survey_id === sv.id).map((f) => [f.key, { value: f.value, source: f.source, updatedAt: f.updated_at }])) })),

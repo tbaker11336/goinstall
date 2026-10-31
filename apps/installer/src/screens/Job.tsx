@@ -5,6 +5,7 @@ import type { Nav } from "../nav";
 import { useMyResponse, useStore } from "../store";
 import { colors } from "../theme";
 import { BackLink, Button, Card, Checkbox, Field, H1, H2, Muted, RoofSketch } from "../ui";
+import { EvPlan, RoofPlan } from "../plan";
 import type { Job } from "../types";
 
 /** Accept or decline the job (for its current dates). A decline needs a reason so the office can rebook. */
@@ -158,7 +159,9 @@ export function JobScreen({ nav, id }: { nav: Nav; id: string }) {
         {(solar || ev) && (
           <Card>
             <H2>Design</H2>
-            {solar && solar.panelCount > 0 && <RoofSketch panels={solar.panelCount} evRun={Boolean(ev)} />}
+            {/* The real layout when the design has roof faces; the sketch for older bundles without one. */}
+            {solar && solar.panelCount > 0 && (solar.plan?.roofs.length ? <RoofPlan plan={solar.plan} /> : <RoofSketch panels={solar.panelCount} evRun={Boolean(ev)} />)}
+            {ev && <EvPlan ev={ev} />}
             <View style={{ marginTop: 12 }}>
               {solar && solar.panelCount > 0 && <Row label="Solar" value={`${solar.panelCount} panels · ${solar.kWp.toFixed(2)} kWp`} />}
               {solar && solar.batteryCount > 0 && <Row label="Battery" value={`${solar.batteryCount} × battery`} />}
