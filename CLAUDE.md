@@ -51,6 +51,14 @@ design rules: never invent rule values).
 - Calendar sync: a private iCal feed link per team (Google, Outlook and
   Apple subscribe to it); no account connections for now.
 
+## Environments
+
+- Staging: Vercel `goinstall-staging` (functions in Dublin, `dub1`) on the
+  Supabase project in eu-west-1. Production: Vercel `goinstall-production`
+  at https://app.goinstall.io (functions in London, `lhr1`) on a London
+  (eu-west-2) Supabase project. Regions are set per Vercel project, not in
+  `vercel.json`. Production starts empty: no demo seed.
+
 ## Conventions
 
 - Schema changes are new files in `supabase/migrations/` (timestamp prefix);
