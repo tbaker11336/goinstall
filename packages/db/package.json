@@ -9,7 +9,8 @@
     "reset-dev": "tsx scripts/reset-dev.ts",
     "codegen": "kysely-codegen --dialect postgres --include-pattern 'public.*' --out-file src/schema.ts --url ${CODEGEN_DATABASE_URL:-postgres://postgres:postgres@localhost:5432/goinstall_dev}",
     "build-library": "tsx scripts/build-library.ts",
-    "load-library": "tsx scripts/load-library.ts"
+    "load-library": "tsx scripts/load-library.ts",
+    "migrate": "tsx scripts/migrate.ts"
   },
   "devDependencies": {
     "@types/pg": "^8.15.0",
