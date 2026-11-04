@@ -48,6 +48,9 @@ design rules: never invent rule values).
   attached to every proposal (and its email) and accepted on signing.
 - Schedule: one calendar (day / week / month) with a team filter; clicking a
   booking shows it with Reschedule and Notify customer.
+- Sign-up: production runs with `SIGNUP_EMAIL_CONFIRMATION=off` for now
+  (internal use): accounts are created confirmed and signed straight in.
+  Remove it before opening sign-ups to other installers.
 - Calendar sync: a private iCal feed link per team (Google, Outlook and
   Apple subscribe to it); no account connections for now.
 

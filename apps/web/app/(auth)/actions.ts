@@ -1,12 +1,12 @@
 "use server";
 
-import { withService } from "@goinstall/db";
+import { sql, withService } from "@goinstall/db";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createDevSession, getAuthUser, getSession, signOut } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { devAuthEnabled, env } from "@/lib/env";
-import { supabaseServer } from "@/lib/supabase/server";
+import { supabaseAdmin, supabaseServer } from "@/lib/supabase/server";
 
 export interface FormState {
   error?: string;
@@ -44,13 +44,31 @@ export async function signUpAction(_: FormState, form: FormData): Promise<FormSt
   if (!parsed.success) return { error: "Fill in every field. Passwords need at least 10 characters." };
 
   const supabase = await supabaseServer();
+  const metadata = { full_name: parsed.data.fullName, company_name: parsed.data.companyName };
+
+  // SIGNUP_EMAIL_CONFIRMATION=off: no confirmation email. The account is made
+  // already confirmed and signed straight in, whatever Supabase's own setting.
+  if (process.env.SIGNUP_EMAIL_CONFIRMATION === "off") {
+    const email = parsed.data.email.toLowerCase();
+    const existing = await withService(db(), (tx) =>
+      sql<{ id: string; confirmed: boolean }>`select id, email_confirmed_at is not null as confirmed from auth.users where lower(email) = ${email} limit 1`.execute(tx),
+    ).then((r) => r.rows[0]);
+    const admin = supabaseAdmin();
+    if (existing?.confirmed) return { error: "There's already an account with that email. Sign in instead." };
+    // An earlier sign-up that was never confirmed has no company or data yet: finish it with these details.
+    const r = existing
+      ? await admin.auth.admin.updateUserById(existing.id, { password: parsed.data.password, email_confirm: true, user_metadata: metadata })
+      : await admin.auth.admin.createUser({ email, password: parsed.data.password, email_confirm: true, user_metadata: metadata });
+    if (r.error) return { error: r.error.message };
+    const signedIn = await supabase.auth.signInWithPassword({ email, password: parsed.data.password });
+    if (signedIn.error) return { error: signedIn.error.message };
+    redirect("/onboarding");
+  }
+
   const { data, error } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
-    options: {
-      emailRedirectTo: `${env.siteUrl}/auth/callback?next=/onboarding`,
-      data: { full_name: parsed.data.fullName, company_name: parsed.data.companyName },
-    },
+    options: { emailRedirectTo: `${env.siteUrl}/auth/callback?next=/onboarding`, data: metadata },
   });
   if (error) return { error: error.message };
   // With email confirmation switched off in Supabase, they're signed in already: straight on to the company.
