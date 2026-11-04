@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { supabaseOrigin } from "./lib/supabase-url";
 
 const PUBLIC_PATHS = ["/login", "/signup", "/auth", "/api/public", "/api/health", "/api/webhooks/", "/api/app/", "/api/calendar/", "/api/cron/", "/api/dev/fake-checkout", "/api/dev/fake-subscription", "/s/", "/p/", "/i/", "/f/", "/embed/"];
 
@@ -21,7 +22,7 @@ export async function proxy(request: NextRequest) {
   }
 
   let response = NextResponse.next({ request });
-  const supabase = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+  const supabase = createServerClient(supabaseOrigin(process.env.NEXT_PUBLIC_SUPABASE_URL!), process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
     cookies: {
       getAll: () => request.cookies.getAll(),
       setAll: (toSet) => {

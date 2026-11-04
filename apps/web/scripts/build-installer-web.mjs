@@ -19,7 +19,8 @@ execFileSync("pnpm", ["--filter", "@goinstall/installer", "exec", "expo", "expor
     // Same origin as the console.
     EXPO_PUBLIC_API_URL: "",
     // The console's public Supabase settings (the anon key is public by design).
-    EXPO_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
+    // Just the project address, even if a /rest/v1/ path was pasted with it.
+    EXPO_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL.trim()).origin : "",
     EXPO_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
     EXPO_PUBLIC_DEV_SIGN_IN: "false",
   },

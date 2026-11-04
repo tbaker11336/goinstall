@@ -2,6 +2,7 @@ import "server-only";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createSupabaseFileStore, type FileStore } from "@goinstall/integrations";
+import { supabaseOrigin } from "./supabase-url";
 
 export const PROJECT_BUCKET = "project-files";
 export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
@@ -43,7 +44,7 @@ function diskStore(root: string): FileStore {
  */
 export function fileStore(): FileStore {
   if (g.goinstallFiles) return g.goinstallFiles;
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL && supabaseOrigin(process.env.NEXT_PUBLIC_SUPABASE_URL);
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   g.goinstallFiles =
     url && serviceKey && process.env.FILE_STORE !== "disk"

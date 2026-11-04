@@ -1,4 +1,5 @@
 import "server-only";
+import { supabaseOrigin } from "./supabase-url";
 
 function required(name: string): string {
   const value = process.env[name];
@@ -11,7 +12,7 @@ export const env = {
     return required("DATABASE_URL");
   },
   get supabaseUrl() {
-    return required("NEXT_PUBLIC_SUPABASE_URL");
+    return supabaseOrigin(required("NEXT_PUBLIC_SUPABASE_URL"));
   },
   get supabaseAnonKey() {
     return required("NEXT_PUBLIC_SUPABASE_ANON_KEY");

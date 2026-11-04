@@ -5,6 +5,7 @@ import { jwtVerify, SignJWT } from "jose";
 import { db } from "./db";
 import { devAuthEnabled } from "./env";
 import { getSessionForUser, type Session } from "./auth";
+import { supabaseOrigin } from "./supabase-url";
 
 /**
  * The installer app calls these routes with "Authorization: Bearer <token>":
@@ -33,7 +34,7 @@ async function userIdFromToken(token: string): Promise<string | null> {
       return null;
     }
   }
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL && supabaseOrigin(process.env.NEXT_PUBLIC_SUPABASE_URL);
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !anon) return null;
   const { data } = await createClient(url, anon, { auth: { persistSession: false } }).auth.getUser(token);
