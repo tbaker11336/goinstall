@@ -44,7 +44,7 @@ export async function signUpAction(_: FormState, form: FormData): Promise<FormSt
   if (!parsed.success) return { error: "Fill in every field. Passwords need at least 10 characters." };
 
   const supabase = await supabaseServer();
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
     options: {
@@ -53,6 +53,8 @@ export async function signUpAction(_: FormState, form: FormData): Promise<FormSt
     },
   });
   if (error) return { error: error.message };
+  // With email confirmation switched off in Supabase, they're signed in already: straight on to the company.
+  if (data.session) redirect("/onboarding");
   return { message: "Check your email for a link to confirm your address, then you can set up your company." };
 }
 
