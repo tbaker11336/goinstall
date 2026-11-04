@@ -1,11 +1,13 @@
 // Apply the migrations a hosted database doesn't have yet, in order, each in
 // its own transaction, recorded in supabase_migrations.schema_migrations
 // (the same table the Supabase CLI uses, so staging and production agree).
-// Runs in the production build: `DATABASE_URL` is the project's own.
+// Runs in the production build: `DATABASE_URL` is the project's own. An
+// empty product library is loaded too.
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import pg from "pg";
+import { loadProductLibrary } from "../src/library";
 
 const url = process.env.DATABASE_URL;
 if (!url) {
@@ -38,6 +40,9 @@ try {
     console.log(`migrate: applied ${f}`);
   }
   console.log(`migrate: ${applied} applied, ${files.length - applied} already there`);
+  // A new database also needs the shared product library (refresh it with load-library).
+  const { rows } = await client.query<{ n: string }>("select count(*) as n from public.product_library");
+  if (Number(rows[0]!.n) === 0) console.log(`migrate: ${await loadProductLibrary(client)} library products loaded`);
 } finally {
   await client.end();
 }
