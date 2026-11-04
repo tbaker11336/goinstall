@@ -11,6 +11,7 @@ import {
   mcsAnnualGeneration,
   orientationFromAzimuth,
   rectFits,
+  mcsOccupancy,
   selfConsumption,
   stringLimits,
   zoneForPostcode,
@@ -124,6 +125,8 @@ describe("self-consumption bands (synthetic table)", () => {
   ];
   it("picks the band each value falls in", () => {
     expect(selfConsumption(rows, { occupancy: "home all day", consumptionKwh: 4200, generationKwh: 6800, batteryKwh: 0 })).toEqual({ ok: true, fraction: 0.45 });
+    // Answers to the survey's earlier wording, and "Not sure", find the MGD 003 archetype.
+    expect(selfConsumption(rows, { occupancy: "Most of the day", consumptionKwh: 4200, generationKwh: 6800, batteryKwh: 0 })).toEqual({ ok: true, fraction: 0.45 });
     expect(selfConsumption(rows, { occupancy: "Home all day", consumptionKwh: 4200, generationKwh: 6800, batteryKwh: 9.5 })).toEqual({ ok: true, fraction: 0.8 });
     expect(selfConsumption(null, { occupancy: "x", consumptionKwh: 1, generationKwh: 1, batteryKwh: 0 })).toMatchObject({ ok: false });
   });
@@ -148,5 +151,16 @@ describe("panel layout", () => {
     const withChimney = autoFill(roof, panel, { setback: 0.4, obstructions: [{ x: 4.5, y: 0.5, w: 0.8, h: 0.8 }] });
     expect(withChimney.length).toBeLessThan(14);
     expect(withChimney.every((p) => !(p.x < 4.5 + 0.8 + 0.4 && p.x + p.w + 0.4 > 4.5 && p.y < 0.5 + 0.8 + 0.4 && p.y + p.h + 0.4 > 0.5))).toBe(true);
+  });
+});
+
+describe("mcsOccupancy", () => {
+  it("maps survey answers onto the MGD 003 archetypes", () => {
+    expect(mcsOccupancy("Home all day")).toBe("Home all day");
+    expect(mcsOccupancy("Not sure")).toBe("In half the day");
+    expect(mcsOccupancy("Mornings and evenings")).toBe("Out all day");
+    expect(mcsOccupancy("Mostly evenings and weekends")).toBe("Out all day");
+    expect(mcsOccupancy("Out during the day")).toBe("Out all day");
+    expect(mcsOccupancy(" Something else ")).toBe("Something else");
   });
 });

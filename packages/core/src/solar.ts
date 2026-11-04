@@ -230,6 +230,29 @@ export interface SelfConsumptionRow {
 }
 
 /** Fraction of generation used on site, from the band each value falls in. */
+/**
+ * The MGD 003 occupancy archetype (Table 4-1) for a survey answer. "Not sure"
+ * uses the "In half the day" table, as MGD 003 directs. Answers to the
+ * survey's earlier wording map onto the archetype they describe: someone in
+ * mornings and evenings (or evenings and weekends) is out during the working
+ * day. Anything else is passed through unchanged.
+ */
+export function mcsOccupancy(answer: string): string {
+  const a = answer.trim().toLowerCase();
+  const map: Record<string, string> = {
+    "home all day": "Home all day",
+    "most of the day": "Home all day",
+    "in half the day": "In half the day",
+    "not sure": "In half the day",
+    "occupancy unknown": "In half the day",
+    "out all day": "Out all day",
+    "out during the day": "Out all day",
+    "mornings and evenings": "Out all day",
+    "mostly evenings and weekends": "Out all day",
+  };
+  return map[a] ?? answer.trim();
+}
+
 export function selfConsumption(
   rows: readonly SelfConsumptionRow[] | null,
   input: { occupancy: string | null; consumptionKwh: number | null; generationKwh: number; batteryKwh: number },
@@ -238,7 +261,8 @@ export function selfConsumption(
   if (!input.occupancy) return missing("Add the occupancy from the survey.");
   if (!input.consumptionKwh) return missing("Add the annual electricity use from the survey.");
   const band = (values: number[], v: number) => values.filter((x) => x <= v).reduce((a, b) => Math.max(a, b), -Infinity);
-  const set = rows.filter((r) => r.occupancy.toLowerCase() === input.occupancy!.toLowerCase());
+  const want = mcsOccupancy(input.occupancy).toLowerCase();
+  const set = rows.filter((r) => mcsOccupancy(r.occupancy).toLowerCase() === want);
   if (!set.length) return missing(`The self-consumption table has no rows for "${input.occupancy}".`);
   const c = band([...new Set(set.map((r) => r.consumptionFromKwh))], input.consumptionKwh);
   const g = band([...new Set(set.filter((r) => r.consumptionFromKwh === c).map((r) => r.generationFromKwh))], input.generationKwh);

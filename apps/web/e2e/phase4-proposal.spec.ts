@@ -47,7 +47,7 @@ test("design → proposal → send → accept and sign → deposit paid", async 
   await page.waitForURL(/\/projects\/[0-9a-f-]{36}$/);
   const projectUrl = page.url();
   await page.getByRole("navigation", { name: "Project sections" }).getByRole("link", { name: /^(\(done\) )?Survey$/ }).click();
-  await page.getByLabel("When is someone usually at home?").selectOption("Most of the day");
+  await page.getByLabel("When is someone usually at home on weekdays?").selectOption("Home all day");
   await page.getByRole("button", { name: "Save answers" }).click();
   await expect(page.getByText(/answer saved|answers saved/)).toBeVisible();
 

@@ -53,7 +53,7 @@ test("solar and battery: email the survey link, customer completes it on a phone
 
     // Step 1: energy use.
     await phone.getByLabel("Annual electricity use (kWh)").fill("4,200");
-    await phone.getByLabel("Most of the day").check();
+    await phone.getByLabel("Home all day").check();
     await phone.getByRole("button", { name: "Save and continue" }).click();
     // Step 2: roof.
     await expect(phone.getByRole("heading", { name: /Your roof/ })).toBeFocused();
