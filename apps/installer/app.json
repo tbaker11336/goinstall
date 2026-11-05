@@ -49,6 +49,12 @@
           "color": "#0B7A62"
         }
       ]
-    ]
+    ],
+    "owner": "goinstall",
+    "extra": {
+      "eas": {
+        "projectId": "1c524ea3-326d-4854-a0e7-352445a9d85d"
+      }
+    }
   }
 }
