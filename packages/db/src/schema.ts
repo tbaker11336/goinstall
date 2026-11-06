@@ -576,6 +576,8 @@ export interface Projects {
   contact_id: string;
   created_at: Generated<Timestamp>;
   created_by: Generated<string | null>;
+  estimated_length: Numeric | null;
+  estimated_length_unit: string | null;
   id: Generated<string>;
   lat: number | null;
   legacy_id: string | null;

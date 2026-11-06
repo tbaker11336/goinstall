@@ -39,7 +39,7 @@ test("kit ordered, install booked, job completed offline in the app and synced",
   await page.getByRole("navigation", { name: "Project sections" }).getByRole("link", { name: "Install & paperwork", exact: true }).click();
   const install = page.getByRole("region", { name: "Install", exact: true });
   await install.getByLabel("Start date").fill(todayUk());
-  await install.getByLabel("Working days").fill("1");
+  await install.getByLabel("Length", { exact: true }).fill("1");
   await install.getByLabel("Install team").selectOption({ label: "Install team A · Dan" });
   await install.getByRole("button", { name: "Book install" }).click();
   await expect(install.getByText(/Install booked/)).toBeVisible();

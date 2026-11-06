@@ -1,4 +1,4 @@
-import { PROJECT_STAGE_INFO, stageIndex, stageLabel, type ActiveProjectStage } from "@goinstall/core";
+import { formatLength, PROJECT_STAGE_INFO, stageIndex, stageLabel, type ActiveProjectStage, type LengthUnit } from "@goinstall/core";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ProductCheckboxes } from "@/components/contact-fields";
@@ -26,6 +26,8 @@ export default async function ProjectOverviewPage({ params }: { params: Promise<
         "p.lost_reason",
         "p.products",
         "p.work_description",
+        "p.estimated_length",
+        "p.estimated_length_unit",
         "p.value",
         "p.owner_id",
         "p.target_install_month",
@@ -195,6 +197,7 @@ export default async function ProjectOverviewPage({ params }: { params: Promise<
             <CardContent className="flex flex-col">
               <DetailRow label="Estimated value" value={p.value != null ? <strong>{formatMoney(p.value)}</strong> : "Not set"} />
               <DetailRow label="Owner" value={owner ?? "Unassigned"} />
+              <DetailRow label="Project length" value={p.estimated_length && p.estimated_length_unit ? formatLength(Number(p.estimated_length), p.estimated_length_unit as LengthUnit) : "Not set"} />
               <DetailRow label="Target install" value={targetMonth ?? "Not set"} last />
               <details className="group mt-2">
                 <summary className="cursor-pointer text-sm font-semibold text-primary hover:text-accent-strong">Edit details</summary>
@@ -211,6 +214,19 @@ export default async function ProjectOverviewPage({ params }: { params: Promise<
                     </option>
                   ))}
                 </Select>
+              </Field>
+              <Field label="Project length" htmlFor="estimated_length" hint="How long the job takes, e.g. 2 hours, 2 days or 6 weeks. Used when booking it.">
+                <div className="flex gap-2">
+                  <Input id="estimated_length" name="estimated_length" type="number" inputMode="decimal" min={0.25} step={0.25} defaultValue={p.estimated_length ?? ""} className="w-24" aria-describedby="estimated_length-hint" />
+                  <label htmlFor="estimated_length_unit" className="sr-only">
+                    Project length in
+                  </label>
+                  <Select id="estimated_length_unit" name="estimated_length_unit" defaultValue={p.estimated_length_unit ?? "days"} className="w-auto">
+                    <option value="hours">Hours</option>
+                    <option value="days">Working days</option>
+                    <option value="weeks">Working weeks</option>
+                  </Select>
+                </div>
               </Field>
               <Field label="Target install month" htmlFor="target_install_month">
                 <Input id="target_install_month" name="target_install_month" type="month" defaultValue={month} />

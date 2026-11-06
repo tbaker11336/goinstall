@@ -44,7 +44,7 @@ wins.
 | 5 | `kit_items` | Kit list per project from the accepted proposal; per-line supplier override (null = cheapest in stock); no prices, so installers can check kit (added in build) |
 | 5 | `purchase_orders`, `purchase_order_lines` | One order per supplier |
 | 5 | `bookings` | Survey, install, scaffold up/down, and a general `task` type (the My jobs design shows "Collect from depot") |
-| 5 | `booking_assignments` | Team, electrician and scaffolder per booking; drives installer and subcontractor access |
+| 5 | `booking_assignments` | Team, electrician, scaffolder, surveyor (one each) and any number of engineers per booking; drives installer and subcontractor access. `projects.estimated_length` + `estimated_length_unit` (hours / days / weeks) is the job's expected length (added in build) |
 | 5 | `checklist_templates`, `checklist_items` | Per-company steps; completed items carry photo, readings and serials. Item ids are made on the device so offline sync is idempotent |
 | 5 | `checklist_item_history` | Overwritten checklist values (last write wins, history kept) (added in build) |
 | 6 | `paperwork_items` | One row per paperwork item per project (one per product for warranty registrations), generated from the design and install by `packages/core/src/paperwork.ts`; status, due date (rule-set until staff change it), DNO/scheme reference, portal link, staff-entered form values. Files attach via `files.paperwork_item_id`. `projects.mpan` holds the site MPAN. Balance invoices carry a hashed pay link (`invoices.pay_token_hash`) (added in build) |

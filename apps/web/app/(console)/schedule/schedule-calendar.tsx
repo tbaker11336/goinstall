@@ -46,7 +46,7 @@ const LEGEND: [CalendarEvent["type"], string][] = [
   ["scaffold_up", "Scaffold"],
   ["task", "Task"],
 ];
-const ROLE_LABELS: Record<string, string> = { team: "Team", electrician: "Electrician", scaffolder: "Scaffolder", surveyor: "Surveyor" };
+const ROLE_LABELS: Record<string, string> = { team: "Team", electrician: "Electrician", scaffolder: "Scaffolder", surveyor: "Surveyor", engineer: "Engineer" };
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 const day = (d: string, o: Intl.DateTimeFormatOptions) => new Date(`${d}T12:00:00Z`).toLocaleDateString("en-GB", { timeZone: "UTC", ...o });

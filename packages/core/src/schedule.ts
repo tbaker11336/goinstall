@@ -193,3 +193,49 @@ export function bookingTitle(type: keyof typeof BOOKING_TYPE_LABELS, products: r
   const label = what ? `${what[0]!.toUpperCase()}${what.slice(1)} ${type === "install" ? "installation" : "survey"}` : type === "install" ? "Installation" : "Site survey";
   return electrical ? `${label} and electrical work` : label;
 }
+
+// ---------------------------------------------------------------------------
+// Job length: hours (timed, e.g. a 2-hour fault find), working days or
+// working weeks (all day, e.g. a 2-day solar install or a 6-week rewire)
+// ---------------------------------------------------------------------------
+
+export const LENGTH_UNITS = ["hours", "days", "weeks"] as const;
+export type LengthUnit = (typeof LENGTH_UNITS)[number];
+export const LENGTH_LIMITS: Record<LengthUnit, number> = { hours: 24, days: 60, weeks: 12 };
+
+/** "2 hours", "1 day", "1.5 days", "6 weeks". */
+export function formatLength(value: number, unit: LengthUnit): string {
+  const n = Math.round(value * 100) / 100;
+  const word = unit === "hours" ? "hour" : unit === "days" ? "day" : "week";
+  return `${n} ${word}${n === 1 ? "" : "s"}`;
+}
+
+/** UTC offset of UK time on a date ("+01:00" in summer, "Z" in winter). */
+export function londonOffset(date: string): string {
+  const noon = new Date(`${date}T12:00:00Z`);
+  const local = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", hour: "2-digit", hour12: false }).format(noon);
+  return local === "13" ? "+01:00" : "Z";
+}
+
+/**
+ * A booking's span from its first day and length. Hours are a timed booking
+ * from the start time (UK time); days and weeks are all-day spans of working
+ * days (a week is five), skipping weekends after the first day.
+ */
+export function bookingSpan(i: { startDate: string; startTime?: string | null; length: number; unit: LengthUnit }): { ok: true; startsAt: string; endsAt: string; allDay: boolean } | { ok: false; error: string } {
+  if (!(i.length > 0) || i.length > LENGTH_LIMITS[i.unit]) return { ok: false, error: `Length must be between 0 and ${LENGTH_LIMITS[i.unit]} ${i.unit}.` };
+  if (i.unit === "hours") {
+    if (!i.startTime || !/^\d{2}:\d{2}$/.test(i.startTime)) return { ok: false, error: "Choose a start time for a booking in hours." };
+    const start = new Date(`${i.startDate}T${i.startTime}:00${londonOffset(i.startDate)}`);
+    return { ok: true, startsAt: start.toISOString(), endsAt: new Date(start.getTime() + Math.round(i.length * 60) * 60_000).toISOString(), allDay: false };
+  }
+  const days = Math.ceil(i.unit === "weeks" ? i.length * 5 : i.length);
+  return { ok: true, ...allDaySpan(i.startDate, days), allDay: true };
+}
+
+/** The length to show for an existing booking: hours for timed ones, working days otherwise (whole weeks as weeks). */
+export function bookingLength(b: { startsAt: Date | string; endsAt: Date | string; allDay: boolean }): { value: number; unit: LengthUnit } {
+  if (!b.allDay) return { value: Math.round(((new Date(b.endsAt).getTime() - new Date(b.startsAt).getTime()) / 3_600_000) * 100) / 100, unit: "hours" };
+  const working = bookingDates(b.startsAt, b.endsAt).filter((d) => ![0, 6].includes(new Date(`${d}T00:00:00Z`).getUTCDay())).length || 1;
+  return working >= 10 && working % 5 === 0 ? { value: working / 5, unit: "weeks" } : { value: working, unit: "days" };
+}

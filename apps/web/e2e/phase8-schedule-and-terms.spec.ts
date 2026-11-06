@@ -33,7 +33,7 @@ test("EV install: no scaffold, declined in the app, rescheduled and the customer
   // Scaffold is for solar roofs only.
   await expect(page.getByRole("region", { name: "Scaffold up" })).toHaveCount(0);
   await install.getByLabel("Start date").fill(todayUk());
-  await install.getByLabel("Working days").fill("1");
+  await install.getByLabel("Length", { exact: true }).fill("1");
   await install.getByLabel("Install team").selectOption({ label: "Install team A · Dan" });
   await install.getByRole("button", { name: "Book install" }).click();
   await expect(install.getByText(/Install booked/)).toBeVisible();

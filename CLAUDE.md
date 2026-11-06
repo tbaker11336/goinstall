@@ -47,6 +47,10 @@ design rules: never invent rule values).
   words (`projects.work_description`), not job-type drop-downs. Electrical-only
   projects have no survey or design step for now; notes, photos and drawings
   go on the project as attachments, and proposals are built by hand.
+- Job length is flexible: a project has an estimated length in hours, working
+  days or working weeks, and installs are booked the same way (hours are timed
+  from a start time). Any number of engineers can be put on a booking (role
+  `engineer`), alongside the team and the electrician sign-off.
 - Scaffold up/down bookings are for solar projects only.
 - Terms and conditions: text and/or a PDF in Settings › Terms & conditions,
   attached to every proposal (and its email) and accepted on signing.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { allDaySpan, bookingDates, bookingTitle, calendarRange, findClashes, icalFeed, installBookingTypes, needsScaffold, weekStart } from "./schedule";
+import { allDaySpan, bookingDates, bookingLength, bookingSpan, bookingTitle, calendarRange, formatLength, findClashes, icalFeed, installBookingTypes, needsScaffold, weekStart } from "./schedule";
 
 describe("schedule", () => {
   it("finds the Monday and spans working days", () => {
@@ -43,6 +43,24 @@ describe("schedule", () => {
     expect(bookingTitle("install", ["electrical"])).toBe("Electrical work");
     expect(bookingTitle("survey", ["electrical"])).toBe("Electrical survey");
     expect(bookingTitle("install", ["ev", "electrical"])).toBe("EV charger installation and electrical work");
+  });
+
+  it("books jobs by the hour, day or week", () => {
+    // 2 hours from 9am on a winter day (UK time is UTC).
+    expect(bookingSpan({ startDate: "2026-11-10", startTime: "09:00", length: 2, unit: "hours" })).toEqual({ ok: true, startsAt: "2026-11-10T09:00:00.000Z", endsAt: "2026-11-10T11:00:00.000Z", allDay: false });
+    // In summer 9am UK is 8am UTC.
+    expect(bookingSpan({ startDate: "2026-06-10", startTime: "09:00", length: 1.5, unit: "hours" })).toMatchObject({ startsAt: "2026-06-10T08:00:00.000Z", endsAt: "2026-06-10T09:30:00.000Z" });
+    expect(bookingSpan({ startDate: "2026-11-10", length: 2, unit: "hours" })).toMatchObject({ ok: false });
+    // 2 working days from Tuesday; 6 weeks is 30 working days, Mon 2 Nov to Fri 11 Dec.
+    expect(bookingSpan({ startDate: "2026-11-03", length: 2, unit: "days" })).toEqual({ ok: true, startsAt: "2026-11-03T00:00:00.000Z", endsAt: "2026-11-05T00:00:00.000Z", allDay: true });
+    const six = bookingSpan({ startDate: "2026-11-02", length: 6, unit: "weeks" });
+    expect(six).toMatchObject({ ok: true, endsAt: "2026-12-12T00:00:00.000Z" });
+    expect(bookingSpan({ startDate: "2026-11-02", length: 13, unit: "weeks" })).toMatchObject({ ok: false });
+    // Read back for the form.
+    expect(bookingLength({ startsAt: "2026-11-10T09:00:00Z", endsAt: "2026-11-10T11:00:00Z", allDay: false })).toEqual({ value: 2, unit: "hours" });
+    expect(bookingLength({ startsAt: "2026-11-03T00:00:00Z", endsAt: "2026-11-05T00:00:00Z", allDay: true })).toEqual({ value: 2, unit: "days" });
+    if (six.ok) expect(bookingLength({ ...six })).toEqual({ value: 6, unit: "weeks" });
+    expect([formatLength(2, "hours"), formatLength(1, "days"), formatLength(1.5, "days"), formatLength(6, "weeks")]).toEqual(["2 hours", "1 day", "1.5 days", "6 weeks"]);
   });
 
   it("offers scaffold only on solar projects", () => {

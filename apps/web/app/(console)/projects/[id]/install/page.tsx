@@ -1,4 +1,4 @@
-import { addDays, BOOKING_TYPE_LABELS, bookingDates, installBookingTypes, PAPERWORK_STATUS_LABELS, TIMING_LABELS, ukDate, weekStart, type PaperworkStatus, type PaperworkTiming } from "@goinstall/core";
+import { addDays, BOOKING_TYPE_LABELS, bookingDates, bookingLength, installBookingTypes, type LengthUnit, PAPERWORK_STATUS_LABELS, TIMING_LABELS, ukDate, weekStart, type PaperworkStatus, type PaperworkTiming } from "@goinstall/core";
 import { Check, FileText } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, Input, Select } from "@/components/ui/input";
+import { BookingLength } from "@/components/booking-length";
 import { TeamChat } from "@/components/team-chat";
 import { WeekGrid } from "@/components/week-grid";
 import { saveBookingAction } from "@/lib/actions/bookings";
@@ -49,15 +50,20 @@ function BookingForm({
   booking,
   teams,
   users,
+  defaultLength,
 }: {
   projectId: string;
   kind: Kind;
   booking: ScheduleBooking | undefined;
+  defaultLength?: { value: number; unit: LengthUnit } | null;
   teams: { id: string; name: string; members: string[] }[];
   users: { id: string; full_name: string; role: string }[];
 }) {
   const days = booking ? bookingDates(booking.startsAt, booking.endsAt) : [];
   const assigned = (role: string) => booking?.assignments.find((a) => a.role === role);
+  const engineers = new Set(booking?.assignments.filter((a) => a.role === "engineer").map((a) => a.userId) ?? []);
+  // Length: the booking's own, else the project's estimate, else two days.
+  const len = booking ? bookingLength(booking) : (defaultLength ?? { value: 2, unit: "days" as const });
   const p = `${kind}-`;
   return (
     <section aria-labelledby={`${p}title`} className="rounded-[10px] border p-4">
@@ -79,9 +85,16 @@ function BookingForm({
             </Field>
             <input type="hidden" name="days" value="1" />
           </>
+        ) : kind === "install" ? (
+          <BookingLength
+            prefix={p}
+            value={len.value}
+            unit={len.unit}
+            startTime={booking && !booking.allDay ? new Date(booking.startsAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" }) : ""}
+          />
         ) : (
           <Field label="Working days" htmlFor={`${p}days`}>
-            <Input id={`${p}days`} name="days" type="number" min={1} max={30} required defaultValue={booking ? days.filter((d) => ![0, 6].includes(new Date(`${d}T00:00:00Z`).getUTCDay())).length : kind === "install" ? 2 : 1} />
+            <Input id={`${p}days`} name="days" type="number" min={1} max={60} required defaultValue={booking ? days.filter((d) => ![0, 6].includes(new Date(`${d}T00:00:00Z`).getUTCDay())).length : 1} />
           </Field>
         )}
         {kind === "install" && (
@@ -109,6 +122,19 @@ function BookingForm({
                   ))}
               </Select>
             </Field>
+            <fieldset className="sm:col-span-2 lg:col-span-4">
+              <legend className="mb-1.5 text-sm font-medium">Engineers</legend>
+              <div className="flex flex-wrap gap-x-5 gap-y-2">
+                {users.map((u) => (
+                  <label key={u.id} className="flex items-center gap-2 text-sm">
+                    <input type="checkbox" name="engineer_ids" value={u.id} defaultChecked={engineers.has(u.id)} className="size-4 accent-primary" />
+                    {u.full_name}
+                    {u.role === "subcontractor" && <span className="text-xs text-muted-foreground">(subcontractor)</span>}
+                  </label>
+                ))}
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">Everyone ticked gets the job in their app, along with the team.</p>
+            </fieldset>
           </>
         )}
         {(kind === "scaffold_up" || kind === "scaffold_down") && (
@@ -162,7 +188,7 @@ export default async function InstallPage({ params, searchParams }: { params: Pr
   if (!z.uuid().safeParse(id).success) notFound();
 
   const data = await asUser(async (tx, session) => {
-    const project = await tx.selectFrom("projects").select(["id", "products", "stage"]).where("id", "=", id).executeTakeFirst();
+    const project = await tx.selectFrom("projects").select(["id", "products", "stage", "estimated_length", "estimated_length_unit"]).where("id", "=", id).executeTakeFirst();
     if (!project) return null;
     // Keep the paperwork list in step with the design and bookings.
     await syncPaperwork(tx, session.companyId, id);
@@ -252,7 +278,15 @@ export default async function InstallPage({ params, searchParams }: { params: Pr
               <WeekGrid days={weekColumns(monday)} rows={rows} bookings={gridItems} caption={`Team bookings, week of ${monday}`} />
               <p className="text-xs text-muted-foreground">Drag a booking to move it, or change it with the forms below.</p>
               {installBookingTypes(project.products).map((k) => (
-                <BookingForm key={k} projectId={id} kind={k} booking={mine.find((b) => b.type === k)} teams={people.teams} users={people.users} />
+                <BookingForm
+                  key={k}
+                  projectId={id}
+                  kind={k}
+                  booking={mine.find((b) => b.type === k)}
+                  teams={people.teams}
+                  users={people.users}
+                  defaultLength={k === "install" && project.estimated_length && project.estimated_length_unit ? { value: Number(project.estimated_length), unit: project.estimated_length_unit as LengthUnit } : null}
+                />
               ))}
               {(mine.some((b) => b.type === "survey") || project.stage === "survey" || project.stage === "enquiry") && (
                 <BookingForm projectId={id} kind="survey" booking={mine.find((b) => b.type === "survey")} teams={people.teams} users={people.users} />

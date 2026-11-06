@@ -249,6 +249,14 @@ const projectDetailsSchema = z.object({
     .transform((v) => (v ? `${v}-01` : null))
     .refine((v) => v === null || /^\d{4}-\d{2}-01$/.test(v), "Choose a month"),
   products: z.array(productSchema).min(1, "Choose at least one product"),
+  // How long the job should take: blank, or a number with hours / days / weeks.
+  estimated_length: z
+    .string()
+    .trim()
+    .optional()
+    .transform((v) => (v ? Number(v) : null))
+    .refine((v) => v === null || (Number.isFinite(v) && v > 0 && v <= 999), "Enter the project length as a number"),
+  estimated_length_unit: z.enum(["hours", "days", "weeks"]).optional(),
   site_address_line1: optional,
   site_address_line2: optional,
   site_town: optional,
@@ -259,10 +267,11 @@ const projectDetailsSchema = z.object({
 export async function updateProjectAction(projectId: string, _: ActionResult, form: FormData): Promise<ActionResult> {
   const parsed = projectDetailsSchema.safeParse(formObject(form));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message };
+  const { estimated_length, estimated_length_unit, ...details } = parsed.data;
   await asUser((tx) =>
     tx
       .updateTable("projects")
-      .set(parsed.data)
+      .set({ ...details, estimated_length: estimated_length === null ? null : String(estimated_length), estimated_length_unit: estimated_length === null ? null : (estimated_length_unit ?? "days") })
       .where("id", "=", z.uuid().parse(projectId))
       .execute(),
   );

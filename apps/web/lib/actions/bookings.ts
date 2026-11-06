@@ -1,7 +1,7 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
-import { allDaySpan, BOOKING_TYPE_LABELS, bookingDates, bookingTitle, firstName, needsScaffold, surveyKindsFor } from "@goinstall/core";
+import { allDaySpan, BOOKING_TYPE_LABELS, bookingDates, bookingLength, bookingSpan, bookingTitle, firstName, formatLength, LENGTH_UNITS, londonOffset, needsScaffold, surveyKindsFor } from "@goinstall/core";
 import { sql, type Tx } from "@goinstall/db";
 import { textToHtml } from "@goinstall/integrations";
 import { revalidatePath } from "next/cache";
@@ -23,7 +23,10 @@ const optionalId = z
 const bookingSchema = z.object({
   type: z.enum(["survey", "install", "scaffold_up", "scaffold_down"]),
   start_date: z.iso.date("Choose a start date"),
-  days: z.coerce.number().int().min(1, "At least one day").max(30),
+  days: z.coerce.number().int().min(1, "At least one day").max(60).optional(),
+  // Installs: any length, in hours (timed, from start_time), working days or working weeks.
+  length: z.coerce.number().positive("Enter how long the job takes").optional(),
+  length_unit: z.enum(LENGTH_UNITS).optional(),
   // Surveys have a time; other bookings are all day.
   start_time: z.union([z.literal(""), z.iso.time()]).optional(),
   team_id: optionalId,
@@ -51,10 +54,20 @@ export async function saveBookingAction(projectId: string, bookingId: string | n
   const parsed = bookingSchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message };
   const d = parsed.data;
-  const timed = d.type === "survey" && d.start_time;
-  const span = timed
-    ? { startsAt: new Date(`${d.start_date}T${d.start_time}:00${londonOffset(d.start_date)}`).toISOString(), endsAt: new Date(new Date(`${d.start_date}T${d.start_time}:00${londonOffset(d.start_date)}`).getTime() + 2 * 3_600_000).toISOString() }
-    : allDaySpan(d.start_date, d.days);
+  const engineers = z.array(z.uuid()).max(30).safeParse(form.getAll("engineer_ids").filter(Boolean));
+  if (!engineers.success) return { error: "Choose the engineers again." };
+  let timed = Boolean(d.type === "survey" && d.start_time);
+  let span: { startsAt: string; endsAt: string };
+  if (d.type === "install" && d.length !== undefined && d.length_unit) {
+    const r = bookingSpan({ startDate: d.start_date, startTime: d.start_time || null, length: d.length, unit: d.length_unit });
+    if (!r.ok) return { error: r.error };
+    span = r;
+    timed = !r.allDay;
+  } else {
+    span = timed
+      ? { startsAt: new Date(`${d.start_date}T${d.start_time}:00${londonOffset(d.start_date)}`).toISOString(), endsAt: new Date(new Date(`${d.start_date}T${d.start_time}:00${londonOffset(d.start_date)}`).getTime() + 2 * 3_600_000).toISOString() }
+      : allDaySpan(d.start_date, d.days ?? 1);
+  }
   let saved: { companyId: string; bookingId: string; actor: string } | null = null;
   const result = await asUser(async (tx, session) => {
     const project = await tx.selectFrom("projects").select(["id", "products"]).where("id", "=", projectId).executeTakeFirst();
@@ -82,6 +95,9 @@ export async function saveBookingAction(projectId: string, bookingId: string | n
     if (d.type === "install") {
       await setAssignment(tx, id, "team", { teamId: d.team_id });
       await setAssignment(tx, id, "electrician", { userId: d.electrician_id });
+      // Engineers: replace the list with the ones ticked.
+      await tx.deleteFrom("booking_assignments").where("booking_id", "=", id).where("role", "=", "engineer").execute();
+      if (engineers.data.length) await tx.insertInto("booking_assignments").values([...new Set(engineers.data)].map((u) => ({ booking_id: id!, role: "engineer", user_id: u }))).execute();
     } else if (d.type === "survey") {
       await setAssignment(tx, id, "surveyor", { userId: d.surveyor_id });
       // The installer app fills in each survey the project needs, so make sure they exist.
@@ -97,18 +113,13 @@ export async function saveBookingAction(projectId: string, bookingId: string | n
     saved = { companyId: session.companyId, bookingId: id, actor: session.userId };
     revalidatePath(`/projects/${projectId}`, "layout");
     revalidatePath("/schedule");
-    return { message: `${BOOKING_TYPE_LABELS[d.type]} booked ${bookingDates(span.startsAt, span.endsAt).length > 1 ? `for ${bookingDates(span.startsAt, span.endsAt).length} days` : ""}`.trim() + "." };
+    const length = bookingLength({ startsAt: span.startsAt, endsAt: span.endsAt, allDay: !timed });
+    const many = timed || bookingDates(span.startsAt, span.endsAt).length > 1;
+    return { message: `${BOOKING_TYPE_LABELS[d.type]} booked${many ? ` for ${formatLength(length.value, length.unit)}` : ""}.` };
   });
   const sv = saved as { companyId: string; bookingId: string; actor: string } | null;
   if (sv) await notifyBooking(sv.companyId, sv.bookingId, sv.actor);
   return result;
-}
-
-/** "+01:00" in British Summer Time, "Z" otherwise, for a local date. */
-function londonOffset(date: string) {
-  const noon = new Date(`${date}T12:00:00Z`);
-  const local = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", hour: "2-digit", hour12: false }).format(noon);
-  return local === "13" ? "+01:00" : "Z";
 }
 
 /** Drag on the calendar: move a booking to a new first day (same length) and, for installs, a team row. */

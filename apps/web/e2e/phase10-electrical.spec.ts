@@ -34,15 +34,37 @@ test("an electrical-only job: described in words, no survey or design step", asy
   await page.reload();
   await expect(page.getByLabel("Work description", { exact: true })).toHaveValue(/RCBO board/);
 
-  // Booked like any job, and named for what it is.
+  // It's a two-hour job: set on the project, it's the booking's starting length.
+  await page.getByText("Edit details").click();
+  await page.getByLabel("Project length", { exact: true }).fill("2");
+  await page.getByLabel("Project length in").selectOption("hours");
+  await page.getByRole("button", { name: "Save details" }).click();
+  await expect(page.getByText("Saved.").first()).toBeVisible();
+  await page.reload();
+  await expect(page.getByText("2 hours", { exact: true }).first()).toBeVisible();
+
+  // Booked like any job, with the engineers on it, and named for what it is.
   await page.getByRole("navigation", { name: "Project sections" }).getByRole("link", { name: "Install & paperwork", exact: true }).click();
   const install = page.getByRole("region", { name: "Install", exact: true });
   await expect(page.getByRole("region", { name: "Scaffold up" })).toHaveCount(0);
+  await expect(install.getByLabel("Length", { exact: true })).toHaveValue("2");
+  await expect(install.getByLabel("Length in")).toHaveValue("hours");
   const day = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London" }).format(new Date());
   await install.getByLabel("Start date").fill(day);
-  await install.getByLabel("Working days").fill("1");
+  await install.getByLabel("Start time").fill("09:00");
+  await install.getByLabel("Dan Hughes").check();
+  await install.getByLabel("Lee Carter").check();
   await install.getByRole("button", { name: "Book install" }).click();
-  await expect(install.getByText(/Install booked/)).toBeVisible();
+  await expect(install.getByText("Install booked for 2 hours.")).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("region", { name: "Install", exact: true }).getByLabel("Dan Hughes")).toBeChecked();
+  await expect(page.getByRole("region", { name: "Install", exact: true }).getByLabel("Lee Carter")).toBeChecked();
+
   await page.goto(`/schedule?view=day&date=${day}`);
-  await expect(page.getByRole("button", { name: /Electrical work Ruth Ellis/ })).toBeVisible();
+  const job = page.getByRole("button", { name: /09:00–11:00 Electrical work Ruth Ellis/ });
+  await expect(job).toContainText("Dan Hughes, Lee Carter");
+  await job.click();
+  const dialog = page.getByRole("dialog", { name: "Electrical work" });
+  await expect(dialog.getByText("Engineer").first()).toBeVisible();
+  await expect(dialog.getByText(/, 09:00–11:00/)).toBeVisible();
 });
