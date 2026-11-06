@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  isElectricalOnly,
+  needsDesign,
   appliesTo,
   firstName,
   groupBySection,
@@ -116,6 +118,12 @@ describe("survey kinds", () => {
   it("gives a project one survey per kind it needs", async () => {
     const { surveyKindsFor } = await import("./survey");
     expect(surveyKindsFor(["solar", "battery", "ev"])).toEqual(["solar_battery", "ev"]);
+    // Electrical work alone has no survey; alongside EV it doesn't add one.
+    expect(surveyKindsFor(["electrical"])).toEqual([]);
+    expect(surveyKindsFor(["ev", "electrical"])).toEqual(["ev"]);
+    expect(needsDesign(["electrical"])).toBe(false);
+    expect(needsDesign(["solar", "electrical"])).toBe(true);
+    expect(isElectricalOnly(["electrical"])).toBe(true);
     expect(surveyKindsFor(["ev"])).toEqual(["ev"]);
     expect(surveyKindsFor(["battery"])).toEqual(["solar_battery"]);
     expect(surveyKindsFor([])).toEqual(["solar_battery"]);

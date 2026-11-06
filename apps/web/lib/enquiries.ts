@@ -11,7 +11,7 @@ export interface EnquiryInput {
   address: string | null;
   town: string | null;
   postcode: string | null;
-  products: ("solar" | "battery" | "ev")[];
+  products: ("solar" | "battery" | "ev" | "electrical")[];
   message: string | null;
   source: string | null;
 }

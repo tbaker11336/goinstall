@@ -8,7 +8,7 @@ import { Thread } from "@/components/thread";
 import { Avatar } from "@/components/domain";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, Input, Select, Textarea } from "@/components/ui/input";
-import { addNoteAction, updateProjectAction } from "@/lib/actions/crm";
+import { addNoteAction, updateProjectAction, updateWorkDescriptionAction } from "@/lib/actions/crm";
 import { asUser } from "@/lib/auth";
 import { contactTimeline, listStaff } from "@/lib/queries";
 import { cn, formatDate, formatMoney } from "@/lib/utils";
@@ -25,6 +25,7 @@ export default async function ProjectOverviewPage({ params }: { params: Promise<
         "p.lost_from_stage",
         "p.lost_reason",
         "p.products",
+        "p.work_description",
         "p.value",
         "p.owner_id",
         "p.target_install_month",
@@ -126,6 +127,26 @@ export default async function ProjectOverviewPage({ params }: { params: Promise<
               <StageControls projectId={p.id} stage={p.stage} lostFromStage={p.lost_from_stage} />
             </div>
           </section>
+
+          <Card>
+            <CardHeader className="flex-col items-start">
+              <CardTitle>Work description</CardTitle>
+              <p className="text-sm text-ink-3">What the job is, in your own words. Installers see it in the app.</p>
+            </CardHeader>
+            <CardContent>
+              <ActionForm action={updateWorkDescriptionAction.bind(null, p.id)} className="flex flex-col gap-3">
+                <label htmlFor="work_description" className="sr-only">
+                  Work description
+                </label>
+                <Textarea id="work_description" name="work_description" rows={4} maxLength={5000} defaultValue={p.work_description ?? ""} placeholder="e.g. Replace consumer unit with a 10-way RCBO board and surge protection; add two double sockets in the kitchen." />
+                <div>
+                  <SubmitButton size="sm" variant="outline" pendingText="Saving…">
+                    Save description
+                  </SubmitButton>
+                </div>
+              </ActionForm>
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader>

@@ -19,4 +19,4 @@ export function jobDates(j: Pick<Job, "startsAt" | "endsAt" | "allDay">): string
 export const addDays = (d: string, n: number) => new Date(Date.parse(`${d}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
 
 export const TYPE_LABEL: Record<Job["type"], string> = { survey: "Site survey", install: "Install", scaffold_up: "Scaffold up", scaffold_down: "Scaffold down", task: "Task" };
-export const PRODUCT_LABEL: Record<string, string> = { solar: "Solar", battery: "Battery", ev: "EV" };
+export const PRODUCT_LABEL: Record<string, string> = { solar: "Solar", battery: "Battery", ev: "EV", electrical: "Electrical" };

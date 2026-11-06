@@ -35,8 +35,8 @@ const schema = z.object({
   town: text(100),
   postcode: text(10).transform((v) => v?.toUpperCase() ?? null),
   products: z
-    .array(z.enum(["solar", "battery", "ev"]))
-    .max(3)
+    .array(z.enum(["solar", "battery", "ev", "electrical"]))
+    .max(4)
     .default([]),
   message: text(5000),
   source: text(100),

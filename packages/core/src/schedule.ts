@@ -187,7 +187,9 @@ export function bookingTitle(type: keyof typeof BOOKING_TYPE_LABELS, products: r
   if (type === "task") return title || "Task";
   if (type === "scaffold_up" || type === "scaffold_down") return BOOKING_TYPE_LABELS[type];
   const words = ["solar", "battery", "ev"].filter((p) => products.includes(p)).map((p) => PRODUCT_WORDS[p]!);
+  const electrical = products.includes("electrical");
+  if (!words.length && electrical) return type === "install" ? "Electrical work" : "Electrical survey";
   const what = words.length ? words.join(words.length > 2 ? ", " : " and ").replace(/, (?=[^,]*$)/, " and ") : "";
   const label = what ? `${what[0]!.toUpperCase()}${what.slice(1)} ${type === "install" ? "installation" : "survey"}` : type === "install" ? "Installation" : "Site survey";
-  return label;
+  return electrical ? `${label} and electrical work` : label;
 }

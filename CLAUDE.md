@@ -43,6 +43,10 @@ design rules: never invent rule values).
 - Push notifications: the "In-app" channel also pushes to the phones of
   people signed in to the installer app (Expo push). Needs the app linked to
   an Expo project (EAS) before phones can register.
+- General electrical work: the "electrical" product. The job is described in
+  words (`projects.work_description`), not job-type drop-downs. Electrical-only
+  projects have no survey or design step for now; notes, photos and drawings
+  go on the project as attachments, and proposals are built by hand.
 - Scaffold up/down bookings are for solar projects only.
 - Terms and conditions: text and/or a PDF in Settings › Terms & conditions,
   attached to every proposal (and its email) and accepted on signing.

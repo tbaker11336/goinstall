@@ -75,6 +75,8 @@ export interface Job {
   lat: number | null;
   lng: number | null;
   products: string[];
+  /** What the job is, in the office's words (electrical work especially). Optional: older saved bundles have none. */
+  workDescription?: string | null;
   customer: { name: string; phone: string | null } | null;
   design: {
     solar: { panelCount: number; kWp: number; batteryCount: number; connectionForm: string | null; segments: unknown; plan?: PlanGeometry } | null;

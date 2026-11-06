@@ -151,6 +151,10 @@ export default async function ContactPage({ params, searchParams }: { params: Pr
                 <summary className="cursor-pointer font-semibold text-primary hover:text-accent-strong">Add a project</summary>
                 <ActionForm action={addProjectAction.bind(null, contact.id)} className="mt-3 grid gap-3">
                   <ProductCheckboxes legend="Products" selected={contact.interested_in} />
+                  <label htmlFor="new-work-description" className="text-sm font-medium">
+                    Work description (optional)
+                  </label>
+                  <textarea id="new-work-description" name="work_description" rows={2} maxLength={5000} placeholder="e.g. Replace consumer unit; EICR" className="w-full rounded-md border border-input bg-card px-3 py-2 text-sm" />
                   <p className="text-xs text-muted-foreground">Uses the contact&apos;s address as the site address; you can change it on the project.</p>
                   <div>
                     <SubmitButton size="sm" variant="outline">

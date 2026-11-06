@@ -41,7 +41,7 @@ export function enquiryFormConfig(raw: unknown): EnquiryFormConfig {
     heading: clip(r.heading, 120, DEFAULT_ENQUIRY_FORM.heading),
     intro: typeof r.intro === "string" ? r.intro.trim().slice(0, 500) : DEFAULT_ENQUIRY_FORM.intro,
     fields: Object.fromEntries(OPTIONAL_FIELDS.map((k) => [k, MODES.includes(f[k] as FieldMode) ? (f[k] as FieldMode) : DEFAULT_ENQUIRY_FORM.fields[k]])) as Record<OptionalField, FieldMode>,
-    products: Array.isArray(r.products) ? (["solar", "battery", "ev"] as Product[]).filter((p) => (r.products as unknown[]).includes(p)) : DEFAULT_ENQUIRY_FORM.products,
+    products: Array.isArray(r.products) ? (["solar", "battery", "ev", "electrical"] as Product[]).filter((p) => (r.products as unknown[]).includes(p)) : DEFAULT_ENQUIRY_FORM.products,
     buttonText: clip(r.buttonText, 40, DEFAULT_ENQUIRY_FORM.buttonText),
     thankYou: clip(r.thankYou, 300, DEFAULT_ENQUIRY_FORM.thankYou),
   };

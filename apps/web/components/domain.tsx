@@ -2,7 +2,7 @@ import { CONTACT_STAGE_LABELS, stageLabel, type ContactStage, type ProjectStage 
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-const PRODUCT_LABELS = { solar: "Solar", battery: "Battery", ev: "EV charger" } as const;
+const PRODUCT_LABELS = { solar: "Solar", battery: "Battery", ev: "EV charger", electrical: "Electrical" } as const;
 export type Product = keyof typeof PRODUCT_LABELS;
 export const PRODUCTS = Object.keys(PRODUCT_LABELS) as Product[];
 
@@ -10,7 +10,7 @@ export function productLabel(p: Product) {
   return PRODUCT_LABELS[p];
 }
 
-const TAG_LABELS = { solar: "Solar", battery: "Battery", ev: "EV" } as const;
+const TAG_LABELS = { solar: "Solar", battery: "Battery", ev: "EV", electrical: "Electrical" } as const;
 
 export function ProductTags({ products, className }: { products: readonly Product[]; className?: string }) {
   if (!products.length) return <span className="text-xs text-muted-foreground">No products</span>;

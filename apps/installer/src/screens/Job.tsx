@@ -156,6 +156,13 @@ export function JobScreen({ nav, id }: { nav: Nav; id: string }) {
           </Card>
         )}
 
+        {job.workDescription && (
+          <Card>
+            <H2>The job</H2>
+            <Text style={{ fontSize: 16, lineHeight: 23, color: colors.ink }}>{job.workDescription}</Text>
+          </Card>
+        )}
+
         {(solar || ev) && (
           <Card>
             <H2>Design</H2>

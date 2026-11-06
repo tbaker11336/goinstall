@@ -36,6 +36,7 @@ export async function jobsFor(tx: Tx, session: Session, range: { from: Date; to:
       "p.lat",
       "p.lng",
       "p.products",
+      "p.work_description",
       "c.name as contact_name",
       "c.phone as contact_phone",
     ])
@@ -137,6 +138,7 @@ export async function jobsFor(tx: Tx, session: Session, range: { from: Date; to:
         lat: b.lat,
         lng: b.lng,
         products: b.products ?? [],
+        workDescription: b.work_description,
         customer: b.contact_name ? { name: b.contact_name, phone: b.contact_phone } : null,
         design: {
           // The plan is worked out here so the app only draws it (offline, no geometry code on the phone).

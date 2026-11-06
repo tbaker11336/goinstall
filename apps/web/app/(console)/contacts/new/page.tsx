@@ -19,6 +19,9 @@ export default async function NewEnquiryPage() {
           <ActionForm action={createEnquiryAction} className="grid gap-6">
             <ContactFields staff={staff} withLocation />
             <ProductCheckboxes />
+            <Field label="Work description (optional)" htmlFor="work_description" hint="What the job is, e.g. replace consumer unit and add two kitchen sockets. Useful for electrical work.">
+              <Textarea id="work_description" name="work_description" rows={3} maxLength={5000} aria-describedby="work_description-hint" />
+            </Field>
             <Field label="Notes (optional)" htmlFor="note">
               <Textarea id="note" name="note" placeholder="What they asked for, best time to call…" />
             </Field>

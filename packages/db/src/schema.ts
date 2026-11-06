@@ -59,7 +59,7 @@ export type PoStatus = "cancelled" | "confirmed" | "delivered" | "draft" | "sent
 
 export type ProductCategory = "battery" | "cable" | "electrical" | "ev_charger" | "inverter" | "labour" | "mounting" | "other" | "panel";
 
-export type ProductType = "battery" | "ev" | "solar";
+export type ProductType = "battery" | "electrical" | "ev" | "solar";
 
 export type ProjectStage = "accepted" | "complete" | "deposit_paid" | "design" | "enquiry" | "kit_ordered" | "lost" | "proposal_sent" | "scheduled" | "survey";
 
@@ -595,6 +595,7 @@ export interface Projects {
   target_install_month: Timestamp | null;
   updated_at: Generated<Timestamp>;
   value: Numeric | null;
+  work_description: string | null;
 }
 
 export interface ProposalLines {

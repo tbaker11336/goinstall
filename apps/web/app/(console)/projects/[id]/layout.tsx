@@ -1,3 +1,4 @@
+import { isElectricalOnly } from "@goinstall/core";
 import { Check } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -23,6 +24,8 @@ export default async function ProjectLayout({ params, children }: { params: Prom
   if (!project) notFound();
 
   const address = addressLine(project.site_address_line1, project.site_town) || "Project";
+  // Electrical-only work has no survey or design step (for now): notes and photos go on the project.
+  const electricalOnly = isElectricalOnly(project.products);
   const productsText = project.products.map(productLabel).join(", ").replace(/, ([^,]*)$/, " and $1");
 
   return (
@@ -52,7 +55,7 @@ export default async function ProjectLayout({ params, children }: { params: Prom
           </Link>
         </div>
         <nav aria-label="Project sections" className="flex overflow-x-auto">
-          {PROJECT_TABS.map((t) => (
+          {PROJECT_TABS.filter((t) => !(electricalOnly && (t.slug === "survey" || t.slug === "design"))).map((t) => (
             <ProjectTabLink key={t.slug} href={`/projects/${id}${t.slug ? `/${t.slug}` : ""}`} exact={!t.slug}>
               {tabDone(t.doneAt, project.stage, project.lost_from_stage) && (
                 <>

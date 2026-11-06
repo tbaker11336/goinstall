@@ -4,7 +4,16 @@
  * a survey is, and filling in message templates.
  */
 
-export type Product = "solar" | "battery" | "ev";
+export type Product = "solar" | "battery" | "ev" | "electrical";
+
+export const PRODUCT_TYPES: readonly Product[] = ["solar", "battery", "ev", "electrical"];
+
+/**
+ * General electrical work (lighting, boards, EICRs…) is described in words
+ * and quoted by hand: it has no design step and no structured survey yet.
+ */
+export const needsDesign = (products: readonly Product[]) => products.length === 0 || products.some((p) => p !== "electrical");
+export const isElectricalOnly = (products: readonly Product[]) => products.length > 0 && products.every((p) => p === "electrical");
 
 export type FieldSource = "online" | "in_person" | "photo" | "staff_edit";
 
@@ -16,8 +25,13 @@ export const SURVEY_KINDS: Record<SurveyKind, { label: string; short: string; pr
   ev: { label: "EV charger survey", short: "EV charger", products: ["ev"] },
 };
 
-/** The surveys a project needs. A project with no products yet gets the solar & battery survey. */
+/**
+ * The surveys a project needs. A project with no products yet gets the
+ * solar & battery survey; electrical-only work has none (notes and photos go
+ * in its attachments).
+ */
 export function surveyKindsFor(products: readonly Product[]): SurveyKind[] {
+  if (isElectricalOnly(products)) return [];
   const kinds = (Object.keys(SURVEY_KINDS) as SurveyKind[]).filter((k) => SURVEY_KINDS[k].products.some((p) => products.includes(p)));
   return kinds.length ? kinds : ["solar_battery"];
 }

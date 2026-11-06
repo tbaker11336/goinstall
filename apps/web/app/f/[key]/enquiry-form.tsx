@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input, Label, Textarea } from "@/components/ui/input";
 import { submitEnquiryFormAction, type EnquiryFormState } from "./actions";
 
-const PRODUCT_LABEL = { solar: "Solar panels", battery: "Battery", ev: "EV charger" } as const;
+const PRODUCT_LABEL = { solar: "Solar panels", battery: "Battery", ev: "EV charger", electrical: "Electrical work" } as const;
 
 /** Tells the page embedding this form how tall it is (see /embed/enquiry.js). */
 function useReportHeight(key: string) {

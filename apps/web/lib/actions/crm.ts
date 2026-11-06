@@ -13,7 +13,14 @@ export interface ActionResult {
   message?: string;
 }
 
-const productSchema = z.enum(["solar", "battery", "ev"]);
+const productSchema = z.enum(["solar", "battery", "ev", "electrical"]);
+const workDescription = z
+  .string()
+  .trim()
+  .max(5000, "Keep the work description under 5,000 characters")
+  .transform((v) => v || null)
+  .nullable()
+  .optional();
 const optional = z
   .string()
   .trim()
@@ -54,6 +61,7 @@ const enquirySchema = z.object({
   ...contactFields,
   products: z.array(productSchema).min(1, "Choose at least one product"),
   note: optional,
+  work_description: workDescription,
   // From a picked Google address: where the map starts.
   lat: z.coerce.number().min(49).max(61).optional(),
   lng: z.coerce.number().min(-9).max(2.5).optional(),
@@ -63,7 +71,7 @@ const enquirySchema = z.object({
 export async function createEnquiryAction(_: ActionResult, form: FormData): Promise<ActionResult> {
   const parsed = enquirySchema.safeParse(formObject(form));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message };
-  const { products, note, lat, lng, ...contact } = parsed.data;
+  const { products, note, lat, lng, work_description, ...contact } = parsed.data;
 
   const { projectId, companyId, owner, me } = await asUser(async (tx, session) => {
     const owner = contact.owner_id ?? session.userId;
@@ -83,6 +91,7 @@ export async function createEnquiryAction(_: ActionResult, form: FormData): Prom
         site_town: contact.town,
         site_county: contact.county,
         site_postcode: contact.postcode,
+        work_description: work_description ?? null,
         ...(lat !== undefined && lng !== undefined ? { lat, lng } : {}),
       })
       .returning("id")
@@ -180,6 +189,8 @@ export async function addNoteAction(contactId: string, _: ActionResult, form: Fo
 export async function addProjectAction(contactId: string, _: ActionResult, form: FormData): Promise<ActionResult> {
   const products = z.array(productSchema).min(1, "Choose at least one product").safeParse(form.getAll("products"));
   if (!products.success) return { error: products.error.issues[0]?.message };
+  const description = workDescription.safeParse(form.get("work_description") ?? "");
+  if (!description.success) return { error: description.error.issues[0]?.message };
   const id = await asUser(async (tx, session) => {
     const c = await tx
       .selectFrom("contacts")
@@ -191,6 +202,7 @@ export async function addProjectAction(contactId: string, _: ActionResult, form:
       .values({
         contact_id: c.id,
         products: products.data,
+        work_description: description.data ?? null,
         owner_id: c.owner_id ?? session.userId,
         site_address_line1: c.address_line1,
         site_address_line2: c.address_line2,
@@ -254,6 +266,16 @@ export async function updateProjectAction(projectId: string, _: ActionResult, fo
       .where("id", "=", z.uuid().parse(projectId))
       .execute(),
   );
+  revalidatePath(`/projects/${projectId}`);
+  return { message: "Saved." };
+}
+
+/** Overview › Work description: what the job is, in the office's words. */
+export async function updateWorkDescriptionAction(projectId: string, _: ActionResult, form: FormData): Promise<ActionResult> {
+  const parsed = workDescription.safeParse(form.get("work_description") ?? "");
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message };
+  const r = await asUser((tx) => tx.updateTable("projects").set({ work_description: parsed.data ?? null }).where("id", "=", z.uuid().parse(projectId)).executeTakeFirst());
+  if (!Number(r.numUpdatedRows)) return { error: "Project not found." };
   revalidatePath(`/projects/${projectId}`);
   return { message: "Saved." };
 }

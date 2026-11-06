@@ -40,6 +40,9 @@ describe("schedule", () => {
     expect(bookingTitle("scaffold_up", ["solar"])).toBe("Scaffold up");
     expect(bookingTitle("task", [], "Collect from depot")).toBe("Collect from depot");
     expect(bookingTitle("install", [])).toBe("Installation");
+    expect(bookingTitle("install", ["electrical"])).toBe("Electrical work");
+    expect(bookingTitle("survey", ["electrical"])).toBe("Electrical survey");
+    expect(bookingTitle("install", ["ev", "electrical"])).toBe("EV charger installation and electrical work");
   });
 
   it("offers scaffold only on solar projects", () => {
