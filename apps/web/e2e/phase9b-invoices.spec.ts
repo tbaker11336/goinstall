@@ -86,8 +86,9 @@ test("invoices on an accepted quote: summary, extra work emailed and paid, a sta
   await page.getByRole("navigation", { name: "Project sections" }).getByRole("link", { name: "Overview" }).click();
   await page.getByRole("button", { name: "Delete project" }).click();
   await page.getByRole("button", { name: "Yes, delete project" }).click();
-  await expect(page.getByRole("alert")).toContainText("This project can't be deleted. It has invoices");
-  await expect(page.getByRole("alert")).toContainText("Mark the project lost instead.");
+  const refused = page.getByRole("alertdialog").getByRole("alert");
+  await expect(refused).toContainText("This project can't be deleted. It has invoices");
+  await expect(refused).toContainText("Mark the project lost instead.");
 
   // Across projects: the Invoices page.
   await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Invoices" }).click();
