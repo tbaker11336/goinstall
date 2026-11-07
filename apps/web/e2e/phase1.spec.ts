@@ -39,7 +39,8 @@ test("create an enquiry, move it across the Kanban and open the project", async 
   await card.getByLabel("Move Nina Patel to").selectOption("design");
   await expectInColumn(page, "Design", "Nina Patel");
 
-  // The move survives a reload and moved the project too.
+  // The move survives a reload and moved the project too (once both moves have saved).
+  await expect(page.getByTestId("kanban-board")).toHaveAttribute("aria-busy", "false");
   await page.reload();
   await expectInColumn(page, "Design", "Nina Patel");
   await page.goto(projectUrl);

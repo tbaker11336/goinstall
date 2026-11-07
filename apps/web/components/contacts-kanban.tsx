@@ -46,7 +46,14 @@ export function ContactsKanban({ contacts }: { contacts: KanbanContact[] }) {
     });
   }, [contacts]);
   const optimistic = contacts.map((c) => (overrides[c.id] ? { ...c, stage: overrides[c.id]! } : c));
-  const [, startTransition] = useTransition();
+  const [saving, startTransition] = useTransition();
+  // Moves save one after another; warn before leaving while one is still saving.
+  useEffect(() => {
+    if (!saving) return;
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [saving]);
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState<ContactStage | null>(null);
   const [lostFor, setLostFor] = useState<KanbanContact | null>(null);
@@ -80,7 +87,7 @@ export function ContactsKanban({ contacts }: { contacts: KanbanContact[] }) {
           {error}
         </p>
       )}
-      <div className="flex items-start gap-3.5 overflow-x-auto pb-2">
+      <div className="flex items-start gap-3.5 overflow-x-auto pb-2" data-testid="kanban-board" aria-busy={saving}>
         {CONTACT_STAGES.map((stage) => {
           const cards = optimistic.filter((c) => c.stage === stage);
           const total = stage === "lost" ? 0 : cards.reduce((n, c) => n + Number(c.value ?? 0), 0);

@@ -1,5 +1,5 @@
 import "server-only";
-import { formatPence, paybackLabel, paybackYears, proposalReference, proposalTotals, SECTION_LABELS, type ProposalSection } from "@goinstall/core";
+import { customerLines, formatPence, paybackLabel, paybackYears, proposalReference, proposalTotals, SECTION_LABELS, type ProposalSection } from "@goinstall/core";
 import { Document, Image, Page, renderToBuffer, StyleSheet, Text, View } from "@react-pdf/renderer";
 import { initials, type ProposalView } from "@/components/proposal-document";
 import { ProposalPdfSections } from "./proposal-pdf-sections";
@@ -91,7 +91,7 @@ function ProposalPdf({ p, x }: { p: ProposalView; x: PdfExtras }) {
           </View>
         )}
         {(Object.keys(SECTION_LABELS) as ProposalSection[]).map((sec) => {
-          const lines = p.lines.filter((l) => l.section === sec);
+          const lines = customerLines(p.lines).filter((l) => l.section === sec);
           if (!lines.length) return null;
           return (
             <View key={sec} wrap={false}>
@@ -104,7 +104,7 @@ function ProposalPdf({ p, x }: { p: ProposalView; x: PdfExtras }) {
                       {l.quantity !== 1 && !/^\d+\s*×/.test(l.description) ? `${l.quantity} × ` : ""}
                       {l.description}
                     </Text>
-                    <Text>{total < 0 ? `-${formatPence(-total)}` : formatPence(total)}</Text>
+                    <Text style={l.display === "hide_price" ? s.muted : undefined}>{l.display === "hide_price" ? "Included" : total < 0 ? `-${formatPence(-total)}` : formatPence(total)}</Text>
                   </View>
                 );
               })}

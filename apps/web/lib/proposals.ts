@@ -1,6 +1,6 @@
 import "server-only";
 import { createHash, createHmac, randomBytes } from "node:crypto";
-import { buildLinesFromDesigns, financeForSummary, type CatalogueItem, type ProductCategory, type ProposalSummary, type SummaryArray, type SummaryProduct, type VatRates } from "@goinstall/core";
+import { buildLinesFromDesigns, financeForSummary, type CatalogueItem, type LineDisplay, type ProductCategory, type ProposalSummary, type SummaryArray, type SummaryProduct, type VatRates } from "@goinstall/core";
 import { sql, type Tx } from "@goinstall/db";
 import type { ProposalView } from "@/components/proposal-document";
 import { loadEnergy } from "./energy";
@@ -197,7 +197,7 @@ export async function proposalContent(tx: Tx, proposalId: string, companyId?: st
   if (companyId) lq = lq.where("company_id", "=", companyId);
   const lines = await lq.execute();
   // The products on its lines that have a photo or datasheet to show the customer.
-  const productIds = [...new Set(lines.map((l) => l.product_id).filter((x): x is string => Boolean(x)))];
+  const productIds = [...new Set(lines.filter((l) => l.display !== "hide").map((l) => l.product_id).filter((x): x is string => Boolean(x)))];
   let products: { id: string; name: string; make: string | null; model: string; photo_path: string | null; datasheet_path: string | null }[] = [];
   if (productIds.length) {
     let ppq = tx
@@ -229,7 +229,7 @@ export function proposalView(c: ProposalContent): ProposalView {
     contactName: p.contact_name,
     depositPct: Number(p.deposit_pct),
     summary: (p.summary ?? {}) as unknown as ProposalView["summary"],
-    lines: c.lines.map((l) => ({ id: l.id, section: l.section, description: l.description, quantity: Number(l.quantity), unitPricePence: Number(l.unit_price_pence), vatRate: Number(l.vat_rate) })),
+    lines: c.lines.map((l) => ({ id: l.id, section: l.section, description: l.description, quantity: Number(l.quantity), unitPricePence: Number(l.unit_price_pence), vatRate: Number(l.vat_rate), display: l.display as LineDisplay })),
     terms: p.terms,
   };
 }

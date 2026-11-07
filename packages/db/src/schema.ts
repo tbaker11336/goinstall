@@ -609,6 +609,7 @@ export interface ProposalLines {
   created_at: Generated<Timestamp>;
   created_by: Generated<string | null>;
   description: string;
+  display: Generated<string>;
   id: Generated<string>;
   line_total_pence: Int8;
   origin: Generated<string>;

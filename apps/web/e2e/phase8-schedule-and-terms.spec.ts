@@ -113,4 +113,22 @@ test("terms and conditions PDF goes onto new proposals", async ({ page }) => {
   const doc = page.getByRole("article", { name: "Proposal" });
   await expect(doc.getByRole("heading", { name: "Terms and conditions" })).toBeVisible();
   await expect(doc.getByRole("link", { name: /Read the terms and conditions \(PDF\)/ })).toBeVisible();
+
+  // Lines can be shown without a price, or hidden; the total still counts them.
+  const totalBefore = (await page.getByTestId("proposal-total").textContent())!;
+  await page.getByLabel("Line 1: customer sees").selectOption("hide_price");
+  await page.getByRole("button", { name: "Add line" }).click();
+  const n = await page.getByTestId("proposal-line").count();
+  await page.getByLabel(`Line ${n} description`).fill("Certification and paperwork");
+  await page.getByLabel(`Line ${n} unit price`).fill("100");
+  await page.getByLabel(`Line ${n} VAT rate`).fill("0");
+  await page.getByLabel(`Line ${n}: customer sees`).selectOption("hide");
+  await page.getByRole("button", { name: "Save draft" }).click();
+  await expect(page.getByText(/^Saved\. Total/)).toBeVisible();
+  await page.reload();
+  await expect(page.getByLabel("Line 1: customer sees")).toHaveValue("hide_price");
+  await expect(doc.getByText("Included").first()).toBeVisible();
+  await expect(doc.getByText("Certification and paperwork")).toHaveCount(0);
+  const toPence = (t: string) => Math.round(Number(t.replace(/[£,]/g, "")) * 100);
+  expect(toPence((await page.getByTestId("proposal-total").textContent())!) - toPence(totalBefore)).toBe(10_000);
 });

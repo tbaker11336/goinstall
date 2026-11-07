@@ -1,6 +1,6 @@
 "use server";
 
-import { firstName, formatPence, lineTotal, parsePence, proposalReference, proposalTotals, type DraftLine } from "@goinstall/core";
+import { firstName, formatPence, lineTotal, parsePence, proposalReference, proposalTotals, type DraftLine, type LineDisplay } from "@goinstall/core";
 import { sql, type Tx } from "@goinstall/db";
 import { textToHtml } from "@goinstall/integrations";
 import { revalidatePath } from "next/cache";
@@ -33,6 +33,7 @@ async function writeLines(tx: Tx, proposalId: string, lines: DraftLine[]) {
           vat_rate: l.vatRate,
           line_total_pence: lineTotal(l),
           origin: l.origin,
+          display: l.display ?? "show",
         })),
       )
       .execute();
@@ -50,7 +51,7 @@ async function writeTotals(tx: Tx, proposalId: string, lines: DraftLine[], depos
   return t;
 }
 
-const lineFromRow = (r: { section: string; product_id: string | null; description: string; quantity: string | number; unit_price_pence: string | number; vat_rate: string | number; origin: string }): DraftLine => ({
+const lineFromRow = (r: { section: string; product_id: string | null; description: string; quantity: string | number; unit_price_pence: string | number; vat_rate: string | number; origin: string; display: string }): DraftLine => ({
   section: r.section as DraftLine["section"],
   productId: r.product_id,
   description: r.description,
@@ -58,6 +59,7 @@ const lineFromRow = (r: { section: string; product_id: string | null; descriptio
   unitPricePence: Number(r.unit_price_pence),
   vatRate: Number(r.vat_rate),
   origin: r.origin as DraftLine["origin"],
+  display: r.display as LineDisplay,
 });
 
 /**
@@ -110,7 +112,15 @@ export async function createProposalAction(projectId: string): Promise<{ error?:
         .executeTakeFirstOrThrow();
       proposalId = p.id;
     }
-    const lines = await writeLines(tx, proposalId, [...built.lines, ...keep]);
+    // Rebuilt lines keep what the customer was shown of them last time.
+    const shown = new Map<string, LineDisplay>();
+    const source = latest?.id;
+    if (source) {
+      const prev = await tx.selectFrom("proposal_lines").select(["origin", "product_id", "display"]).where("proposal_id", "=", source).where("origin", "!=", "custom").execute();
+      for (const r of prev) shown.set(`${r.origin}:${r.product_id ?? ""}`, r.display as LineDisplay);
+    }
+    const rebuilt = built.lines.map((l) => ({ ...l, display: shown.get(`${l.origin}:${l.productId ?? ""}`) ?? "show" }));
+    const lines = await writeLines(tx, proposalId, [...rebuilt, ...keep]);
     const dep = await tx.selectFrom("proposals").select("deposit_pct").where("id", "=", proposalId).executeTakeFirstOrThrow();
     await writeTotals(tx, proposalId, lines, Number(dep.deposit_pct));
     await refreshProposalFinance(tx, proposalId);
@@ -128,6 +138,7 @@ const lineSchema = z.object({
   unitPrice: z.string(),
   vatRate: z.number().min(0).max(100),
   origin: z.enum(["design", "custom", "discount"]),
+  display: z.enum(["show", "hide_price", "hide"]).default("show"),
 });
 const draftSchema = z.object({
   title: z.string().trim().min(1, "Give the proposal a title").max(200),
@@ -146,7 +157,7 @@ export async function saveProposalDraftAction(proposalId: string, input: DraftIn
   for (const l of parsed.data.lines) {
     const pence = parsePence(l.unitPrice.replace(/^-/, ""));
     if (pence === null || Number.isNaN(pence)) return { error: `"${l.description}": enter a price like 165 or 165.00` };
-    lines.push({ section: l.section, productId: l.productId, description: l.description, quantity: l.quantity, unitPricePence: l.unitPrice.trim().startsWith("-") ? -pence : pence, vatRate: l.vatRate, origin: l.origin });
+    lines.push({ section: l.section, productId: l.productId, description: l.description, quantity: l.quantity, unitPricePence: l.unitPrice.trim().startsWith("-") ? -pence : pence, vatRate: l.vatRate, origin: l.origin, display: l.display });
   }
   return asUser(async (tx) => {
     const p = await tx.selectFrom("proposals").select(["id", "status", "project_id"]).where("id", "=", proposalId).executeTakeFirst();

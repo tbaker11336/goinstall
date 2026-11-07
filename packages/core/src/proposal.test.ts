@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildLinesFromDesigns, lineTotal, paybackYears, proposalReference, proposalTotals, type CatalogueItem } from "./proposal";
+import { buildLinesFromDesigns, customerLines, lineTotal, paybackYears, proposalReference, proposalTotals, type CatalogueItem, type DraftLine } from "./proposal";
 
 const item = (id: string, name: string, category: CatalogueItem["category"], sellPence: number | null): CatalogueItem => ({ id, name, category, sellPence });
 
@@ -83,5 +83,18 @@ describe("proposal finance", () => {
     expect(r.finance!.firstYear.totals.savingPct).toBeCloseTo(0.565, 2);
     expect(r.finance!.co2KgPerYear).toBe(686);
     expect(r.finance!.cashFlow.rows[0]!.totalPence).toBe(-2_250_000);
+  });
+});
+
+describe("line display", () => {
+  it("hides only fully hidden lines from the customer; totals still count them", () => {
+    const base = { section: "installation" as const, productId: null, quantity: 1, vatRate: 0, origin: "custom" as const };
+    const lines: DraftLine[] = [
+      { ...base, description: "Charger", unitPricePence: 50_000 },
+      { ...base, description: "Fitting", unitPricePence: 20_000, display: "hide_price" },
+      { ...base, description: "Certificates", unitPricePence: 5_000, display: "hide" },
+    ];
+    expect(customerLines(lines).map((l) => l.description)).toEqual(["Charger", "Fitting"]);
+    expect(proposalTotals(lines, 0).totalPence).toBe(75_000);
   });
 });

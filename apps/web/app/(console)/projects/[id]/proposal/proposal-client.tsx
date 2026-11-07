@@ -1,6 +1,6 @@
 "use client";
 
-import { formatPence, lineTotal, parsePence, proposalTotals, SECTION_LABELS, type ProposalSection } from "@goinstall/core";
+import { formatPence, lineTotal, parsePence, proposalTotals, LINE_DISPLAY_LABELS, LINE_DISPLAYS, SECTION_LABELS, type LineDisplay, type ProposalSection } from "@goinstall/core";
 import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -120,6 +120,7 @@ export interface EditorLine {
   unitPrice: string;
   vatRate: string;
   origin: "design" | "custom" | "discount";
+  display: LineDisplay;
 }
 
 const SECTIONS = Object.keys(SECTION_LABELS) as ProposalSection[];
@@ -171,6 +172,7 @@ export function ProposalEditor({
           unitPrice: l.unitPrice.replace(/^−/, "-"),
           vatRate: Number(l.vatRate),
           origin: l.origin,
+          display: l.display,
         })),
       };
       if (!Number.isFinite(input.depositPct)) return { error: "Enter the deposit as a percentage." };
@@ -236,7 +238,19 @@ export function ProposalEditor({
                   </td>
                   <td className="py-2 pr-2">
                     <Input aria-label={`Line ${n} description`} value={l.description} onChange={(e) => update(l.key, { description: e.target.value })} className="h-9" />
-                    {l.origin === "design" && <span className="text-xs text-muted-foreground">From the design</span>}
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <label className="flex items-center gap-1.5 text-xs text-ink-3">
+                        Customer sees
+                        <Select aria-label={`Line ${n}: customer sees`} value={l.display} onChange={(e) => update(l.key, { display: e.target.value as LineDisplay })} className="h-7 w-auto py-0 text-xs">
+                          {LINE_DISPLAYS.map((d) => (
+                            <option key={d} value={d}>
+                              {LINE_DISPLAY_LABELS[d]}
+                            </option>
+                          ))}
+                        </Select>
+                      </label>
+                      {l.origin === "design" && <span className="text-xs text-muted-foreground">From the design</span>}
+                    </div>
                   </td>
                   <td className="py-2 pr-2">
                     <Input aria-label={`Line ${n} quantity`} inputMode="decimal" value={l.quantity} onChange={(e) => update(l.key, { quantity: e.target.value })} className="h-9" />
@@ -275,7 +289,7 @@ export function ProposalEditor({
           onClick={() =>
             setLines((ls) => [
               ...ls,
-              { key: crypto.randomUUID(), section: "installation", productId: null, description: "", quantity: "1", unitPrice: "", vatRate: labourVat === null ? "" : String(labourVat), origin: "custom" },
+              { key: crypto.randomUUID(), section: "installation", productId: null, description: "", quantity: "1", unitPrice: "", vatRate: labourVat === null ? "" : String(labourVat), origin: "custom", display: "show" },
             ])
           }
         >

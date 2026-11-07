@@ -1,4 +1,4 @@
-import { formatPence, paybackLabel, paybackYears, proposalReference, proposalTotals, SECTION_LABELS, type ProposalSection, type ProposalSummary } from "@goinstall/core";
+import { customerLines, formatPence, paybackLabel, paybackYears, proposalReference, proposalTotals, SECTION_LABELS, type LineDisplay, type ProposalSection, type ProposalSummary } from "@goinstall/core";
 import { AssumptionsSection, BillsSection, EnvironmentSection, FinanceSection, LayoutImage, McsSection, SystemSection } from "./proposal-sections";
 import { formatDate } from "@/lib/utils";
 
@@ -16,7 +16,8 @@ export interface ProposalView {
   summary: ProposalSummary;
   /** Signed URL of the saved aerial layout image, when there is one. */
   layoutUrl?: string | null;
-  lines: { id: string; section: string; description: string; quantity: number; unitPricePence: number; vatRate: number }[];
+  /** Every line (totals count them all); `display` says what the customer sees. */
+  lines: { id: string; section: string; description: string; quantity: number; unitPricePence: number; vatRate: number; display?: LineDisplay }[];
   terms: string | null;
   /** Products on the proposal with a photo or datasheet to show (signed URLs). */
   products?: { id: string; name: string; makeModel: string; photoUrl: string | null; datasheetUrl: string | null }[];
@@ -124,7 +125,7 @@ export function ProposalDocument({ p }: { p: ProposalView }) {
       )}
 
       {SECTIONS.map((s) => {
-        const lines = p.lines.filter((l) => l.section === s);
+        const lines = customerLines(p.lines).filter((l) => l.section === s);
         if (!lines.length) return null;
         return (
           <section key={s} aria-labelledby={`sec-${s}`}>
@@ -140,7 +141,11 @@ export function ProposalDocument({ p }: { p: ProposalView }) {
                       {l.quantity !== 1 && !l.description.match(/^\d+\s*×/) ? `${l.quantity} × ` : ""}
                       {l.description}
                     </span>
-                    <span className={total < 0 ? "font-medium text-primary" : "font-medium"}>{total < 0 ? `−${formatPence(-total)}` : formatPence(total)}</span>
+                    {l.display === "hide_price" ? (
+                      <span className="text-ink-3">Included</span>
+                    ) : (
+                      <span className={total < 0 ? "font-medium text-primary" : "font-medium"}>{total < 0 ? `−${formatPence(-total)}` : formatPence(total)}</span>
+                    )}
                   </li>
                 );
               })}

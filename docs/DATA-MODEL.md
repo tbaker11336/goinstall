@@ -38,7 +38,7 @@ wins.
 | 3 | `product_library` | Shared reference products (no `company_id`; read by everyone signed in, written only by the loader). First source: the CEC PV module list via NREL SAM. `products.library_id` records where a catalogue product was copied from (added in build) |
 | 3 | `calc_tables` | Versioned MCS lookup and EV rule tables supplied by the business |
 | 4 | `proposals` | Versioned; locked once sent (edits create a new version); status, totals, deposit, signature, hashed public token |
-| 4 | `proposal_lines` | One row per line (replaces line-item JSON in the spec), for price-edit audit and kit generation. Each line has its own `vat_rate`: the proposal design charges VAT on EV lines only (0% solar and battery), so one rate per proposal is not enough. Rates come from company settings, not hard-coded (VAT treatment is an open question) |
+| 4 | `proposal_lines` | One row per line (replaces line-item JSON in the spec), for price-edit audit and kit generation. Each line has its own `vat_rate`: the proposal design charges VAT on EV lines only (0% solar and battery), so one rate per proposal is not enough. Rates come from company settings, not hard-coded (VAT treatment is an open question); `display` (show / hide_price / hide: what the customer sees, totals count every line) |
 | 4 | `proposal_views` | Each customer view |
 | 4 | `invoices` | Deposit and balance invoices with Xero reference (not in the spec) |
 | 4 | `payments` | Stripe payments against an invoice |

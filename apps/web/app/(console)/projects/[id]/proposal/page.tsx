@@ -224,6 +224,7 @@ export default async function ProposalPage({
     unitPrice: (Number(l.unit_price_pence) / 100).toFixed(2),
     vatRate: String(Number(l.vat_rate)),
     origin: l.origin as EditorLine["origin"],
+    display: l.display as EditorLine["display"],
   }));
   const payBy =
     [
@@ -267,6 +268,16 @@ export default async function ProposalPage({
               }}
               labourVat={labourVat}
             />
+          )}
+          {!isDraft && content.lines.some((l) => l.display === "hide") && (
+            <p className="text-[13px] text-ink-3">
+              Not shown to the customer (counted in the total):{" "}
+              {content.lines
+                .filter((l) => l.display === "hide")
+                .map((l) => `${l.description} (${formatPence(Math.round(Number(l.quantity) * Number(l.unit_price_pence)))})`)
+                .join(", ")}
+              .
+            </p>
           )}
           <ProposalDocument p={view} />
         </div>

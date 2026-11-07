@@ -14,6 +14,25 @@ export const SECTION_LABELS: Record<ProposalSection, string> = {
   installation: "Installation",
 };
 
+/**
+ * What the customer sees of a line: the line and its price, the line with
+ * no price, or nothing. Hidden lines still count in the totals.
+ */
+export type LineDisplay = "show" | "hide_price" | "hide";
+
+export const LINE_DISPLAY_LABELS: Record<LineDisplay, string> = {
+  show: "Line and price",
+  hide_price: "Line, no price",
+  hide: "Hidden (in total)",
+};
+
+export const LINE_DISPLAYS = Object.keys(LINE_DISPLAY_LABELS) as LineDisplay[];
+
+/** The lines the customer is shown (totals still use every line). */
+export function customerLines<T extends { display?: LineDisplay }>(lines: T[]): T[] {
+  return lines.filter((l) => (l.display ?? "show") !== "hide");
+}
+
 export interface DraftLine {
   section: ProposalSection;
   productId: string | null;
@@ -22,6 +41,8 @@ export interface DraftLine {
   unitPricePence: number;
   vatRate: number;
   origin: "design" | "custom" | "discount";
+  /** Defaults to "show". */
+  display?: LineDisplay;
 }
 
 /** VAT rate per product category (and "labour" for discounts and custom labour lines). */
