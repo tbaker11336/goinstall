@@ -49,7 +49,7 @@ export function gridFor(
             : `${productsText}${covered.length > 1 ? ` · ${covered.length} days` : ""}${b.status === "tentative" ? " · pencilled" : ""}`,
       tone: isThis ? "this" : b.type === "survey" ? "survey" : rowKey === "scaffold" ? "scaffold" : "other",
       clash: clash ? `Clash with ${names.get(clash.with) ?? "another booking"}` : null,
-      href: opts.linkProjects && b.projectId ? `/projects/${b.projectId}/install` : undefined,
+      href: opts.linkProjects && b.projectId ? `/projects/${b.projectId}/schedule` : undefined,
       draggable: true,
     });
   }

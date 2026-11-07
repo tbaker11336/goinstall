@@ -1,5 +1,5 @@
 import "server-only";
-import { missingValues, PAPERWORK_TITLES, TIMING_LABELS, type FormValue, type PaperworkKind, type PaperworkTiming } from "@goinstall/core";
+import { BOARD_FIELDS, circuitGroups, missingValues, PAPERWORK_TITLES, TIMING_LABELS, type FormValue, type PaperworkKind, type PaperworkTiming, type TestValues } from "@goinstall/core";
 import { Document, Page, renderToBuffer, StyleSheet, Text, View } from "@react-pdf/renderer";
 import { formatDate } from "./utils";
 
@@ -154,6 +154,139 @@ export function renderHandoverCover(c: HandoverCover) {
           </View>
         </Page>
       )}
+    </Document>,
+  );
+}
+
+/** The PDF's built-in font has no tick or cross. */
+const pdfText = (v: string | null | undefined) =>
+  (v ?? "")
+    .replace(/✓/g, "OK")
+    .replace(/✗/g, "X")
+    .replace(/Ω/g, "ohm")
+    .replace(/Δ/g, "d");
+
+export interface TestResultsDoc {
+  companyName: string;
+  customerName: string;
+  siteAddress: string;
+  boards: { title: string; board: TestValues; circuits: TestValues[]; recordedBy: string | null; recordedAt: Date }[];
+}
+
+const t = StyleSheet.create({
+  page: { padding: 24, fontSize: 6.5, color: INK, fontFamily: "Helvetica" },
+  cell: { borderRightWidth: 0.5, borderBottomWidth: 0.5, borderColor: "#98a2b3", paddingHorizontal: 2, paddingVertical: 2.5 },
+  head: { backgroundColor: "#eef0f6", fontFamily: "Helvetica-Bold" },
+});
+
+/** The schedule of circuits and test results, one landscape page (or more) per board, laid out like the certificate's continuation sheet. */
+export function renderTestResultsPdf(d: TestResultsDoc) {
+  const groups = circuitGroups();
+  const fields = groups.flatMap((g) => g.fields);
+  const width = (key: string) => (key === "designation" ? 92 : key === "ocpd_bsen" || key === "wiring_type" ? 34 : 27.5);
+  return renderToBuffer(
+    <Document title={`Electrical test results, ${d.customerName}`} author={d.companyName}>
+      {d.boards.map((b) => (
+        <Page key={b.title} size="A4" orientation="landscape" style={t.page}>
+          <View style={[s.header, { marginBottom: 8, paddingBottom: 6 }]}>
+            <View>
+              <Text style={[s.bold, { fontSize: 11 }]}>Distribution board: {b.title}</Text>
+              <Text style={s.muted}>
+                {d.customerName} · {d.siteAddress}
+              </Text>
+            </View>
+            <View style={{ alignItems: "flex-end" }}>
+              <Text style={s.bold}>{d.companyName}</Text>
+              <Text style={s.muted}>
+                Recorded {b.recordedBy ? `by ${b.recordedBy} ` : ""}
+                {formatDate(b.recordedAt, { day: "numeric", month: "long", year: "numeric" })}
+              </Text>
+            </View>
+          </View>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", marginBottom: 8 }}>
+            {BOARD_FIELDS.map((f) => (
+              <View key={f.key} style={{ width: "25%", flexDirection: "row", paddingVertical: 1.5, paddingRight: 6 }}>
+                <Text style={[s.muted, { width: "58%" }]}>
+                  {pdfText(f.label)}
+                  {f.unit ? ` (${pdfText(f.unit)})` : ""}
+                </Text>
+                <Text style={s.bold}>{pdfText(b.board[f.key]) || "-"}</Text>
+              </View>
+            ))}
+          </View>
+          <View style={{ borderTopWidth: 0.5, borderLeftWidth: 0.5, borderColor: "#98a2b3" }}>
+            <View style={{ flexDirection: "row" }} fixed>
+              {groups.map((g) => (
+                <Text key={g.group} style={[t.cell, t.head, { width: g.fields.reduce((n, f) => n + width(f.key), 0) }]}>
+                  {pdfText(g.group)}
+                </Text>
+              ))}
+            </View>
+            <View style={{ flexDirection: "row" }} fixed>
+              {fields.map((f) => (
+                <Text key={f.key} style={[t.cell, t.head, { width: width(f.key) }]}>
+                  {pdfText(f.short)}
+                  {f.unit ? `\n${pdfText(f.unit)}` : ""}
+                </Text>
+              ))}
+            </View>
+            {b.circuits.map((c, i) => (
+              <View key={i} style={{ flexDirection: "row" }} wrap={false}>
+                {fields.map((f) => (
+                  <Text key={f.key} style={[t.cell, { width: width(f.key) }]}>
+                    {pdfText(c[f.key])}
+                  </Text>
+                ))}
+              </View>
+            ))}
+          </View>
+          {b.circuits.length === 0 && <Text style={[s.muted, { marginTop: 6 }]}>No circuits recorded.</Text>}
+          <View style={s.footer} fixed>
+            <Text>Electrical test results · {d.companyName}</Text>
+            <Text render={({ pageNumber }) => `${pageNumber}`} />
+          </View>
+        </Page>
+      ))}
+    </Document>,
+  );
+}
+
+export interface ChecksDoc {
+  companyName: string;
+  items: { title: string; who: string; done: boolean; serial: string | null; readings: string[]; note: string | null }[];
+  signoff: { name: string; at: Date | null } | null;
+}
+
+/** The installer's commissioning checks, readings and serial numbers. */
+export function renderChecksPdf(d: ChecksDoc) {
+  return renderToBuffer(
+    <Document title="Commissioning checks" author={d.companyName}>
+      <Page size="A4" style={s.page}>
+        <Text style={s.h}>Commissioning checks and readings</Text>
+        <Text style={[s.muted, { marginBottom: 12 }]}>Recorded by the installer on the day.</Text>
+        {d.items.map((i, n) => (
+          <View key={`${i.title}-${n}`} style={[s.row, { flexDirection: "column", gap: 2 }]} wrap={false}>
+            <Text style={s.bold}>
+              {i.title}
+              {i.done ? "" : " (not done)"}
+              <Text style={[s.muted, { fontFamily: "Helvetica" }]}> · {i.who}</Text>
+            </Text>
+            {i.serial && <Text>Serial: {i.serial}</Text>}
+            {i.readings.length > 0 && <Text>{pdfText(i.readings.join(" · "))}</Text>}
+            {i.note && <Text style={s.muted}>{i.note}</Text>}
+          </View>
+        ))}
+        {d.signoff && (
+          <Text style={{ marginTop: 14 }}>
+            Signed off by {d.signoff.name}
+            {d.signoff.at ? ` on ${formatDate(d.signoff.at, { day: "numeric", month: "long", year: "numeric" })}` : ""}.
+          </Text>
+        )}
+        <View style={s.footer} fixed>
+          <Text>{d.companyName}</Text>
+          <Text render={({ pageNumber }) => `${pageNumber}`} />
+        </View>
+      </Page>
     </Document>,
   );
 }

@@ -36,13 +36,19 @@ test("kit ordered, install booked, job completed offline in the app and synced",
   await expect(orders.first()).toContainText("Delivered");
 
   // Booking: today, Install team A; then confirm and notify the customer.
-  await page.getByRole("navigation", { name: "Project sections" }).getByRole("link", { name: "Install & paperwork", exact: true }).click();
-  const install = page.getByRole("region", { name: "Install", exact: true });
+  await page.getByRole("navigation", { name: "Project sections" }).getByRole("link", { name: /Schedule$/ }).click();
+  const install = page.getByRole("region", { name: "New booking" });
   await install.getByLabel("Start date").fill(todayUk());
   await install.getByLabel("Length", { exact: true }).fill("1");
   await install.getByLabel("Install team").selectOption({ label: "Install team A · Dan" });
+  await install.getByLabel("Description (optional)").fill("Ladder access from the side gate.");
   await install.getByRole("button", { name: "Book install" }).click();
   await expect(install.getByText(/Install booked/)).toBeVisible();
+  // It shows as an invite: when, where, who and the description.
+  const invite = page.getByRole("article", { name: /installation$/ });
+  await expect(invite).toContainText("all day");
+  await expect(invite).toContainText("Install team A · Install team");
+  await expect(invite).toContainText("Ladder access from the side gate.");
   await page.getByRole("button", { name: "Confirm and notify customer" }).click();
   await expect(page.getByText(/Bookings confirmed\./)).toBeVisible();
   await expect(page.locator("[data-project-page] header").getByText("Scheduled")).toBeVisible();
@@ -62,6 +68,27 @@ test("kit ordered, install booked, job completed offline in the app and synced",
 
   // Airplane mode from here.
   await app.context().setOffline(true);
+
+  // Electrical test results for the board, as on the certificate schedule.
+  await app.getByTestId("open-test-results").click();
+  await app.getByTestId("add-test-board").click();
+  await app.getByLabel("DB reference").fill("DB1");
+  await app.getByLabel("Distribution board location").fill("Garage");
+  await app.getByLabel("Zdb at this board").fill("0.35");
+  await app.getByLabel("Circuit 1: Circuit designation").fill("Sockets");
+  await app.getByLabel("Circuit 1: Maximum permitted Zs").fill("1.37");
+  await app.getByLabel("Circuit 1: Maximum measured Zs").fill("0.62");
+  await app.getByLabel("Circuit 1: Insulation resistance: phase/earth").fill(">200");
+  await app.getByLabel("Circuit 1: Polarity: correct").click();
+  await app.getByRole("button", { name: "+ Add circuit" }).click();
+  await app.getByLabel("Circuit 2: Circuit designation").fill("Inverter AC");
+  await app.getByLabel("Circuit 2: Maximum permitted Zs").fill("1.37");
+  await app.getByLabel("Circuit 2: Maximum measured Zs").fill("1.52");
+  await app.getByTestId("save-test-board").click();
+  await expect(app.getByTestId("test-board")).toContainText("DB1 · Garage2 circuits");
+  await app.getByRole("link", { name: "Back to Job" }).click();
+  await expect(app.getByText("1 board, 2 circuits recorded.")).toBeVisible();
+
   await app.getByTestId("job-primary").click();
   await expect(app.getByText("Install checklist")).toBeVisible();
 
@@ -97,8 +124,9 @@ test("kit ordered, install booked, job completed offline in the app and synced",
   await expect(app.getByTestId("sync-badge")).toHaveText(/Offline/);
 
   // Nothing has reached the console yet.
-  await page.reload();
+  await page.getByRole("navigation", { name: "Project sections" }).getByRole("link", { name: /Handover$/ }).click();
   await expect(page.getByText("Nothing recorded yet.")).toBeVisible();
+  await expect(page.getByText("No test results yet.")).toBeVisible();
 
   // Back online: the queue drains.
   await app.context().setOffline(false);
@@ -113,9 +141,14 @@ test("kit ordered, install booked, job completed offline in the app and synced",
   await expect(page.getByText(/Signed off by Grace Okafor/)).toBeVisible();
   const signature = page.getByRole("img", { name: "Signature of Grace Okafor" });
   await expect(signature).toBeVisible();
+  // The test results, laid out like the schedule, with the high Zs flagged.
+  const board = page.getByRole("region", { name: "Test results: DB1 · Garage" });
+  await expect(board.getByRole("cell", { name: "Sockets" })).toBeVisible();
+  await expect(board.getByRole("cell", { name: ">200" })).toBeVisible();
+  await expect(board.getByText("Circuit 2: Measured Zs 1.52 Ω is above the permitted 1.37 Ω")).toBeVisible();
   // The image must actually load, not just be present.
   expect(await signature.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
-  if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/install-tab.png`, fullPage: true });
+  if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/handover-tab.png`, fullPage: true });
 });
 
 test("the team calendar feed is private and lists the booking", async ({ page }) => {

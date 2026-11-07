@@ -27,8 +27,8 @@ test("EV install: no scaffold, declined in the app, rescheduled and the customer
   await page.getByRole("link", { name: "Owen Lewis" }).click();
   await page.getByRole("link", { name: /Gloucester Road/ }).click();
   await page.waitForURL(/\/projects\/[0-9a-f-]{36}$/);
-  await page.getByRole("navigation", { name: "Project sections" }).getByRole("link", { name: "Install & paperwork", exact: true }).click();
-  const install = page.getByRole("region", { name: "Install", exact: true });
+  await page.getByRole("navigation", { name: "Project sections" }).getByRole("link", { name: /Schedule$/ }).click();
+  const install = page.getByRole("region", { name: "New booking" });
   await expect(install).toBeVisible();
   // Scaffold is for solar roofs only.
   await expect(page.getByRole("region", { name: "Scaffold up" })).toHaveCount(0);

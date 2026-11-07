@@ -403,7 +403,7 @@ function EventDetails({ e, teams, onClose, onMoved }: { e: CalendarEvent | null;
               </Button>
             )}
             {e.projectId && (
-              <Link href={`/projects/${e.projectId}/install`} className={buttonVariants({ variant: "ghost" })}>
+              <Link href={`/projects/${e.projectId}/schedule`} className={buttonVariants({ variant: "ghost" })}>
                 Open project
               </Link>
             )}

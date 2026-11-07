@@ -6,7 +6,8 @@ export const PROJECT_TABS = [
   { slug: "design", label: "Design", doneAt: "proposal_sent", phase: 3 },
   { slug: "proposal", label: "Proposal", doneAt: "accepted", phase: 4 },
   { slug: "kit", label: "Kit & suppliers", doneAt: "kit_ordered", phase: 5 },
-  { slug: "install", label: "Install & paperwork", doneAt: "complete", phase: 5 },
+  { slug: "schedule", label: "Schedule", doneAt: "scheduled", phase: 5 },
+  { slug: "handover", label: "Handover", doneAt: "complete", phase: 6 },
 ] as const satisfies readonly { slug: string; label: string; doneAt: ActiveProjectStage | null; phase: number | null }[];
 
 /** A tab shows a tick once the project has reached the stage after it. */

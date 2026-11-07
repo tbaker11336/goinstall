@@ -51,8 +51,8 @@ test("an electrical-only job: described in words, no survey or design step", asy
   await expect(page.getByText("2 hours", { exact: true }).first()).toBeVisible();
 
   // Booked like any job, with the engineers on it, and named for what it is.
-  await page.getByRole("navigation", { name: "Project sections" }).getByRole("link", { name: "Install & paperwork", exact: true }).click();
-  const install = page.getByRole("region", { name: "Install", exact: true });
+  await page.getByRole("navigation", { name: "Project sections" }).getByRole("link", { name: /Schedule$/ }).click();
+  const install = page.getByRole("region", { name: "New booking" });
   await expect(page.getByRole("region", { name: "Scaffold up" })).toHaveCount(0);
   await expect(install.getByLabel("Length", { exact: true })).toHaveValue("2");
   await expect(install.getByLabel("Length in")).toHaveValue("hours");
@@ -64,8 +64,20 @@ test("an electrical-only job: described in words, no survey or design step", asy
   await install.getByRole("button", { name: "Book install" }).click();
   await expect(install.getByText("Install booked for 2 hours.")).toBeVisible();
   await page.reload();
-  await expect(page.getByRole("region", { name: "Install", exact: true }).getByLabel("Dan Hughes")).toBeChecked();
-  await expect(page.getByRole("region", { name: "Install", exact: true }).getByLabel("Lee Carter")).toBeChecked();
+  const invite = page.getByRole("article", { name: "Electrical work" });
+  await expect(invite).toContainText("Dan Hughes · Engineer");
+  await expect(invite).toContainText("Lee Carter · Engineer");
+  await expect(invite).toContainText("09:00–11:00");
+  // Another visit on the same job, invite-style, with its own title.
+  await install.getByText("Other visit", { exact: true }).click();
+  await install.getByLabel("Title").fill("Return visit: fit sockets");
+  await install.getByLabel("Start date").fill(day);
+  await install.getByLabel("Start time").fill("14:00");
+  await install.getByLabel("Lee Carter").check();
+  await install.getByRole("button", { name: "Book other visit" }).click();
+  await expect(install.getByText("Return visit: fit sockets booked for 2 hours.")).toBeVisible();
+  await expect(page.getByRole("article", { name: "Return visit: fit sockets" })).toContainText("14:00–16:00");
+  if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/schedule-tab.png`, fullPage: true });
 
   await page.goto(`/schedule?view=day&date=${day}`);
   const job = page.getByRole("button", { name: /09:00–11:00 Electrical work Ruth Ellis/ });

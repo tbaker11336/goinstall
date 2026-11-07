@@ -5,7 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { saveBlob, formPart, removeBlob } from "./blobs";
 import { API_URL } from "./config";
 import { unregisterPush } from "./push";
-import type { Bundle, Captured, Chat, ChatMessage, Job, Op, PendingFile, SurveyKind } from "./types";
+import type { Bundle, Captured, Chat, ChatMessage, Job, Op, PendingFile, SurveyKind, TestBoard } from "./types";
 
 /**
  * Offline-first state. Everything the installer captures is saved on the
@@ -28,6 +28,8 @@ interface Local {
   /** Messages sent from this phone that the server hasn't sent back yet, and where I've read each chat up to. */
   chatSent?: Record<string, { id: string; body: string; sentAt: string }[]>;
   chatRead?: Record<string, string>;
+  /** Test result boards saved on this phone (by board id), with their project; removed ones are kept as tombstones until synced. */
+  testBoards?: Record<string, TestBoard & { projectId: string; removed?: boolean }>;
 }
 
 export type JobResponse = { response: "accepted" | "declined"; reason: string | null };
@@ -70,6 +72,8 @@ interface Store extends Persisted {
   respond(job: Pick<Job, "id" | "startsAt">, response: "accepted" | "declined", reason: string | null): void;
   sendChat(projectId: string, body: string): void;
   readChat(projectId: string): void;
+  saveTestBoard(job: Pick<Job, "id" | "projectId">, board: Omit<TestBoard, "bookingId" | "capturedAt">): void;
+  removeTestBoard(job: Pick<Job, "id" | "projectId">, board: Omit<TestBoard, "bookingId" | "capturedAt">): void;
 }
 
 const Ctx = createContext<Store | null>(null);
@@ -269,6 +273,19 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         // Only the latest read marker per chat needs sending.
         enqueue({ opId: randomUUID(), type: "chat_read", projectId, capturedAt: at }, (o) => o.type === "chat_read" && o.projectId === projectId);
       },
+      saveTestBoard(job, b) {
+        if (!job.projectId) return;
+        const next = { ...b, projectId: job.projectId, bookingId: job.id, capturedAt: now() };
+        update((s) => ({ ...s, local: { ...s.local, testBoards: { ...(s.local.testBoards ?? {}), [b.id]: next } } }));
+        // Only the latest copy of a board needs sending.
+        enqueue({ opId: randomUUID(), type: "test_board", id: b.id, bookingId: job.id, position: b.position, board: b.board, circuits: b.circuits, capturedAt: next.capturedAt }, (o) => o.type === "test_board" && o.id === b.id);
+      },
+      removeTestBoard(job, b) {
+        if (!job.projectId) return;
+        const next = { ...b, projectId: job.projectId, bookingId: job.id, capturedAt: now(), removed: true };
+        update((s) => ({ ...s, local: { ...s.local, testBoards: { ...(s.local.testBoards ?? {}), [b.id]: next } } }));
+        enqueue({ opId: randomUUID(), type: "test_board", id: b.id, bookingId: job.id, position: b.position, board: {}, circuits: [], removed: true, capturedAt: next.capturedAt }, (o) => o.type === "test_board" && o.id === b.id);
+      },
       respond(job, response, reason) {
         update((s) => ({ ...s, local: { ...s.local, responses: { ...(s.local.responses ?? {}), [job.id]: { response, reason, forStartsAt: job.startsAt } } } }));
         // Only the latest answer for a job needs sending.
@@ -302,6 +319,14 @@ export function useMyResponse(job: Pick<Job, "id" | "startsAt" | "myResponse">):
   const mine = s.local.responses?.[job.id];
   if (mine && mine.forStartsAt === job.startsAt) return mine;
   return job.myResponse ? { response: job.myResponse.response, reason: job.myResponse.reason } : null;
+}
+
+/** A project's test result boards: the server's, with this phone's newer copies on top. */
+export function useTestBoards(job: Pick<Job, "projectId" | "testBoards">): TestBoard[] {
+  const s = useStore();
+  const local = Object.values(s.local.testBoards ?? {}).filter((b) => b.projectId === job.projectId);
+  const server = (job.testBoards ?? []).filter((b) => !local.some((l) => l.id === b.id && l.capturedAt >= b.capturedAt));
+  return [...server, ...local.filter((l) => !l.removed && !(job.testBoards ?? []).some((b) => b.id === l.id && b.capturedAt > l.capturedAt))].sort((a, b) => a.position - b.position);
 }
 
 /** Captured state for a step: the phone's copy if there is one, else the server's. */

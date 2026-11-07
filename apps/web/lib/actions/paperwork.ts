@@ -151,7 +151,7 @@ export async function sendHandoverPackAction(projectId: string): Promise<ActionR
     if (!pack) return { error: "Project not found" };
     const first = p.name.split(/\s+/)[0] ?? p.name;
     const subject = `Your handover pack from ${p.company_name}`;
-    const body = `Hi ${first},\n\nThank you for choosing ${p.company_name}. Attached is your handover pack: your system design, certificates and warranty details. Please keep it somewhere safe.\n\nIf you have any questions, just reply to this email.\n\n${session.fullName}\n${p.company_name}`;
+    const body = `Hi ${first},\n\nThank you for choosing ${p.company_name}. Attached is your handover pack: your system, warranties, test results, photos, design and certificates. Please keep it somewhere safe.\n\nIf you have any questions, just reply to this email.\n\n${session.fullName}\n${p.company_name}`;
     const m = await tx
       .insertInto("messages")
       .values({ contact_id: p.contact_id, project_id: projectId, channel: "email", direction: "outbound", subject, body, sent_by: session.userId, to_address: p.email, delivery_status: "queued" })

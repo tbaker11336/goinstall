@@ -163,7 +163,7 @@ export async function notifyBooking(companyId: string, bookingId: string, actorI
       projectId: info.b.project_id,
       recipients: info.recipients,
       exclude: actorId,
-      link: info.b.project_id ? `/projects/${info.b.project_id}/install` : null,
+      link: info.b.project_id ? `/projects/${info.b.project_id}/schedule` : null,
       data: { site: [info.b.site_address_line1, info.b.site_town].filter(Boolean).join(", ") || undefined, when },
     });
   } catch (err) {

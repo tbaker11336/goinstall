@@ -93,6 +93,18 @@ export interface Job {
   kit: { id: string; description: string; quantity: number; issue: string | null; issueNote: string | null }[];
   surveys: { id: string; kind: SurveyKind; fields: Record<string, { value: string | null; source: string; updatedAt: string }> }[];
   captured: Captured[];
+  /** Electrical test results for the job's project (installers only). Optional: older saved bundles have none. */
+  testBoards?: TestBoard[];
+}
+
+/** One distribution board: its details and the schedule of circuits and test results, as text from the sheet. */
+export interface TestBoard {
+  id: string;
+  bookingId: string | null;
+  position: number;
+  board: Record<string, string>;
+  circuits: Record<string, string>[];
+  capturedAt: string;
 }
 
 export interface Point {
@@ -156,7 +168,8 @@ export type Op =
   | { opId: string; type: "on_my_way"; bookingId: string; etaMinutes: number; capturedAt: string }
   | { opId: string; type: "team_message"; id: string; projectId: string; body: string; capturedAt: string }
   | { opId: string; type: "chat_read"; projectId: string; capturedAt: string }
-  | { opId: string; type: "booking_response"; bookingId: string; response: "accepted" | "declined"; reason: string | null; capturedAt: string };
+  | { opId: string; type: "booking_response"; bookingId: string; response: "accepted" | "declined"; reason: string | null; capturedAt: string }
+  | { opId: string; type: "test_board"; id: string; bookingId: string; position: number; board: Record<string, string>; circuits: Record<string, string>[]; removed?: boolean; capturedAt: string };
 
 export interface PendingFile {
   id: string;

@@ -25,12 +25,13 @@ const outbox = () => readFileSync(OUTBOX, "utf8").trim().split("\n").map((l) => 
 
 test("completing a job produces the correct paperwork items with fields pre-filled", async ({ page, browser }) => {
   await signInAs(page, "Alex Morgan");
-  await openGrace(page, /Install & paperwork$/);
+  await openGrace(page, /Handover$/);
   await expect(page.locator("[data-project-page] header").getByText("Complete")).toBeVisible();
 
   // Solar with G99 from the design (her EV design was never saved, so no EV notification yet).
   const items = page.getByRole("list", { name: "Paperwork items" });
-  for (const title of ["G99 application to the DNO", "MCS certificate", "Electrical installation certificate", "Customer handover pack"]) {
+  await expect(page.getByRole("button", { name: "Email pack to the customer" })).toBeVisible();
+  for (const title of ["G99 application to the DNO", "MCS certificate", "Electrical installation certificate"]) {
     await expect(items.getByRole("link", { name: new RegExp(title) })).toBeVisible();
   }
   await expect(items.getByRole("link", { name: /Warranty registration: 445 W all-black panel/ })).toBeVisible();
@@ -52,7 +53,7 @@ test("completing a job produces the correct paperwork items with fields pre-fill
   await expect(page.getByText("Made by GoInstall")).toBeVisible();
 
   // G99: the MPAN, then submitted with the DNO's reference.
-  await page.getByRole("main").getByRole("link", { name: "Install & paperwork", exact: true }).click();
+  await page.getByRole("main").getByRole("link", { name: "Handover", exact: true }).click();
   await page.getByRole("list", { name: "Paperwork items" }).getByRole("link", { name: /G99 application/ }).click();
   await expect(page.locator("dl[aria-label='Pre-filled values']").getByText("Registered capacity")).toBeVisible();
   await expect(page.locator("dl[aria-label='Pre-filled values']").getByText("5 kW AC")).toBeVisible();
@@ -72,7 +73,7 @@ test("completing a job produces the correct paperwork items with fields pre-fill
   await expect(page.locator("dl[aria-label='Pre-filled values']").getByText("Location of the lockable isolation switch")).toHaveCount(0);
 
   // Generate forms: a details sheet for every open item.
-  await page.getByRole("main").getByRole("link", { name: "Install & paperwork", exact: true }).click();
+  await page.getByRole("main").getByRole("link", { name: "Handover", exact: true }).click();
   await expect(page.getByText(/\d of \d+ started/)).toBeVisible();
   await page.getByRole("button", { name: "Generate forms" }).click();
   await expect(page.getByText(/\d+ details sheets made\./)).toBeVisible();
@@ -93,13 +94,20 @@ test("completing a job produces the correct paperwork items with fields pre-fill
   await expect(balance.getByText(/^Paid /)).toBeVisible();
 
   // Handover pack: design, SLD and the uploaded EIC, emailed to the customer.
-  await page.getByRole("navigation", { name: "Project sections" }).getByRole("link", { name: /Install & paperwork$/ }).click();
-  await page.getByRole("list", { name: "Paperwork items" }).getByRole("link", { name: /Customer handover pack/ }).click();
+  await page.getByRole("navigation", { name: "Project sections" }).getByRole("link", { name: /Handover$/ }).click();
+  // Add a photo of the finished job, check the pack, then send it.
+  await page.getByLabel("Add photos or PDFs").setInputFiles(path.join(process.cwd(), "e2e", "fixtures", "site-photo.png"));
+  await page.getByRole("button", { name: "Upload", exact: true }).click();
+  await expect(page.getByText("site-photo.png added to the handover.")).toBeVisible();
+  await expect(page.getByRole("list", { name: "In the pack" })).toContainText("Electrical test results (1 board)");
+  await page.getByRole("button", { name: "Generate pack" }).click();
+  await expect(page.getByText(/Handover pack made\./)).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("link", { name: /Open the latest pack/ })).toBeVisible();
   await page.getByRole("button", { name: "Email pack to the customer" }).click();
   await expect(page.getByText(/Handover pack sent\..*Not included yet: MCS certificate\./)).toBeVisible({ timeout: 30_000 });
   const pack = outbox().reverse().find((e) => /handover pack/i.test(e.subject))!;
   expect(pack.to).toBe("grace.okafor@example.com");
   expect(pack.attachments).toEqual(["handover-pack.pdf"]);
-  await page.getByRole("main").getByRole("link", { name: "Install & paperwork", exact: true }).click();
-  await expect(page.getByRole("list", { name: "Paperwork items" }).getByRole("link", { name: /Customer handover pack.*Done/ })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("main").getByText("Sent", { exact: true })).toBeVisible();
 });

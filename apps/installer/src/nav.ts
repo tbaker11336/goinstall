@@ -8,6 +8,7 @@ export type Route =
   | { name: "job"; id: string }
   | { name: "survey"; id: string }
   | { name: "checklist"; id: string }
+  | { name: "tests"; id: string }
   | { name: "signoff"; id: string };
 
 export interface Nav {

@@ -77,6 +77,11 @@ export async function jobsFor(tx: Tx, session: Session, range: { from: Date; to:
     : [[], []];
   // My answers; one for earlier dates (the job was moved since) doesn't count.
   const answers = bookingIds.length ? await tx.selectFrom("booking_responses").select(["booking_id", "response", "reason", "for_starts_at", "responded_at"]).where("booking_id", "in", bookingIds).where("user_id", "=", session.userId).execute() : [];
+  // Electrical test results (installers only), per project.
+  const boards =
+    session.role === "installer" && projectIds.length
+      ? await tx.selectFrom("electrical_test_boards").select(["id", "project_id", "booking_id", "position", "board", "circuits", "captured_at"]).where("project_id", "in", projectIds).orderBy("position").orderBy("created_at").execute()
+      : [];
   const surveyIds = surveys.map((s) => s.id);
   const fields = surveyIds.length ? await tx.selectFrom("survey_fields").select(["survey_id", "key", "value", "source", "updated_at"]).where("survey_id", "in", surveyIds).execute() : [];
 
@@ -157,6 +162,9 @@ export async function jobsFor(tx: Tx, session: Session, range: { from: Date; to:
         },
         kit: kit.filter((k) => k.project_id === b.project_id).map((k) => ({ id: k.id, description: k.description, quantity: Number(k.quantity), issue: k.issue, issueNote: k.issue_note })),
         surveys: projectSurveys.map((sv) => ({ id: sv.id, kind: sv.kind, fields: Object.fromEntries(fields.filter((f) => f.survey_id === sv.id).map((f) => [f.key, { value: f.value, source: f.source, updatedAt: f.updated_at }])) })),
+        testBoards: boards
+          .filter((t) => t.project_id === b.project_id)
+          .map((t) => ({ id: t.id, bookingId: t.booking_id, position: t.position, board: t.board as Record<string, string>, circuits: t.circuits as Record<string, string>[], capturedAt: t.captured_at })),
         captured: items
           .filter((i) => i.booking_id === b.id)
           .map((i) => ({ id: i.id, templateId: i.template_id, done: i.done, serial: i.serial, readings: i.readings, note: i.note, photoFileIds: i.photo_file_ids, capturedAt: i.captured_at })),

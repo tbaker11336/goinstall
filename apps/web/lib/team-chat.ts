@@ -70,10 +70,10 @@ export async function notifyChat(companyId: string, projectId: string, author: {
   const preview = body.length > 200 ? `${body.slice(0, 197)}…` : body;
   const data = { installer: author.name, detail: `${author.name}: ${preview}` };
   if (author.staff) {
-    if (crew.length) await notifyTeam(companyId, "team_message", { projectId, recipients: crew, exclude: author.id, link: `/projects/${projectId}/install`, data });
+    if (crew.length) await notifyTeam(companyId, "team_message", { projectId, recipients: crew, exclude: author.id, link: `/projects/${projectId}/schedule`, data });
   } else {
-    await notifyTeam(companyId, "team_message", { projectId, exclude: author.id, link: `/projects/${projectId}/install#team-chat`, data });
+    await notifyTeam(companyId, "team_message", { projectId, exclude: author.id, link: `/projects/${projectId}/schedule#team-chat`, data });
     const others = crew.filter((u) => u !== author.id);
-    if (others.length) await notifyTeam(companyId, "team_message", { projectId, recipients: others, link: `/projects/${projectId}/install`, data });
+    if (others.length) await notifyTeam(companyId, "team_message", { projectId, recipients: others, link: `/projects/${projectId}/schedule`, data });
   }
 }

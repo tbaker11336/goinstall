@@ -1,14 +1,14 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { paperworkValues, type PaperworkKind, type PaperworkTiming, type Specs } from "@goinstall/core";
+import { boardTitle, paperworkValues, type PaperworkKind, type PaperworkTiming, type Specs, type TestValues } from "@goinstall/core";
 import type { Tx } from "@goinstall/db";
-import { PDFDocument } from "pdf-lib";
+import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import type { Session } from "./auth";
 import { aerialTile, fileStem, loadDesignDoc } from "./design-docs";
 import { renderPlanPdf, renderSldPdf } from "./design-pdf";
 import { fileStore } from "./files";
 import { paperworkData } from "./paperwork";
-import { renderHandoverCover, renderSheetPdf, SHEET_TITLES } from "./paperwork-pdf";
+import { renderChecksPdf, renderHandoverCover, renderSheetPdf, renderTestResultsPdf, SHEET_TITLES } from "./paperwork-pdf";
 
 type Item = { id: string; project_id: string; kind: PaperworkKind; title: string; timing: string; fields: unknown; product_id: string | null };
 
@@ -74,8 +74,81 @@ export async function buildHandoverPack(tx: Tx, session: Session, item: Item): P
   if (s?.annualKwh) system.push(["Estimated generation (MCS)", `${s.annualKwh.toLocaleString("en-GB")} kWh a year`]);
   if (c.ev) system.push(["EV charger", [c.ev.make, c.ev.model].filter(Boolean).join(" ")]);
 
-  const parts: { name: string; bytes: Uint8Array; type: string }[] = [];
+  const parts: { name: string; bytes: Uint8Array; type: string; photos?: { caption: string; bytes: Uint8Array; type: string }[] }[] = [];
   const missing: string[] = [];
+
+  // What the installer recorded: test results, checks and readings, photos.
+  const [boards, checks, signoff, uploads] = await Promise.all([
+    tx
+      .selectFrom("electrical_test_boards as t")
+      .leftJoin("users as u", "u.id", "t.recorded_by")
+      .select(["t.board", "t.circuits", "t.captured_at", "u.full_name"])
+      .where("t.project_id", "=", item.project_id)
+      .orderBy("t.position")
+      .orderBy("t.created_at")
+      .execute(),
+    tx
+      .selectFrom("checklist_items as ci")
+      .leftJoin("users as u", "u.id", "ci.completed_by")
+      .leftJoin("checklist_templates as tp", "tp.id", "ci.template_id")
+      .select(["ci.title", "ci.done", "ci.serial", "ci.readings", "ci.note", "ci.photo_file_ids", "u.full_name", "tp.readings as reading_fields"])
+      .where("ci.project_id", "=", item.project_id)
+      .orderBy("ci.kind")
+      .orderBy("ci.captured_at")
+      .execute(),
+    tx.selectFrom("bookings").select(["signoff_name", "completed_at"]).where("project_id", "=", item.project_id).where("completed_at", "is not", null).orderBy("completed_at", "desc").executeTakeFirst(),
+    tx.selectFrom("files").select(["path", "content_type", "original_name"]).where("project_id", "=", item.project_id).where("category", "=", "handover").where("deleted_at", "is", null).orderBy("created_at").execute(),
+  ]);
+  const site = [c.site.address, c.site.postcode].filter(Boolean).join(", ");
+  if (boards.length) {
+    const doc = await renderTestResultsPdf({
+      companyName: co.name,
+      customerName: c.customer.name,
+      siteAddress: site,
+      boards: boards.map((b, i) => ({ title: boardTitle(b.board as TestValues, i), board: b.board as TestValues, circuits: b.circuits as TestValues[], recordedBy: b.full_name, recordedAt: b.captured_at })),
+    });
+    parts.push({ name: "Electrical test results", bytes: new Uint8Array(doc), type: "application/pdf" });
+  }
+  if (checks.length) {
+    const doc = await renderChecksPdf({
+      companyName: co.name,
+      items: checks.map((i) => ({
+        title: i.title,
+        who: i.full_name ?? "Installer",
+        done: i.done,
+        serial: i.serial,
+        note: i.note,
+        readings: Object.entries((i.readings ?? {}) as Record<string, string>)
+          .filter(([, v]) => v !== "")
+          .map(([k, v]) => {
+            const f = ((i.reading_fields ?? []) as { key: string; label: string; unit: string | null }[]).find((r) => r.key === k);
+            return `${f?.label ?? k.replace(/_/g, " ")}: ${v}${f?.unit ? ` ${f.unit}` : ""}`;
+          }),
+      })),
+      signoff: signoff?.signoff_name ? { name: signoff.signoff_name, at: signoff.completed_at } : null,
+    });
+    parts.push({ name: "Commissioning checks and readings", bytes: new Uint8Array(doc), type: "application/pdf" });
+  }
+  // Photos: the installer's (captioned with the step) and the office's uploads. JPEG and PNG go in the PDF.
+  const photoIds = checks.flatMap((i) => i.photo_file_ids);
+  const photoFiles = photoIds.length ? await tx.selectFrom("files").select(["id", "path", "content_type"]).where("id", "in", photoIds).where("deleted_at", "is", null).execute() : [];
+  const photos: { caption: string; bytes: Uint8Array; type: string }[] = [];
+  let skipped = 0;
+  const addPhoto = async (caption: string, f: { path: string; content_type: string }) => {
+    if (f.content_type !== "image/jpeg" && f.content_type !== "image/png") return void skipped++;
+    try {
+      photos.push({ caption, bytes: await fileStore().get(f.path), type: f.content_type });
+    } catch {
+      skipped++;
+    }
+  };
+  for (const i of checks) for (const fid of i.photo_file_ids) {
+    const f = photoFiles.find((x) => x.id === fid);
+    if (f) await addPhoto(i.title, f);
+  }
+  for (const u of uploads.filter((x) => x.content_type.startsWith("image/"))) await addPhoto(u.original_name ?? "Photo", u);
+  if (photos.length) parts.push({ name: "Photos", bytes: new Uint8Array(), type: "photos", photos });
+  if (skipped) missing.push(`${skipped} photo${skipped === 1 ? "" : "s"} (only JPEG and PNG go in the PDF)`);
   const design = s ? await loadDesignDoc(tx, item.project_id) : null;
   if (design) {
     parts.push({ name: "System design", bytes: new Uint8Array(await renderPlanPdf(design, await aerialTile(design.position))), type: "application/pdf" });
@@ -100,6 +173,7 @@ export async function buildHandoverPack(tx: Tx, session: Session, item: Item): P
     ? await tx.selectFrom("products as p").innerJoin("files as f", "f.id", "p.datasheet_file_id").select(["p.name", "f.path", "f.content_type"]).where("p.id", "in", productIds).where("f.deleted_at", "is", null).execute()
     : [];
   for (const d of sheets) parts.push({ name: `Datasheet: ${d.name}`, bytes: await fileStore().get(d.path), type: d.content_type });
+  for (const u of uploads.filter((x) => x.content_type === "application/pdf")) parts.push({ name: u.original_name?.replace(/\.pdf$/i, "") ?? "Document", bytes: await fileStore().get(u.path), type: u.content_type });
 
   const specs = productIds.length ? await tx.selectFrom("products").select(["id", "name", "category", "specs"]).where("id", "in", productIds).execute() : [];
   const cover = await renderHandoverCover({
@@ -107,7 +181,7 @@ export async function buildHandoverPack(tx: Tx, session: Session, item: Item): P
     brand: co.brand,
     companyContact: [co.phone, co.email, co.website].filter((v): v is string => Boolean(v)),
     customerName: c.customer.name,
-    siteAddress: [c.site.address, c.site.postcode].filter(Boolean).join(", "),
+    siteAddress: site,
     completedAt: c.commissionedAt,
     system,
     // The warranties page follows the cover, then the merged documents.
@@ -122,7 +196,25 @@ export async function buildHandoverPack(tx: Tx, session: Session, item: Item): P
   const pack = await PDFDocument.create();
   pack.setTitle(`Handover pack, ${c.customer.name}`);
   pack.setAuthor(co.name);
-  for (const part of [{ name: "Cover", bytes: new Uint8Array(cover), type: "application/pdf" }, ...parts]) {
+  const font = await pack.embedFont(StandardFonts.Helvetica);
+  for (const part of [{ name: "Cover", bytes: new Uint8Array(cover), type: "application/pdf" }, ...parts] as typeof parts) {
+    if (part.photos) {
+      // Two photos to an A4 page, each fitted with its caption underneath.
+      for (let n = 0; n < part.photos.length; n += 2) {
+        const page = pack.addPage([595.28, 841.89]);
+        if (n === 0) page.drawText("Photos", { x: 40, y: 805, size: 15, font, color: rgb(0.06, 0.09, 0.16) });
+        for (const [k, ph] of part.photos.slice(n, n + 2).entries()) {
+          const img = await (ph.type === "image/png" ? pack.embedPng(ph.bytes) : pack.embedJpg(ph.bytes)).catch(() => null);
+          const top = k === 0 ? 790 : 410;
+          if (img) {
+            const scale = Math.min(515 / img.width, 340 / img.height);
+            page.drawImage(img, { x: (595.28 - img.width * scale) / 2, y: top - img.height * scale, width: img.width * scale, height: img.height * scale });
+          }
+          page.drawText(ph.caption.replace(/[^\x20-\x7E£]/g, "").slice(0, 90), { x: 40, y: top - 356, size: 9, font, color: rgb(0.28, 0.33, 0.4) });
+        }
+      }
+      continue;
+    }
     if (part.type === "application/pdf") {
       const src = await PDFDocument.load(part.bytes, { ignoreEncryption: true }).catch(() => null);
       if (!src) {

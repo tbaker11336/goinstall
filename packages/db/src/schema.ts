@@ -284,6 +284,21 @@ export interface Contacts {
   updated_at: Generated<Timestamp>;
 }
 
+export interface ElectricalTestBoards {
+  board: Generated<Json>;
+  booking_id: string | null;
+  captured_at: Generated<Timestamp>;
+  circuits: Generated<Json>;
+  company_id: Generated<string>;
+  created_at: Generated<Timestamp>;
+  created_by: Generated<string | null>;
+  id: string;
+  position: Generated<number>;
+  project_id: string;
+  recorded_by: string | null;
+  updated_at: Generated<Timestamp>;
+}
+
 export interface EnergyProfiles {
   annual_kwh: number | null;
   company_id: Generated<string>;
@@ -955,6 +970,7 @@ export interface DB {
   checklist_templates: ChecklistTemplates;
   companies: Companies;
   contacts: Contacts;
+  electrical_test_boards: ElectricalTestBoards;
   energy_profiles: EnergyProfiles;
   ev_designs: EvDesigns;
   files: Files;

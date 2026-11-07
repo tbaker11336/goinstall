@@ -1,5 +1,5 @@
 import "server-only";
-import { bookingDates, bookingTitle, firstName } from "@goinstall/core";
+import { bookingDates, bookingTitle, cleanTestBoard, firstName, MAX_CIRCUITS } from "@goinstall/core";
 import { sql, withService, type Tx } from "@goinstall/db";
 import { textToHtml } from "@goinstall/integrations";
 import { randomUUID } from "node:crypto";
@@ -50,6 +50,18 @@ export const opSchema = z.discriminatedUnion("type", [
     .refine((o) => o.response === "accepted" || Boolean(o.reason), { message: "Say why you can't do the job", path: ["reason"] }),
   z.object({ opId: z.string().max(64), type: z.literal("team_message"), id: z.uuid(), projectId: z.uuid(), body: z.string().trim().min(1).max(2000), capturedAt: at }),
   z.object({ opId: z.string().max(64), type: z.literal("chat_read"), projectId: z.uuid(), capturedAt: at }),
+  z.object({
+    opId: z.string().max(64),
+    type: z.literal("test_board"),
+    id: z.uuid(),
+    bookingId: z.uuid(),
+    position: z.number().int().min(0).max(50),
+    board: z.record(z.string().max(40), z.string().max(200)),
+    circuits: z.array(z.record(z.string().max(40), z.string().max(200))).max(MAX_CIRCUITS),
+    // A board deleted on the phone.
+    removed: z.boolean().optional(),
+    capturedAt: at,
+  }),
 ]);
 export type SyncOp = z.infer<typeof opSchema>;
 export type OpResult = { opId: string; ok: boolean; note?: string; error?: string };
@@ -99,6 +111,21 @@ export async function applyOp(tx: Tx, session: Session, op: SyncOp, completed: S
           .values({ id: op.id, booking_id: b.id, project_id: b.project_id, template_id: op.templateId, kind: t?.kind ?? "install", product: t?.product ?? "general", title: t?.title ?? "Step", ...values })
           .onConflict((oc) => oc.columns(["company_id", "booking_id", "template_id"]).doUpdateSet(values))
           .execute();
+      return ok();
+    }
+    case "test_board": {
+      const b = await booking(tx, op.bookingId);
+      if (!b?.project_id) return fail("Job not found");
+      const existing = await tx.selectFrom("electrical_test_boards").select(["captured_at"]).where("id", "=", op.id).executeTakeFirst();
+      if (existing && existing.captured_at > when) return ok("kept newer value");
+      if (op.removed) {
+        await tx.deleteFrom("electrical_test_boards").where("id", "=", op.id).execute();
+        return ok();
+      }
+      const t = cleanTestBoard(op);
+      const values = { position: op.position, board: JSON.stringify(t.board), circuits: JSON.stringify(t.circuits), recorded_by: session.userId, captured_at: when };
+      if (existing) await tx.updateTable("electrical_test_boards").set(values).where("id", "=", op.id).execute();
+      else await tx.insertInto("electrical_test_boards").values({ id: op.id, project_id: b.project_id, booking_id: b.id, ...values }).execute();
       return ok();
     }
     case "booking_status": {

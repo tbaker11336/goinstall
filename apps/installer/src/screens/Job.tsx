@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Linking, Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { jobDates, longDay, timeOf, TYPE_LABEL, ukDate } from "../format";
 import type { Nav } from "../nav";
-import { useMyResponse, useStore } from "../store";
+import { useMyResponse, useStore, useTestBoards } from "../store";
 import { colors } from "../theme";
 import { BackLink, Button, Card, Checkbox, Field, H1, H2, Muted, RoofSketch } from "../ui";
 import { EvPlan, RoofPlan } from "../plan";
@@ -97,6 +97,7 @@ export function JobScreen({ nav, id }: { nav: Nav; id: string }) {
   const job = st.bundle?.jobs.find((j) => j.id === id);
   const [omw, setOmw] = useState(false);
   const [reporting, setReporting] = useState<string | null>(null);
+  const boards = useTestBoards(job ?? { projectId: null, testBoards: [] });
   if (!job) return <Muted style={{ padding: 20 }}>This job is no longer assigned to you.</Muted>;
   const dates = jobDates(job);
   const today = ukDate(new Date());
@@ -175,6 +176,14 @@ export function JobScreen({ nav, id }: { nav: Nav; id: string }) {
               {solar?.connectionForm && <Row label="DNO" value={solar.connectionForm} />}
               {ev && <Row label="EV charger" value={[ev.routeLengthM ? `${ev.routeLengthM} m run` : null, ev.cableSizeMm2 ? `${ev.cableSizeMm2} mm² cable` : null].filter(Boolean).join(" · ") || "See design"} />}
             </View>
+          </Card>
+        )}
+
+        {(job.type === "install" || job.type === "task") && st.bundle?.user.role === "installer" && job.projectId && (
+          <Card>
+            <H2>Electrical test results</H2>
+            <Muted style={{ marginBottom: 10 }}>{boards.length ? `${boards.length} board${boards.length === 1 ? "" : "s"}, ${boards.reduce((n, b) => n + b.circuits.length, 0)} circuits recorded.` : "Each board's details and circuit test results, for the certificate and the customer's handover pack."}</Muted>
+            <Button label={boards.length ? "Open test results" : "Record test results"} variant="outline" onPress={() => nav.push({ name: "tests", id: job.id })} testID="open-test-results" />
           </Card>
         )}
 

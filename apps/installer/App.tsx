@@ -13,6 +13,7 @@ import { Notifications } from "./src/screens/Notifications";
 import { Placeholder, Profile } from "./src/screens/Other";
 import { SignOff } from "./src/screens/SignOff";
 import { Survey } from "./src/screens/Survey";
+import { TestResults } from "./src/screens/TestResults";
 import { StoreProvider, useChats, useStore } from "./src/store";
 import { colors } from "./src/theme";
 
@@ -78,6 +79,7 @@ function Shell() {
         {route.name === "job" && <JobScreen nav={nav} id={route.id} />}
         {route.name === "survey" && <Survey nav={nav} id={route.id} />}
         {route.name === "checklist" && <Checklist nav={nav} id={route.id} />}
+        {route.name === "tests" && <TestResults nav={nav} id={route.id} />}
         {route.name === "signoff" && <SignOff nav={nav} id={route.id} />}
       </View>
       {isTab && (

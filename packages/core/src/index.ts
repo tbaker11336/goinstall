@@ -17,3 +17,4 @@ export * from "./enquiry-form";
 export * from "./finance";
 export * from "./proposal-summary";
 export * from "./proposal-survey";
+export * from "./test-results";

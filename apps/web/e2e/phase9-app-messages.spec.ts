@@ -32,7 +32,7 @@ test("the office and the installer chat about a job", async ({ page, browser, re
   await page.getByRole("link", { name: "Owen Lewis" }).click();
   await page.getByRole("link", { name: /Gloucester Road/ }).click();
   await page.waitForURL(/\/projects\/[0-9a-f-]{36}$/);
-  await page.getByRole("navigation", { name: "Project sections" }).getByRole("link", { name: "Install & paperwork", exact: true }).click();
+  await page.getByRole("navigation", { name: "Project sections" }).getByRole("link", { name: /Schedule$/ }).click();
   await page.getByLabel("Message to the team").fill("Key safe code is with the neighbour at 54.");
   await page.getByRole("button", { name: "Send to the team" }).click();
   await expect(page.getByText("Sent.")).toBeVisible();

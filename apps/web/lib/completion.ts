@@ -114,5 +114,5 @@ export async function completeInstall(companyId: string, projectId: string): Pro
     }
     return { balance: inv ? `Balance invoice ${inv.number} for ${formatPence(inv.amountPence)}.` : null };
   });
-  if (done) await notifyTeam(companyId, "job_completed", { projectId, link: `/projects/${projectId}/install`, data: { detail: done.balance ?? undefined } });
+  if (done) await notifyTeam(companyId, "job_completed", { projectId, link: `/projects/${projectId}/handover`, data: { detail: done.balance ?? undefined } });
 }

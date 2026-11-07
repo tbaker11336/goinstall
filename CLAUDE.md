@@ -56,6 +56,13 @@ design rules: never invent rule values).
   attached to every proposal (and its email) and accepted on signing.
 - Schedule: one calendar (day / week / month) with a team filter; clicking a
   booking shows it with Reschedule and Notify customer.
+- Project tabs: Schedule (bookings written like calendar invites: type,
+  title, when, where, guests, description; any booking type incl. "Other
+  visit") and Handover (installer photos, checklist readings, electrical
+  test results, office uploads, paperwork, generate and send the pack).
+- Electrical test results: per distribution board, the fields of the EIC
+  continuation sheet (circuit details and test results); installers fill
+  them in the app, the office can edit; values are text, nothing pre-filled.
 - Sign-up: production runs with `SIGNUP_EMAIL_CONFIRMATION=off` for now
   (internal use): accounts are created confirmed and signed straight in.
   Remove it before opening sign-ups to other installers.

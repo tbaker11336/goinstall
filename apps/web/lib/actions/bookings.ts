@@ -21,10 +21,17 @@ const optionalId = z
   .transform((v) => v || null);
 
 const bookingSchema = z.object({
-  type: z.enum(["survey", "install", "scaffold_up", "scaffold_down"]),
+  type: z.enum(["survey", "install", "scaffold_up", "scaffold_down", "task"]),
+  // The invite's title; installs and surveys are named for the job when left blank.
+  title: z
+    .string()
+    .trim()
+    .max(120)
+    .optional()
+    .transform((v) => v || null),
   start_date: z.iso.date("Choose a start date"),
   days: z.coerce.number().int().min(1, "At least one day").max(60).optional(),
-  // Installs: any length, in hours (timed, from start_time), working days or working weeks.
+  // Any length, in hours (timed, from start_time), working days or working weeks.
   length: z.coerce.number().positive("Enter how long the job takes").optional(),
   length_unit: z.enum(LENGTH_UNITS).optional(),
   // Surveys have a time; other bookings are all day.
@@ -58,7 +65,7 @@ export async function saveBookingAction(projectId: string, bookingId: string | n
   if (!engineers.success) return { error: "Choose the engineers again." };
   let timed = Boolean(d.type === "survey" && d.start_time);
   let span: { startsAt: string; endsAt: string };
-  if (d.type === "install" && d.length !== undefined && d.length_unit) {
+  if (d.length !== undefined && d.length_unit) {
     const r = bookingSpan({ startDate: d.start_date, startTime: d.start_time || null, length: d.length, unit: d.length_unit });
     if (!r.ok) return { error: r.error };
     span = r;
@@ -77,7 +84,7 @@ export async function saveBookingAction(projectId: string, bookingId: string | n
     if (id) {
       const b = await tx
         .updateTable("bookings")
-        .set({ type: d.type, starts_at: new Date(span.startsAt), ends_at: new Date(span.endsAt), all_day: !timed, notes: d.notes })
+        .set({ type: d.type, title: d.title, starts_at: new Date(span.startsAt), ends_at: new Date(span.endsAt), all_day: !timed, notes: d.notes })
         .where("id", "=", id)
         .where("project_id", "=", projectId)
         .returning("id")
@@ -87,14 +94,16 @@ export async function saveBookingAction(projectId: string, bookingId: string | n
       id = (
         await tx
           .insertInto("bookings")
-          .values({ project_id: projectId, type: d.type, starts_at: new Date(span.startsAt), ends_at: new Date(span.endsAt), all_day: !timed, notes: d.notes })
+          .values({ project_id: projectId, type: d.type, title: d.title, starts_at: new Date(span.startsAt), ends_at: new Date(span.endsAt), all_day: !timed, notes: d.notes })
           .returning("id")
           .executeTakeFirstOrThrow()
       ).id;
     }
-    if (d.type === "install") {
-      await setAssignment(tx, id, "team", { teamId: d.team_id });
-      await setAssignment(tx, id, "electrician", { userId: d.electrician_id });
+    if (d.type === "install" || d.type === "task") {
+      if (d.type === "install") {
+        await setAssignment(tx, id, "team", { teamId: d.team_id });
+        await setAssignment(tx, id, "electrician", { userId: d.electrician_id });
+      }
       // Engineers: replace the list with the ones ticked.
       await tx.deleteFrom("booking_assignments").where("booking_id", "=", id).where("role", "=", "engineer").execute();
       if (engineers.data.length) await tx.insertInto("booking_assignments").values([...new Set(engineers.data)].map((u) => ({ booking_id: id!, role: "engineer", user_id: u }))).execute();
@@ -115,7 +124,7 @@ export async function saveBookingAction(projectId: string, bookingId: string | n
     revalidatePath("/schedule");
     const length = bookingLength({ startsAt: span.startsAt, endsAt: span.endsAt, allDay: !timed });
     const many = timed || bookingDates(span.startsAt, span.endsAt).length > 1;
-    return { message: `${BOOKING_TYPE_LABELS[d.type]} booked${many ? ` for ${formatLength(length.value, length.unit)}` : ""}.` };
+    return { message: `${d.type === "task" ? (d.title ?? "Visit") : BOOKING_TYPE_LABELS[d.type]} ${bookingId ? "updated" : "booked"}${many ? ` for ${formatLength(length.value, length.unit)}` : ""}.` };
   });
   const sv = saved as { companyId: string; bookingId: string; actor: string } | null;
   if (sv) await notifyBooking(sv.companyId, sv.bookingId, sv.actor);
@@ -343,6 +352,6 @@ export async function sendTeamMessageAction(projectId: string, _: ActionResult, 
   });
   if (!sent) return { error: "Project not found" };
   await notifyChat(sent.companyId, projectId, sent.author, body.data);
-  revalidatePath(`/projects/${projectId}/install`);
+  revalidatePath(`/projects/${projectId}/schedule`);
   return { message: "Sent." };
 }
