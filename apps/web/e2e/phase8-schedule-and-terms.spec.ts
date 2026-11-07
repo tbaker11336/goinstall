@@ -1,5 +1,5 @@
 import path from "node:path";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 import { APP_URL, OUTBOX } from "../playwright.config";
 import { signInAs } from "./helpers";
@@ -104,15 +104,43 @@ test("terms and conditions PDF goes onto new proposals", async ({ page }) => {
   await page.getByRole("button", { name: "Save terms" }).click();
   await expect(page.getByText(/Terms saved\./)).toBeVisible();
 
+  // The company's logo and About us go on proposals.
+  await page.goto("/settings/company");
+  await page.getByLabel("About us").fill("Family-run installers in Bristol since 2012.");
+  await page.getByRole("button", { name: "Save company details" }).click();
+  await expect(page.getByText("Company details saved.")).toBeVisible();
+  await page.getByLabel("Upload a logo").setInputFiles(path.join(process.cwd(), "e2e", "fixtures", "site-photo.png"));
+  await page.getByRole("button", { name: "Upload logo" }).click();
+  await expect(page.getByText("Logo saved. It's on your proposals.")).toBeVisible();
+  await expect(page.getByAltText("Your current logo")).toBeVisible();
+
   await page.goto("/contacts");
   await page.getByRole("link", { name: "Rachel Bennett" }).click();
   await page.getByRole("link", { name: /8 Elm Close/ }).click();
   await page.waitForURL(/\/projects\/[0-9a-f-]{36}$/);
+  // A survey answer for the proposal's survey section.
+  await page.getByRole("navigation", { name: "Project sections" }).getByRole("link", { name: /Survey$/ }).first().click();
+  await page.getByLabel("Earthing arrangement").selectOption("TN-C-S (PME)");
+  await page.getByRole("button", { name: "Save answers" }).click();
+  await expect(page.getByText("1 answer saved.")).toBeVisible();
   await page.getByRole("navigation", { name: "Project sections" }).getByRole("link", { name: /Proposal$/ }).click();
   await page.getByRole("button", { name: "Create proposal from design" }).click();
   const doc = page.getByRole("article", { name: "Proposal" });
   await expect(doc.getByRole("heading", { name: "Terms and conditions" })).toBeVisible();
   await expect(doc.getByRole("link", { name: /Read the terms and conditions \(PDF\)/ })).toBeVisible();
+
+  await expect(doc.getByRole("heading", { name: /^About / })).toBeVisible();
+  await expect(doc.getByText("Family-run installers in Bristol since 2012.")).toBeVisible();
+  await expect(doc.getByRole("img", { name: /logo$/ })).toBeVisible();
+  // The survey, with a note beside the section.
+  const survey = doc.getByRole("region", { name: "Your survey" });
+  await expect(survey.getByText("TN-C-S (PME)")).toBeVisible();
+  const editor = page.getByRole("group", { name: "Survey on the proposal" });
+  const note = editor.getByLabel(/^Note for /).first();
+  await note.fill("Your earthing is fine for the new system.");
+  await page.getByRole("button", { name: "Save draft" }).click();
+  await expect(page.getByText(/^Saved\. Total/)).toBeVisible();
+  await expect(survey.getByText("Your earthing is fine for the new system.")).toBeVisible();
 
   // Lines can be shown without a price, or hidden; the total still counts them.
   const totalBefore = (await page.getByTestId("proposal-total").textContent())!;
@@ -131,4 +159,10 @@ test("terms and conditions PDF goes onto new proposals", async ({ page }) => {
   await expect(doc.getByText("Certification and paperwork")).toHaveCount(0);
   const toPence = (t: string) => Math.round(Number(t.replace(/[£,]/g, "")) * 100);
   expect(toPence((await page.getByTestId("proposal-total").textContent())!) - toPence(totalBefore)).toBe(10_000);
+
+  // The PDF still draws with the logo, survey and About us in it.
+  const pdf = await page.request.get((await page.getByRole("link", { name: "Download PDF" }).getAttribute("href"))!);
+  expect(pdf.status()).toBe(200);
+  expect(pdf.headers()["content-type"]).toBe("application/pdf");
+  if (process.env.SHOT_DIR) writeFileSync(`${process.env.SHOT_DIR}/proposal-about-survey.pdf`, await pdf.body());
 });

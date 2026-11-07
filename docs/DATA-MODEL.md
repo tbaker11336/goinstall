@@ -57,6 +57,7 @@ wins.
 | 7 | `notification_log` | One row per customer reminder step sent (event, entity, step), so the daily reminders job never sends one twice (added in build) |
 | 7 | `sms_accounts` | The SMS add-on per company: Stripe subscription on GoInstall's account, status, the company's own UK number (Twilio subaccount), texts used this period. Written by the server; admins can read it. `companies.notification_settings` holds the event × channel choices and reminder timings (off until set); `contacts.sms_opt_out_at` records STOP; `messages.sms_segments` counts billable texts; `surveys.link_nonce` lets a reminder resend the same link (added in build) |
 | 4 | `companies.terms_file_id`, `proposals.terms_file_id` | The company's terms and conditions PDF (a `files` row), copied onto each new or draft proposal and frozen once sent, like `proposals.terms` (added in build) |
+| 4 | `companies.about`, `companies.logo_path`, `proposals.survey_notes`, `proposals.survey` | About us text and logo (PNG/JPEG in storage) for proposals; staff notes per survey section (`<kind>:<section>` → note, hidden) and the survey answers with those notes as the customer sees them, refreshed while draft and frozen once sent (added in build) |
 
 ## Access rules
 

@@ -1,10 +1,11 @@
 import "server-only";
 import { createHash, createHmac, randomBytes } from "node:crypto";
-import { buildLinesFromDesigns, financeForSummary, type CatalogueItem, type LineDisplay, type ProductCategory, type ProposalSummary, type SummaryArray, type SummaryProduct, type VatRates } from "@goinstall/core";
+import { buildLinesFromDesigns, financeForSummary, proposalSurvey, shownSurvey, type ProposalSurveySection, type SurveyNotes, type CatalogueItem, type LineDisplay, type ProductCategory, type ProposalSummary, type SummaryArray, type SummaryProduct, type VatRates } from "@goinstall/core";
 import { sql, type Tx } from "@goinstall/db";
 import type { ProposalView } from "@/components/proposal-document";
 import { loadEnergy } from "./energy";
 import { signedUrls } from "./files";
+import { surveyConfig } from "./survey";
 import { env } from "./env";
 
 /** Secret for proposal links. A dedicated one if set; else the service key (server-only either way). */
@@ -178,6 +179,15 @@ export async function proposalContent(tx: Tx, proposalId: string, companyId?: st
       "p.site_postcode",
       "c.name as contact_name",
       "co.name as company_name",
+      "co.about as company_about",
+      "co.logo_path as company_logo_path",
+      "co.address_line1 as company_address_line1",
+      "co.town as company_town",
+      "co.postcode as company_postcode",
+      "co.company_number",
+      "co.vat_number as company_vat_number",
+      "co.competent_person_scheme_number",
+      "pr.survey",
       "co.mcs_number",
       "co.brand_primary_colour",
       "co.document_prefix",
@@ -231,7 +241,41 @@ export function proposalView(c: ProposalContent): ProposalView {
     summary: (p.summary ?? {}) as unknown as ProposalView["summary"],
     lines: c.lines.map((l) => ({ id: l.id, section: l.section, description: l.description, quantity: Number(l.quantity), unitPricePence: Number(l.unit_price_pence), vatRate: Number(l.vat_rate), display: l.display as LineDisplay })),
     terms: p.terms,
+    survey: shownSurvey((p.survey ?? []) as unknown as ProposalSurveySection[]),
+    about: {
+      text: p.company_about,
+      facts: [
+        p.mcs_number ? `MCS certified installer ${p.mcs_number}` : null,
+        p.competent_person_scheme_number ? `Competent person scheme ${p.competent_person_scheme_number}` : null,
+        p.company_number ? `Company number ${p.company_number}` : null,
+        p.company_vat_number ? `VAT ${p.company_vat_number}` : null,
+      ].filter((x): x is string => Boolean(x)),
+      contact: [[p.company_address_line1, p.company_town, p.company_postcode].filter(Boolean).join(", ") || null, p.company_phone, p.company_email, p.company_website].filter((x): x is string => Boolean(x)),
+    },
   };
+}
+
+/**
+ * Refresh a draft's survey section from the project's surveys and the
+ * staff notes. Sent proposals keep the survey they were sent with.
+ */
+export async function refreshProposalSurvey(tx: Tx, proposalId: string) {
+  const pr = await tx
+    .selectFrom("proposals as pr")
+    .innerJoin("projects as p", (j) => j.onRef("p.id", "=", "pr.project_id").onRef("p.company_id", "=", "pr.company_id"))
+    .select(["pr.status", "pr.survey_notes", "p.id as project_id", "p.products"])
+    .where("pr.id", "=", proposalId)
+    .executeTakeFirstOrThrow();
+  if (pr.status !== "draft") return;
+  const surveys = await tx.selectFrom("surveys").select(["id", "kind"]).where("project_id", "=", pr.project_id).orderBy("kind", "desc").execute();
+  const inputs = await Promise.all(
+    surveys.map(async (sv) => {
+      const [{ questions }, fields] = await Promise.all([surveyConfig(tx, sv.kind, pr.products), tx.selectFrom("survey_fields").select(["key", "value"]).where("survey_id", "=", sv.id).execute()]);
+      return { kind: sv.kind, questions, values: Object.fromEntries(fields.map((f) => [f.key, f.value])) };
+    }),
+  );
+  const sections = proposalSurvey(inputs, (pr.survey_notes ?? {}) as SurveyNotes);
+  await tx.updateTable("proposals").set({ survey: JSON.stringify(sections) }).where("id", "=", proposalId).execute();
 }
 
 /** Customer opened the link: count it and move Sent → Viewed (service role only). */
@@ -269,7 +313,9 @@ export async function proposalViewWithLayout(c: ProposalContent): Promise<Propos
   const view = proposalView(c);
   const path = view.summary.layout?.path;
   const termsPath = c.proposal.terms_file_path;
-  const urls = await signedUrls([path, termsPath].filter((x): x is string => Boolean(x)), 3600);
+  const logoPath = c.proposal.company_logo_path;
+  const urls = await signedUrls([path, termsPath, logoPath].filter((x): x is string => Boolean(x)), 3600);
+  if (logoPath) view.logoUrl = urls.get(logoPath) ?? null;
   if (path) view.layoutUrl = urls.get(path) ?? null;
   if (termsPath) {
     const url = urls.get(termsPath);

@@ -1,4 +1,4 @@
-import { customerLines, formatPence, paybackLabel, paybackYears, proposalReference, proposalTotals, SECTION_LABELS, type LineDisplay, type ProposalSection, type ProposalSummary } from "@goinstall/core";
+import { customerLines, formatPence, paybackLabel, paybackYears, proposalReference, proposalTotals, SECTION_LABELS, type LineDisplay, type ProposalSection, type ProposalSurveySection, type ProposalSummary } from "@goinstall/core";
 import { AssumptionsSection, BillsSection, EnvironmentSection, FinanceSection, LayoutImage, McsSection, SystemSection } from "./proposal-sections";
 import { formatDate } from "@/lib/utils";
 
@@ -21,6 +21,12 @@ export interface ProposalView {
   terms: string | null;
   /** Products on the proposal with a photo or datasheet to show (signed URLs). */
   products?: { id: string; name: string; makeModel: string; photoUrl: string | null; datasheetUrl: string | null }[];
+  /** The company's logo (signed URL), shown in place of its initials. */
+  logoUrl?: string | null;
+  /** From Settings › Company details. */
+  about?: { text: string | null; facts: string[]; contact: string[] };
+  /** The customer's survey answers by section, with the installer's note beside each. */
+  survey?: ProposalSurveySection[];
   /** The company's terms PDF attached to this proposal (signed URL). */
   termsFile?: { url: string; name: string } | null;
 }
@@ -87,9 +93,14 @@ export function ProposalDocument({ p }: { p: ProposalView }) {
     <article className="flex flex-col gap-6 rounded-[14px] border bg-card p-8 max-md:p-5" aria-label="Proposal">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b pb-6">
         <div className="flex items-center gap-3">
-          <span aria-hidden className="grid size-11 place-items-center rounded-[10px] bg-foreground text-sm font-bold text-white">
-            {initials(p.companyName)}
-          </span>
+          {p.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={p.logoUrl} alt={`${p.companyName} logo`} className="h-14 max-w-[180px] object-contain" />
+          ) : (
+            <span aria-hidden className="grid size-11 place-items-center rounded-[10px] bg-foreground text-sm font-bold text-white">
+              {initials(p.companyName)}
+            </span>
+          )}
           <div>
             <p className="font-bold">{p.companyName}</p>
             <p className="text-[13px] text-ink-3">{p.mcsNumber ? `MCS certified installer · ${p.mcsNumber}` : "Installer"}</p>
@@ -193,9 +204,9 @@ export function ProposalDocument({ p }: { p: ProposalView }) {
                 {x.photoUrl ? (
                   // Signed storage URLs: a plain img, not next/image.
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={x.photoUrl} alt={x.name} className="size-20 shrink-0 rounded-md bg-muted object-contain" />
+                  <img src={x.photoUrl} alt={x.name} className="size-28 shrink-0 rounded-md bg-muted object-contain" />
                 ) : (
-                  <span className="size-20 shrink-0 rounded-md bg-muted" aria-hidden />
+                  <span className="size-28 shrink-0 rounded-md bg-muted" aria-hidden />
                 )}
                 <span className="flex min-w-0 flex-col gap-1 text-sm">
                   <span className="font-semibold">{x.name}</span>
@@ -212,12 +223,66 @@ export function ProposalDocument({ p }: { p: ProposalView }) {
         </section>
       )}
 
+      {p.survey && p.survey.length > 0 && (
+        <section aria-labelledby="survey-heading" className="flex flex-col gap-3 border-t pt-4">
+          <h2 id="survey-heading" className="text-lg font-bold">
+            Your survey
+          </h2>
+          <p className="-mt-2 text-sm text-ink-3">What we found at your property, with our notes.</p>
+          {p.survey.map((sec) => (
+            <div key={sec.key} className="grid gap-3 rounded-lg border p-4 md:grid-cols-2" data-testid="survey-section">
+              <div>
+                <h3 className="mb-2 font-semibold">{sec.title}</h3>
+                {sec.items.length > 0 ? (
+                  <dl className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-4 gap-y-1 text-sm">
+                    {sec.items.map((it) => (
+                      <div key={it.label} className="contents">
+                        <dt className="text-ink-3">{it.label}</dt>
+                        <dd className="whitespace-pre-line">{it.value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                ) : (
+                  <p className="text-sm text-ink-3">No answers recorded.</p>
+                )}
+              </div>
+              <div className="rounded-md bg-surface-subtle p-3 text-sm">
+                <p className="mb-1 text-xs font-bold tracking-[0.06em] text-ink-3 uppercase">Our notes</p>
+                <p className="whitespace-pre-line">{sec.note ?? "—"}</p>
+              </div>
+            </div>
+          ))}
+        </section>
+      )}
+
       <BillsSection s={p.summary} />
       <FinanceSection s={p.summary} />
       <SystemSection s={p.summary} />
       <McsSection s={p.summary} />
       <EnvironmentSection s={p.summary} />
       <AssumptionsSection s={p.summary} />
+
+      {p.about && (p.about.text || p.about.facts.length > 0) && (
+        <section aria-labelledby="about-heading" className="flex flex-col gap-3 border-t pt-4">
+          <h2 id="about-heading" className="text-lg font-bold">
+            About {p.companyName}
+          </h2>
+          <div className="grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+            <div className="flex flex-col gap-3">
+              {p.logoUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={p.logoUrl} alt="" className="h-12 w-fit max-w-[200px] object-contain" />
+              )}
+              {p.about.text && <p className="whitespace-pre-line text-sm text-ink-2">{p.about.text}</p>}
+            </div>
+            <ul className="flex flex-col gap-1 text-sm text-ink-3">
+              {[...p.about.facts, ...p.about.contact].map((f) => (
+                <li key={f}>{f}</li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )}
 
       {(p.terms || p.termsFile) && (
         <section aria-labelledby="terms-heading" className="flex flex-col gap-2 border-t pt-4 text-sm">

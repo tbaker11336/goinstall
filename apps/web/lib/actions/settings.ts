@@ -8,6 +8,7 @@ import { z } from "zod";
 import { asUser, requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { devAuthEnabled, env } from "@/lib/env";
+import { fileStore } from "@/lib/files";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 export interface ActionResult {
@@ -48,7 +49,40 @@ const companySchema = z.object({
   competent_person_scheme_number: text,
   brand_primary_colour: colour,
   brand_secondary_colour: colour,
+  about: z.string().trim().max(5000, "Keep About us under 5,000 characters").transform((v) => v || null).optional(),
 });
+
+const LOGO_TYPES: Record<string, string> = { "image/png": "png", "image/jpeg": "jpg" };
+
+/** The company logo, shown on proposals (PNG or JPEG so it can go in the PDF too). */
+export async function uploadLogoAction(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const file = form.get("logo");
+  if (!(file instanceof File) || file.size === 0) return { error: "Choose a logo to upload." };
+  const ext = LOGO_TYPES[file.type];
+  if (!ext) return { error: "Upload the logo as a PNG or JPEG." };
+  if (file.size > 2 * 1024 * 1024) return { error: "That logo is too large (2 MB maximum)." };
+  return asUser(
+    async (tx, session) => {
+      const path = `${session.companyId}/branding/logo-${randomUUID()}.${ext}`;
+      await fileStore().put(path, new Uint8Array(await file.arrayBuffer()), file.type);
+      await tx.updateTable("companies").set({ logo_path: path }).where("id", "=", session.companyId).execute();
+      revalidatePath("/", "layout");
+      return { message: "Logo saved. It's on your proposals." };
+    },
+    [...ADMIN],
+  );
+}
+
+export async function removeLogoAction(): Promise<ActionResult> {
+  return asUser(
+    async (tx, session) => {
+      await tx.updateTable("companies").set({ logo_path: null }).where("id", "=", session.companyId).execute();
+      revalidatePath("/", "layout");
+      return { message: "Logo removed." };
+    },
+    [...ADMIN],
+  );
+}
 
 export async function updateCompanyAction(_: ActionResult, form: FormData): Promise<ActionResult> {
   const parsed = companySchema.safeParse(Object.fromEntries(form));

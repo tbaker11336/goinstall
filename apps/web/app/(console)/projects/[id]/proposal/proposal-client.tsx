@@ -1,6 +1,6 @@
 "use client";
 
-import { formatPence, lineTotal, parsePence, proposalTotals, LINE_DISPLAY_LABELS, LINE_DISPLAYS, SECTION_LABELS, type LineDisplay, type ProposalSection } from "@goinstall/core";
+import { formatPence, lineTotal, parsePence, proposalTotals, LINE_DISPLAY_LABELS, LINE_DISPLAYS, SECTION_LABELS, type LineDisplay, type ProposalSection, type ProposalSurveySection } from "@goinstall/core";
 import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -132,7 +132,7 @@ export function ProposalEditor({
   labourVat,
 }: {
   proposalId: string;
-  initial: { title: string; intro: string; depositPct: string; lines: EditorLine[] };
+  initial: { title: string; intro: string; depositPct: string; lines: EditorLine[]; survey: ProposalSurveySection[] };
   labourVat: number | null;
 }) {
   const router = useRouter();
@@ -140,6 +140,7 @@ export function ProposalEditor({
   const [intro, setIntro] = useState(initial.intro);
   const [depositPct, setDepositPct] = useState(initial.depositPct);
   const [lines, setLines] = useState(initial.lines);
+  const [surveyNotes, setSurveyNotes] = useState<Record<string, { note: string | null; hidden: boolean }>>(() => Object.fromEntries(initial.survey.map((s) => [s.key, { note: s.note, hidden: s.hidden }])));
   const { pending, state, run } = useRun();
 
   const parsed = lines.map((l) => ({ quantity: Number(l.quantity) || 0, unitPricePence: parsePence(l.unitPrice.replace(/^−/, "-")) ?? 0, vatRate: Number(l.vatRate) || 0 }));
@@ -174,6 +175,7 @@ export function ProposalEditor({
           origin: l.origin,
           display: l.display,
         })),
+        surveyNotes,
       };
       if (!Number.isFinite(input.depositPct)) return { error: "Enter the deposit as a percentage." };
       if (input.lines.some((l) => !Number.isFinite(l.quantity) || !Number.isFinite(l.vatRate))) return { error: "Quantities and VAT rates must be numbers." };
@@ -296,6 +298,43 @@ export function ProposalEditor({
           <Plus className="size-4" aria-hidden /> Add line
         </Button>
       </div>
+
+      {initial.survey.length > 0 && (
+        <fieldset className="flex flex-col gap-3 border-t pt-4">
+          <legend className="text-sm font-bold">Survey on the proposal</legend>
+          <p className="text-[13px] text-ink-3">The customer sees each section&apos;s answers with your note beside it. Saving also brings in any new survey answers.</p>
+          {initial.survey.map((sec, si) => {
+            const v = surveyNotes[sec.key] ?? { note: null, hidden: false };
+            const set = (patch: Partial<typeof v>) => setSurveyNotes((n) => ({ ...n, [sec.key]: { ...v, ...patch } }));
+            return (
+              <div key={sec.key} className="grid gap-3 rounded-lg border p-3 md:grid-cols-2">
+                <div className="flex flex-col gap-1.5 text-sm">
+                  <span className="font-semibold">{sec.title}</span>
+                  {sec.items.length ? (
+                    <ul className="text-ink-3">
+                      {sec.items.map((it) => (
+                        <li key={it.label}>
+                          {it.label}: <span className="text-ink-2">{it.value}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <span className="text-ink-3">No answers yet.</span>
+                  )}
+                  <label className="mt-1 flex items-center gap-2 text-[13px]">
+                    <input type="checkbox" checked={!v.hidden} onChange={(e) => set({ hidden: !e.target.checked })} className="size-4" />
+                    Show on the proposal
+                  </label>
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor={`sn-${si}`}>Note for {sec.title}</Label>
+                  <Textarea id={`sn-${si}`} rows={3} value={v.note ?? ""} onChange={(e) => set({ note: e.target.value || null })} />
+                </div>
+              </div>
+            );
+          })}
+        </fieldset>
+      )}
 
       <div className="flex flex-wrap items-end justify-between gap-4 border-t pt-4">
         <dl className="flex gap-6 text-sm" aria-live="polite">

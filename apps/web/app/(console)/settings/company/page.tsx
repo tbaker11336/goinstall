@@ -1,7 +1,8 @@
 import { ActionForm, SubmitButton } from "@/components/forms";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Field, Input } from "@/components/ui/input";
-import { updateCompanyAction } from "@/lib/actions/settings";
+import { Field, Input, Textarea } from "@/components/ui/input";
+import { removeLogoAction, updateCompanyAction, uploadLogoAction } from "@/lib/actions/settings";
+import { signedUrls } from "@/lib/files";
 import { asUser } from "@/lib/auth";
 
 export const metadata = { title: "Company details" };
@@ -23,6 +24,7 @@ function TextField({ c, name, label, type = "text", hint, className }: { c: Comp
 
 export default async function CompanySettingsPage() {
   const c = await load();
+  const logoUrl = c.logo_path ? ((await signedUrls([c.logo_path], 600)).get(c.logo_path) ?? null) : null;
   return (
     <div className="grid max-w-3xl gap-6">
       <Card>
@@ -52,11 +54,41 @@ export default async function CompanySettingsPage() {
             <TextField c={c} name="competent_person_scheme_number" label="Competent person scheme number" />
             <TextField c={c} name="brand_primary_colour" label="Brand colour" hint="Hex, e.g. #0F766E" />
             <TextField c={c} name="brand_secondary_colour" label="Second brand colour" hint="Hex, e.g. #F59E0B" />
+            <Field label="About us" htmlFor="about" hint="Shown in the About section of every proposal, with your accreditations and contact details." className="sm:col-span-2">
+              <Textarea id="about" name="about" rows={5} defaultValue={c.about ?? ""} aria-describedby="about-hint" placeholder="Who you are, how long you've been installing, what customers can expect." />
+            </Field>
             <div className="sm:col-span-2">
               <SubmitButton>Save company details</SubmitButton>
             </div>
           </ActionForm>
-          <p className="mt-4 text-xs text-muted-foreground">Logo upload arrives once file storage is connected to your Supabase project.</p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex-col items-start">
+          <CardTitle>Logo</CardTitle>
+          <p className="text-sm text-ink-3">At the top of your proposals and their PDFs.</p>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          {logoUrl ? (
+            <div className="flex flex-wrap items-center gap-4">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={logoUrl} alt="Your current logo" className="h-16 max-w-[220px] rounded-md border bg-white object-contain p-2" />
+              <ActionForm action={removeLogoAction}>
+                <SubmitButton variant="outline" size="sm" pendingText="Removing…">
+                  Remove logo
+                </SubmitButton>
+              </ActionForm>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No logo yet: proposals show your initials.</p>
+          )}
+          <ActionForm action={uploadLogoAction} className="flex flex-wrap items-end gap-3" resetOnSuccess>
+            <Field label={logoUrl ? "Replace the logo" : "Upload a logo"} htmlFor="logo" hint="PNG or JPEG, up to 2 MB. A wide logo on a white or clear background works best.">
+              <Input id="logo" name="logo" type="file" accept="image/png,image/jpeg" required className="w-72 py-1.5" aria-describedby="logo-hint" />
+            </Field>
+            <SubmitButton pendingText="Uploading…">Upload logo</SubmitButton>
+          </ActionForm>
         </CardContent>
       </Card>
 

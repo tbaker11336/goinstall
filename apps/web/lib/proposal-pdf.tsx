@@ -4,6 +4,7 @@ import { Document, Image, Page, renderToBuffer, StyleSheet, Text, View } from "@
 import { initials, type ProposalView } from "@/components/proposal-document";
 import { ProposalPdfSections } from "./proposal-pdf-sections";
 import { proposalViewWithLayout, type ProposalContent } from "./proposals";
+import { fileStore } from "./files";
 import { formatDate } from "./utils";
 
 const INK = "#101828";
@@ -31,8 +32,18 @@ function styles(brand: string) {
   });
 }
 
-/** Only JPEG and PNG images can be drawn in the PDF. */
-const pdfImage = (url: string) => /\.(jpe?g|png)(\?|$)/i.test(url);
+/** An image read from storage (react-pdf draws JPEG and PNG only). */
+type PdfImage = { data: Buffer; format: "png" | "jpg" };
+
+async function loadImage(path: string | null | undefined): Promise<PdfImage | null> {
+  const format = path?.match(/\.(png|jpe?g)$/i)?.[1]?.toLowerCase();
+  if (!path || !format) return null;
+  try {
+    return { data: Buffer.from(await fileStore().get(path)), format: format === "png" ? "png" : "jpg" };
+  } catch {
+    return null;
+  }
+}
 
 export interface PdfExtras {
   brandColour: string | null;
@@ -40,6 +51,9 @@ export interface PdfExtras {
   bank: { name: string | null; sortCode: string | null; account: string | null };
   paymentTerms: string | null;
   acceptance: { name: string; at: Date } | null;
+  /** The logo and product photos, read from storage. */
+  logo?: PdfImage | null;
+  photos?: Map<string, PdfImage>;
 }
 
 function ProposalPdf({ p, x }: { p: ProposalView; x: PdfExtras }) {
@@ -66,7 +80,7 @@ function ProposalPdf({ p, x }: { p: ProposalView; x: PdfExtras }) {
       <Page size="A4" style={s.page}>
         <View style={s.header}>
           <View style={{ flexDirection: "row", gap: 8 }}>
-            <Text style={s.logo}>{initials(p.companyName)}</Text>
+            {x.logo ? <Image src={x.logo} style={{ height: 34, maxWidth: 140, objectFit: "contain" }} /> : <Text style={s.logo}>{initials(p.companyName)}</Text>}
             <View>
               <Text style={s.bold}>{p.companyName}</Text>
               <Text style={s.muted}>{p.mcsNumber ? `MCS certified installer · ${p.mcsNumber}` : "Installer"}</Text>
@@ -155,7 +169,7 @@ function ProposalPdf({ p, x }: { p: ProposalView; x: PdfExtras }) {
             {p.products.map((prod) => (
               <View key={prod.id} style={[s.line, { justifyContent: "flex-start", gap: 10, alignItems: "center" }]} wrap={false}>
                 {/* react-pdf draws JPEG and PNG only; WebP photos show on the web page. */}
-                {prod.photoUrl && pdfImage(prod.photoUrl) && <Image src={prod.photoUrl} style={{ width: 54, height: 54, objectFit: "contain" }} />}
+                {x.photos?.get(prod.id) && <Image src={x.photos.get(prod.id)!} style={{ width: 54, height: 54, objectFit: "contain" }} />}
                 <View style={{ flex: 1 }}>
                   <Text style={s.bold}>{prod.name}</Text>
                   {prod.makeModel && <Text style={s.muted}>{prod.makeModel}</Text>}
@@ -163,6 +177,43 @@ function ProposalPdf({ p, x }: { p: ProposalView; x: PdfExtras }) {
                 </View>
               </View>
             ))}
+          </View>
+        )}
+        {p.survey && p.survey.length > 0 && (
+          <View style={{ marginTop: 16 }}>
+            <Text style={s.section}>YOUR SURVEY</Text>
+            {p.survey.map((sec) => (
+              <View key={sec.key} style={{ flexDirection: "row", gap: 12, borderBottomWidth: 1, borderBottomColor: LINE, paddingVertical: 7 }} wrap={false}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[s.bold, { marginBottom: 3 }]}>{sec.title}</Text>
+                  {sec.items.map((it) => (
+                    <View key={it.label} style={{ flexDirection: "row", gap: 6, marginBottom: 1 }}>
+                      <Text style={[s.muted, { width: "50%" }]}>{it.label}</Text>
+                      <Text style={{ width: "50%" }}>{it.value}</Text>
+                    </View>
+                  ))}
+                </View>
+                <View style={{ flex: 1, backgroundColor: "#f9fafb", borderRadius: 5, padding: 7 }}>
+                  <Text style={[s.muted, { fontSize: 7, fontFamily: "Helvetica-Bold", marginBottom: 2 }]}>OUR NOTES</Text>
+                  <Text style={{ lineHeight: 1.4 }}>{sec.note ?? "-"}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+        {p.about && (p.about.text || p.about.facts.length > 0) && (
+          <View style={{ marginTop: 16 }} wrap={false}>
+            <Text style={s.section}>ABOUT {p.companyName.toUpperCase()}</Text>
+            <View style={{ flexDirection: "row", gap: 14, marginTop: 4 }}>
+              <View style={{ flex: 2 }}>{p.about.text && <Text style={{ lineHeight: 1.4 }}>{p.about.text}</Text>}</View>
+              <View style={{ flex: 1 }}>
+                {[...p.about.facts, ...p.about.contact].map((f) => (
+                  <Text key={f} style={[s.muted, { marginBottom: 2 }]}>
+                    {f}
+                  </Text>
+                ))}
+              </View>
+            </View>
           </View>
         )}
         {(p.terms || p.termsFile) && (
@@ -192,6 +243,8 @@ export async function proposalPdfResponse(c: ProposalContent) {
     bank: { name: p.bank_account_name, sortCode: p.bank_sort_code, account: p.bank_account_number },
     paymentTerms: p.payment_terms,
     acceptance: p.accepted_at && p.accepted_name ? { name: p.accepted_name, at: p.accepted_at } : null,
+    logo: await loadImage(p.company_logo_path),
+    photos: new Map((await Promise.all(c.products.map(async (x) => [x.id, await loadImage(x.photo_path)] as const))).filter((e): e is [string, PdfImage] => e[1] !== null)),
   });
   const name = `${proposalReference(p.document_prefix, p.number)}-v${p.version}.pdf`;
   return new Response(new Uint8Array(buf), {

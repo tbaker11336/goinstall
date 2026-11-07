@@ -1,4 +1,4 @@
-import { formatPence } from "@goinstall/core";
+import { formatPence, type ProposalSurveySection } from "@goinstall/core";
 import { Check } from "lucide-react";
 import { notFound } from "next/navigation";
 import { z } from "zod";
@@ -258,13 +258,14 @@ export default async function ProposalPage({
         <div className="flex min-w-0 flex-col gap-6">
           {isDraft && (
             <ProposalEditor
-              key={`${proposal.id}-${content.lines.length}-${total}`}
+              key={`${proposal.id}-${content.lines.length}-${total}-${JSON.stringify(content.proposal.survey).length}`}
               proposalId={proposal.id}
               initial={{
                 title: view.title,
                 intro: view.intro ?? "",
                 depositPct: String(view.depositPct),
                 lines: editorLines,
+                survey: (content.proposal.survey ?? []) as unknown as ProposalSurveySection[],
               }}
               labourVat={labourVat}
             />

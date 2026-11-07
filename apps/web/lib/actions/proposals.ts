@@ -11,7 +11,7 @@ import { emailConfigured, emailSender, fromAddress } from "@/lib/email";
 import { fileStore } from "@/lib/files";
 import { notifyTeam } from "@/lib/notify";
 import { captureLayout } from "@/lib/proposal-layout";
-import { designInputs, hashToken, newLinkNonce, PROPOSAL_LINK_DAYS, proposalToken, proposalUrl, refreshProposalFinance } from "@/lib/proposals";
+import { designInputs, hashToken, newLinkNonce, PROPOSAL_LINK_DAYS, proposalToken, proposalUrl, refreshProposalFinance, refreshProposalSurvey } from "@/lib/proposals";
 import type { ActionResult } from "./crm";
 
 const uuid = z.uuid();
@@ -100,6 +100,8 @@ export async function createProposalAction(projectId: string): Promise<{ error?:
           version: (latest?.version ?? 0) + 1,
           title: latest?.title || `${summary.panelCount ? "Solar" : ""}${solar?.battery_count ? ", battery" : ""}${ev?.charger_product_id ? `${summary.panelCount ? " and " : ""}EV charging` : ""} for ${project.site_address_line1 ?? "your home"}`.replace(/^,\s*/, ""),
           intro: latest?.intro ?? null,
+          // A new version keeps the survey notes written on the last one.
+          survey_notes: JSON.stringify(latest?.survey_notes ?? {}),
           summary: JSON.stringify(summary),
           solar_design_id: solar?.id ?? null,
           ev_design_id: ev?.id ?? null,
@@ -124,6 +126,7 @@ export async function createProposalAction(projectId: string): Promise<{ error?:
     const dep = await tx.selectFrom("proposals").select("deposit_pct").where("id", "=", proposalId).executeTakeFirstOrThrow();
     await writeTotals(tx, proposalId, lines, Number(dep.deposit_pct));
     await refreshProposalFinance(tx, proposalId);
+    await refreshProposalSurvey(tx, proposalId);
     return { proposalId, notes: built.notes };
   });
   revalidatePath(`/projects/${projectId}`, "layout");
@@ -145,6 +148,8 @@ const draftSchema = z.object({
   intro: z.string().trim().max(3000),
   depositPct: z.number().min(0).max(100),
   lines: z.array(lineSchema).min(1, "Add at least one line").max(100),
+  /** Notes beside each survey section, and the sections to leave off. */
+  surveyNotes: z.record(z.string().max(200), z.object({ note: z.string().trim().max(3000).nullable(), hidden: z.boolean() })).optional(),
 });
 export type DraftInput = z.infer<typeof draftSchema>;
 
@@ -163,10 +168,15 @@ export async function saveProposalDraftAction(proposalId: string, input: DraftIn
     const p = await tx.selectFrom("proposals").select(["id", "status", "project_id"]).where("id", "=", proposalId).executeTakeFirst();
     if (!p) return { error: "Proposal not found" };
     if (p.status !== "draft") return { error: "This version has been sent. Create a new version to make changes." };
-    await tx.updateTable("proposals").set({ title: parsed.data.title, intro: parsed.data.intro || null }).where("id", "=", proposalId).execute();
+    await tx
+      .updateTable("proposals")
+      .set({ title: parsed.data.title, intro: parsed.data.intro || null, ...(parsed.data.surveyNotes ? { survey_notes: JSON.stringify(parsed.data.surveyNotes) } : {}) })
+      .where("id", "=", proposalId)
+      .execute();
     await writeLines(tx, proposalId, lines);
     const t = await writeTotals(tx, proposalId, lines, parsed.data.depositPct);
     await refreshProposalFinance(tx, proposalId);
+    await refreshProposalSurvey(tx, proposalId);
     revalidatePath(`/projects/${p.project_id}/proposal`);
     return { message: `Saved. Total ${formatPence(t.totalPence)}, deposit ${formatPence(t.depositPence)}.` };
   });
@@ -187,6 +197,22 @@ async function emailProposal(tx: Tx, session: Session, proposalId: string, kind:
   if (Number(p.total_pence) <= 0) return { error: "The proposal total is zero." };
   if (kind === "reminder" && !["sent", "viewed"].includes(p.status)) return { error: "Only a sent proposal can be chased." };
 
+  // Datasheets for the products the customer can see on the proposal (a few, to keep the email small).
+  const sheets =
+    kind !== "send"
+      ? []
+      : await tx
+          .selectFrom("proposal_lines as l")
+          .innerJoin("products as pd", (j) => j.onRef("pd.id", "=", "l.product_id").onRef("pd.company_id", "=", "l.company_id"))
+          .innerJoin("files as f", (j) => j.onRef("f.id", "=", "pd.datasheet_file_id").onRef("f.company_id", "=", "pd.company_id"))
+          .select(["pd.name", "f.path"])
+          .distinct()
+          .where("l.proposal_id", "=", p.id)
+          .where("l.display", "!=", "hide")
+          .limit(6)
+          .execute();
+  const attachedParts = [p.terms_path ? "Our terms and conditions" : null, sheets.length ? (p.terms_path ? "the datasheets for the products we've quoted" : "The datasheets for the products we've quoted") : null].filter(Boolean);
+  const attached = attachedParts.length ? `${attachedParts.join(" and ")} are` : "";
   const nonce = p.link_nonce ?? newLinkNonce();
   const token = proposalToken(p.id, nonce);
   const url = proposalUrl(token);
@@ -194,10 +220,12 @@ async function emailProposal(tx: Tx, session: Session, proposalId: string, kind:
   const subject = kind === "send" ? `Your proposal from ${p.company_name} (${ref})` : `A reminder about your proposal from ${p.company_name}`;
   const body =
     kind === "send"
-      ? `Hi ${firstName(p.name)},\n\nThanks for your time. Your proposal is ready to view online:\n\n${url}\n\nYou can download it as a PDF, and accept and sign it on the same page when you're ready.${p.terms_path ? " Our terms and conditions are attached." : ""}${p.valid_until ? ` It's valid until ${new Date(p.valid_until).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}.` : ""}\n\nAny questions, just reply to this email.\n\n${session.fullName}\n${p.company_name}`
+      ? `Hi ${firstName(p.name)},\n\nThanks for your time. Your proposal is ready to view online:\n\n${url}\n\nYou can download it as a PDF, and accept and sign it on the same page when you're ready.${attached ? ` ${attached} attached.` : ""}${p.valid_until ? ` It's valid until ${new Date(p.valid_until).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}.` : ""}\n\nAny questions, just reply to this email.\n\n${session.fullName}\n${p.company_name}`
       : `Hi ${firstName(p.name)},\n\nJust checking you received your proposal. You can view it, download the PDF and accept it here:\n\n${url}\n\nHappy to answer any questions.\n\n${session.fullName}\n${p.company_name}`;
 
   if (kind === "send") {
+    // The survey as it is now goes out with it (and stays that way).
+    await refreshProposalSurvey(tx, p.id);
     // Earlier versions stop being the live one, but an accepted one is never superseded.
     await tx.updateTable("proposals").set({ status: "superseded", token_hash: null, token_expires_at: null }).where("project_id", "=", p.project_id).where("number", "=", p.number).where("id", "!=", p.id).where("status", "in", ["sent", "viewed", "declined"]).execute();
     await tx
@@ -224,9 +252,11 @@ async function emailProposal(tx: Tx, session: Session, proposalId: string, kind:
   await tx.insertInto("activity_log").values({ project_id: p.project_id, contact_id: p.contact_id, event: kind === "send" ? "proposal_sent" : "proposal_reminder", payload: { reference: proposalReference(p.document_prefix, p.number, p.version) } }).execute();
 
   // The terms PDF goes with the proposal itself (not reminders): it's also linked on the page.
-  const attachments =
-    kind === "send" && p.terms_path ? [{ filename: (p.terms_name ?? "Terms and conditions.pdf").replace(/[^\w .()-]/g, "_"), content: await fileStore().get(p.terms_path), contentType: "application/pdf" }] : undefined;
-  const result = await emailSender().send({ from: fromAddress(p.company_name, p.email_sender), to: p.email, replyTo: session.email || p.company_email || undefined, subject, text: body, html: textToHtml(body), attachments, idempotencyKey: m.id, tags: { kind: `proposal_${kind}` } });
+  const safeName = (n: string) => n.replace(/[^\w .()-]/g, "_");
+  const attachments: { filename: string; content: Uint8Array; contentType: string }[] = [];
+  if (kind === "send" && p.terms_path) attachments.push({ filename: safeName(p.terms_name ?? "Terms and conditions.pdf"), content: await fileStore().get(p.terms_path), contentType: "application/pdf" });
+  for (const d of sheets) attachments.push({ filename: safeName(`${d.name} datasheet.pdf`), content: await fileStore().get(d.path), contentType: "application/pdf" });
+  const result = await emailSender().send({ from: fromAddress(p.company_name, p.email_sender), to: p.email, replyTo: session.email || p.company_email || undefined, subject, text: body, html: textToHtml(body), attachments: attachments.length ? attachments : undefined, idempotencyKey: m.id, tags: { kind: `proposal_${kind}` } });
   await tx
     .updateTable("messages")
     .set(result.ok ? { delivery_status: "sent", provider_message_id: result.providerId } : { delivery_status: "failed", delivery_error: result.error })

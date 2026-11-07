@@ -200,6 +200,7 @@ export interface ChecklistTemplates {
 }
 
 export interface Companies {
+  about: string | null;
   address_line1: string | null;
   address_line2: string | null;
   bank_account_name: string | null;
@@ -651,6 +652,8 @@ export interface Proposals {
   status: Generated<ProposalStatus>;
   subtotal_pence: Generated<Int8>;
   summary: Generated<Json>;
+  survey: Generated<Json>;
+  survey_notes: Generated<Json>;
   terms: string | null;
   terms_file_id: string | null;
   title: Generated<string>;
