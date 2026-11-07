@@ -129,7 +129,9 @@ export default async function ProductsSettingsPage() {
               </tr>
             </thead>
             {active.map((p) => {
-              const m = p.sellPence && p.best?.costPence != null ? margin(p.sellPence, p.best.costPence) : null;
+              // Your purchase price if you've set one, else the best supplier price.
+              const cost = p.purchasePence ?? p.best?.costPence ?? null;
+              const m = p.sellPence && cost != null ? margin(p.sellPence, cost) : null;
               return (
                 <tbody key={p.id} className="border-b border-divider">
                   <tr>
@@ -150,7 +152,10 @@ export default async function ProductsSettingsPage() {
                         <span className="text-muted-foreground">No supplier price</span>
                       )}
                     </td>
-                    <td className="px-3 pt-3 pb-1 text-right tabular-nums">{formatPence(p.best?.costPence)}</td>
+                    <td className="px-3 pt-3 pb-1 text-right tabular-nums">
+                      {formatPence(cost)}
+                      {p.purchasePence != null && <span className="block text-xs text-muted-foreground">your price</span>}
+                    </td>
                     <td className="px-3 pt-3 pb-1 text-right tabular-nums">{formatPence(p.sellPence)}</td>
                     <td className={cn("px-5 pt-3 pb-1 text-right tabular-nums", m !== null && m < 0.15 && "text-warning-text")}>{m === null ? "—" : `${(m * 100).toFixed(1)}%`}</td>
                   </tr>

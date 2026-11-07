@@ -24,6 +24,8 @@ export interface CatalogueProduct {
   unit: string;
   specs: Specs;
   sellPence: number | null;
+  /** What the company pays (ex VAT), from the product form. */
+  purchasePence: number | null;
   archived: boolean;
   /** Datasheet PDF and photo shown with it on proposals (files ids). */
   datasheetFileId: string | null;
@@ -71,6 +73,7 @@ export async function listCatalogue(tx: Tx, opts: { includeArchived?: boolean; c
       unit: p.unit,
       specs: (p.specs ?? {}) as Specs,
       sellPence: p.sell_price_pence === null ? null : Number(p.sell_price_pence),
+      purchasePence: p.cost_price_pence === null ? null : Number(p.cost_price_pence),
       archived: p.archived_at !== null,
       datasheetFileId: p.datasheet_file_id,
       photoFileId: p.photo_file_id,

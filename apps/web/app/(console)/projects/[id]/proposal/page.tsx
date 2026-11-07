@@ -3,7 +3,9 @@ import { Check } from "lucide-react";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 import { ActionForm, SubmitButton } from "@/components/forms";
+import { JobProfitSummary } from "@/components/job-profit";
 import { ProposalDocument } from "@/components/proposal-document";
+import { proposalProfit } from "@/lib/profit";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/input";
@@ -166,6 +168,7 @@ export default async function ProposalPage({
         .where("status", "!=", "void")
         .executeTakeFirst(),
     ]);
+    const profit = await proposalProfit(tx, selected.id);
     const products = await tx.selectFrom("products").select(["id", "name", "make", "model", "category", "sell_price_pence"]).where("archived_at", "is", null).orderBy("name").execute();
     const balance = await tx
       .selectFrom("invoices")
@@ -184,6 +187,7 @@ export default async function ProposalPage({
       invoice,
       balance,
       products,
+      profit,
     };
   });
   if (!data) notFound();
@@ -452,6 +456,17 @@ export default async function ProposalPage({
                     </ActionForm>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          )}
+          {"profit" in data && data.profit && (
+            <Card>
+              <CardHeader className="flex-col items-start">
+                <CardTitle>Job profit</CardTitle>
+                <p className="text-[13px] text-ink-3">For your team only; customers never see it.</p>
+              </CardHeader>
+              <CardContent>
+                <JobProfitSummary profit={data.profit} />
               </CardContent>
             </Card>
           )}

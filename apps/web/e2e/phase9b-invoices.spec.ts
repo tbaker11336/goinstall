@@ -82,8 +82,10 @@ test("invoices on an accepted quote: summary, extra work emailed and paid, a sta
   await wrong.getByRole("button", { name: /^Void / }).click();
   await expect(wrong).toContainText("Void");
 
-  // A project with invoices on it can't be deleted.
+  // A project with invoices on it can't be deleted. Its overview shows the profit on the accepted quote.
   await page.getByRole("navigation", { name: "Project sections" }).getByRole("link", { name: "Overview" }).click();
+  await expect(page.getByText("Profit (accepted quote)")).toBeVisible();
+  await expect(page.getByTestId("overview-profit")).toContainText("£");
   await page.getByRole("button", { name: "Delete project" }).click();
   await page.getByRole("button", { name: "Yes, delete project" }).click();
   const refused = page.getByRole("alertdialog").getByRole("alert");

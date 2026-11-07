@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildLinesFromDesigns, customerLines, lineTotal, paybackYears, proposalReference, proposalTotals, type CatalogueItem, type DraftLine } from "./proposal";
+import { buildLinesFromDesigns, customerLines, jobProfit, lineTotal, paybackYears, proposalReference, proposalTotals, type CatalogueItem, type DraftLine } from "./proposal";
 
 const item = (id: string, name: string, category: CatalogueItem["category"], sellPence: number | null): CatalogueItem => ({ id, name, category, sellPence });
 
@@ -96,5 +96,32 @@ describe("line display", () => {
     ];
     expect(customerLines(lines).map((l) => l.description)).toEqual(["Charger", "Fitting"]);
     expect(proposalTotals(lines, 0).totalPence).toBe(75_000);
+  });
+});
+
+describe("job profit", () => {
+  it("takes each product's purchase cost from revenue before VAT, lists lines with no cost, and counts discounts", () => {
+    const costs = new Map([
+      ["panel", 9_000],
+      ["inverter", 60_000],
+    ]);
+    const p = jobProfit(
+      [
+        { productId: "panel", description: "12 panels", quantity: 12, unitPricePence: 15_000 },
+        { productId: "inverter", description: "Inverter", quantity: 1, unitPricePence: 90_000 },
+        { productId: null, description: "Installation labour", quantity: 1, unitPricePence: 80_000 },
+        { productId: null, description: "Single visit", quantity: 1, unitPricePence: -10_000 },
+      ],
+      costs,
+    );
+    expect(p.revenuePence).toBe(180_000 + 90_000 + 80_000 - 10_000);
+    expect(p.costPence).toBe(108_000 + 60_000);
+    expect(p.profitPence).toBe(340_000 - 168_000);
+    expect(p.margin).toBeCloseTo(172_000 / 340_000);
+    expect(p.uncosted).toEqual([{ description: "Installation labour", netPence: 80_000 }]);
+  });
+
+  it("has no margin without revenue", () => {
+    expect(jobProfit([], new Map()).margin).toBeNull();
   });
 });

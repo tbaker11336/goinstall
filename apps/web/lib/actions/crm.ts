@@ -162,7 +162,7 @@ export async function moveContactAction(contactId: string, stage: string, lostRe
   }
 }
 
-export async function setContactsViewAction(view: "kanban" | "list") {
+export async function setContactsViewAction(view: "kanban" | "list", query = "") {
   await asUser(async (tx, session) => {
     await tx
       .updateTable("users")
@@ -171,6 +171,11 @@ export async function setContactsViewAction(view: "kanban" | "list") {
       .execute();
   });
   revalidatePath("/contacts");
+  // Back to the same filters, without a ?view= that would override the choice.
+  const q = new URLSearchParams(query);
+  q.delete("view");
+  if (q.size) redirect(`/contacts?${q}`);
+  redirect("/contacts");
 }
 
 const noteSchema = z.object({

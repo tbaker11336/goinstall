@@ -13,7 +13,7 @@ import { cn, formatMoney, timeAgo } from "@/lib/utils";
 
 export const metadata = { title: "Contacts" };
 
-type SearchParams = { q?: string; product?: string; source?: string; owner?: string; stage?: string; sort?: string; dir?: string };
+type SearchParams = { q?: string; product?: string; source?: string; owner?: string; stage?: string; sort?: string; dir?: string; view?: string };
 
 const SORTS: Record<string, (c: ContactRow) => string | number> = {
   name: (c) => c.name.toLowerCase(),
@@ -38,7 +38,9 @@ export default async function ContactsPage({ searchParams }: { searchParams: Pro
       tx.selectFrom("users").select("preferences").where("id", "=", session.userId).executeTakeFirstOrThrow(),
     ]);
     const prefs = (me.preferences ?? {}) as { contacts_view?: string };
-    return { contacts, staff, sources, view: prefs.contacts_view === "list" ? "list" : "kanban" };
+    // ?view= in the address wins (shareable links); otherwise the view you last chose.
+    const chosen = sp.view === "list" || sp.view === "kanban" ? sp.view : prefs.contacts_view;
+    return { contacts, staff, sources, view: chosen === "list" ? "list" : "kanban" };
   });
 
   const filtered = Boolean(sp.q || product || sp.source || owner || stage);
@@ -55,7 +57,7 @@ export default async function ContactsPage({ searchParams }: { searchParams: Pro
           <>
             <div role="group" aria-label="View" className="flex rounded-[9px] bg-divider p-[3px]">
               {(["list", "kanban"] as const).map((v) => (
-                <form key={v} action={setContactsViewAction.bind(null, v)}>
+                <form key={v} action={setContactsViewAction.bind(null, v, new URLSearchParams(Object.entries(sp).filter((e): e is [string, string] => typeof e[1] === "string")).toString())}>
                   <button
                     type="submit"
                     aria-pressed={view === v}

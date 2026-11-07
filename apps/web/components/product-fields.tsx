@@ -14,6 +14,7 @@ export interface ProductFormValues {
   sku: string | null;
   unit: string;
   sellPence: number | null;
+  purchasePence: number | null;
   specs: Record<string, number | boolean | string>;
   /** Signed links to the current files, when there are any. */
   datasheet: { url: string | null } | null;
@@ -76,6 +77,7 @@ export function ProductFields({ prefix, p }: { prefix: string; p?: ProductFormVa
         </div>
         <Labelled id={`${prefix}-name`} name="name" label="Name on proposals" defaultValue={p?.name} required />
         <Labelled id={`${prefix}-sell`} name="sell_price" label="Sell price (£, ex VAT)" inputMode="decimal" defaultValue={pounds(p?.sellPence ?? null)} />
+        <Labelled id={`${prefix}-cost`} name="purchase_price" label="Purchase price (£, ex VAT)" inputMode="decimal" defaultValue={pounds(p?.purchasePence ?? null)} />
         <Labelled id={`${prefix}-make`} name="make" label="Make" defaultValue={p?.make ?? ""} />
         <Labelled id={`${prefix}-model`} name="model" label="Model" defaultValue={p?.model} required />
         <div className="flex flex-col gap-1.5">

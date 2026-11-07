@@ -71,11 +71,16 @@ test("an EV charger asks only for what matters, with a datasheet and photo for p
   await page.locator("#new-p-name").fill("Test 7 kW charger");
   await page.locator("#new-p-model").fill("TC-7");
   await page.locator("#new-p-spec-rated_kw").fill("7.4");
+  await page.locator("#new-p-sell").fill("600");
+  await page.getByLabel("Purchase price (£, ex VAT)").last().fill("400");
   await page.locator("#new-p-datasheet").setInputFiles(path.join(process.cwd(), "e2e", "fixtures", "test-certificate.pdf"));
   await page.locator("#new-p-photo").setInputFiles(path.join(process.cwd(), "e2e", "fixtures", "site-photo.png"));
   await page.getByRole("button", { name: "Add product" }).click();
   const row = page.locator("tbody").filter({ hasText: "Test 7 kW charger" });
   await expect(row).toBeVisible();
+  // Your purchase price gives the margin.
+  await expect(row.getByText("your price")).toBeVisible();
+  await expect(row.getByRole("cell", { name: "33.3%" })).toBeVisible();
   await row.getByText("Edit product and supplier prices").click();
   await expect(row.getByRole("link", { name: "View current" })).toHaveCount(2);
 });

@@ -136,3 +136,35 @@ export function proposalReference(prefix: string | null, number: number, version
 export function paybackYears(totalPence: number, yearlySavingPence: number | null): number | null {
   return yearlySavingPence && yearlySavingPence > 0 ? Math.round((totalPence / yearlySavingPence) * 10) / 10 : null;
 }
+
+export interface JobProfit {
+  /** What the customer pays before VAT, every line (hidden ones too). */
+  revenuePence: number;
+  /** Purchase cost of the lines that have one. */
+  costPence: number;
+  profitPence: number;
+  /** Profit as a share of revenue (0–1), or null with no revenue. */
+  margin: number | null;
+  /** Lines with no purchase price (labour, custom lines, products without a cost). */
+  uncosted: { description: string; netPence: number }[];
+}
+
+/**
+ * Profit on a quote: revenue before VAT less each product line's purchase
+ * price × quantity. Discounts reduce revenue. Lines with no known cost are
+ * counted as revenue and listed, so the figure isn't silently flattering.
+ */
+export function jobProfit(lines: { productId: string | null; description: string; quantity: number; unitPricePence: number }[], costs: ReadonlyMap<string, number>): JobProfit {
+  let revenue = 0;
+  let cost = 0;
+  const uncosted: JobProfit["uncosted"] = [];
+  for (const l of lines) {
+    const net = lineTotal(l);
+    revenue += net;
+    const unit = l.productId ? costs.get(l.productId) : undefined;
+    if (unit !== undefined) cost += Math.round(unit * l.quantity);
+    else if (net > 0) uncosted.push({ description: l.description, netPence: net });
+  }
+  const profit = revenue - cost;
+  return { revenuePence: revenue, costPence: cost, profitPence: profit, margin: revenue > 0 ? profit / revenue : null, uncosted };
+}

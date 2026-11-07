@@ -576,6 +576,7 @@ export interface Products {
   archived_at: Timestamp | null;
   category: ProductCategory;
   company_id: Generated<string>;
+  cost_price_pence: Int8 | null;
   created_at: Generated<Timestamp>;
   created_by: Generated<string | null>;
   datasheet_file_id: string | null;

@@ -35,6 +35,8 @@ export async function saveProductAction(id: string | null, _: ActionResult, form
   if (!parsed.success) return { error: parsed.error.issues[0]?.message };
   const sell = parsePence(text(form, "sell_price"));
   if (Number.isNaN(sell)) return { error: "Sell price: enter an amount like 165 or 165.00" };
+  const cost = parsePence(text(form, "purchase_price"));
+  if (Number.isNaN(cost) || (cost !== null && cost < 0)) return { error: "Purchase price: enter an amount like 120 or 120.00" };
   const category = parsed.data.category as ProductCategory;
   const specs = parseSpecs(category, Object.fromEntries((SPEC_FIELDS[category] ?? []).map((f) => [f.key, text(form, `spec_${f.key}`)])));
   if ("error" in specs) return { error: specs.error };
@@ -49,7 +51,7 @@ export async function saveProductAction(id: string | null, _: ActionResult, form
   const datasheet = upload("datasheet", ["application/pdf"], "datasheet");
   const photo = upload("photo", ["image/jpeg", "image/png", "image/webp"], "photo");
   for (const f of [datasheet, photo]) if (f && "error" in f) return { error: f.error };
-  const values = { ...parsed.data, make: orNull(parsed.data.make), sku: orNull(parsed.data.sku), sell_price_pence: sell, specs: JSON.stringify(specs.specs) };
+  const values = { ...parsed.data, make: orNull(parsed.data.make), sku: orNull(parsed.data.sku), sell_price_pence: sell, cost_price_pence: cost, specs: JSON.stringify(specs.specs) };
   try {
     return await asUser(async (tx, session) => {
       const store = async (f: File, kind: "document" | "photo", category: string) => {

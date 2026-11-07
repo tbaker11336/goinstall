@@ -1,4 +1,4 @@
-import { formatLength, PROJECT_STAGE_INFO, stageIndex, stageLabel, type ActiveProjectStage, type LengthUnit } from "@goinstall/core";
+import { formatLength, formatPence, PROJECT_STAGE_INFO, stageIndex, stageLabel, type ActiveProjectStage, type LengthUnit } from "@goinstall/core";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ProductCheckboxes } from "@/components/contact-fields";
@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, Input, Select, Textarea } from "@/components/ui/input";
 import { addNoteAction, updateProjectAction, updateWorkDescriptionAction } from "@/lib/actions/crm";
 import { asUser } from "@/lib/auth";
+import { projectProfit } from "@/lib/profit";
 import { contactTimeline, listStaff } from "@/lib/queries";
 import { cn, formatDate, formatMoney } from "@/lib/utils";
 
@@ -48,7 +49,7 @@ export default async function ProjectOverviewPage({ params }: { params: Promise<
       .executeTakeFirst();
     if (!project) return null;
     const [timeline, staff] = await Promise.all([contactTimeline(tx, project.contact_id, project.id), listStaff(tx)]);
-    return { project, timeline, staff, isAdmin: session.role === "admin" };
+    return { project, timeline, staff, isAdmin: session.role === "admin", profit: await projectProfit(tx, project.id) };
   });
   if (!data) notFound();
   const { project: p, timeline, staff } = data;
@@ -199,7 +200,19 @@ export default async function ProjectOverviewPage({ params }: { params: Promise<
               <DetailRow label="Estimated value" value={p.value != null ? <strong>{formatMoney(p.value)}</strong> : "Not set"} />
               <DetailRow label="Owner" value={owner ?? "Unassigned"} />
               <DetailRow label="Project length" value={p.estimated_length && p.estimated_length_unit ? formatLength(Number(p.estimated_length), p.estimated_length_unit as LengthUnit) : "Not set"} />
-              <DetailRow label="Target install" value={targetMonth ?? "Not set"} last />
+              <DetailRow label="Target install" value={targetMonth ?? "Not set"} last={!data.profit} />
+              {data.profit && (
+                <DetailRow
+                  label={data.profit.accepted ? "Profit (accepted quote)" : "Profit (latest quote)"}
+                  value={
+                    <strong className={data.profit.profit.profitPence < 0 ? "text-red-700" : "text-success-text"} data-testid="overview-profit">
+                      {formatPence(data.profit.profit.profitPence)}
+                      {data.profit.profit.margin !== null ? ` · ${(data.profit.profit.margin * 100).toFixed(0)}%` : ""}
+                    </strong>
+                  }
+                  last
+                />
+              )}
               <details className="group mt-2">
                 <summary className="cursor-pointer text-sm font-semibold text-primary hover:text-accent-strong">Edit details</summary>
             <ActionForm action={updateProjectAction.bind(null, p.id)} className="mt-4 grid gap-4">
