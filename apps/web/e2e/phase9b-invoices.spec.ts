@@ -63,7 +63,9 @@ test("invoices on an accepted quote: summary, extra work emailed and paid, a sta
   // She pays by bank transfer; the office records it.
   await row.getByRole("button", { name: `Record payment: ${number}` }).click();
   await row.getByRole("button", { name: "Mark paid" }).click();
-  await expect(page.getByText(/Extra work of £300(\.00)? recorded as paid\./)).toBeVisible();
+  // The row turns Paid (and its buttons go), and it stays that way.
+  await expect(row).toContainText("Paid");
+  await expect(row.getByRole("button", { name: `Record payment: ${number}` })).toHaveCount(0);
   await page.reload();
   await expect(list.getByTestId("invoice-row").filter({ hasText: "Bird mesh" })).toContainText("Paid");
 

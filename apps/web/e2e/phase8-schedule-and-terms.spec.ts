@@ -23,7 +23,7 @@ const lines = <T,>(file: string) => {
 
 test("EV install: no scaffold, declined in the app, rescheduled and the customer told from the calendar", async ({ page, browser }) => {
   await signInAs(page, "Alex Morgan");
-  await page.goto("/contacts");
+  await page.goto("/contacts?view=list");
   await page.getByRole("link", { name: "Owen Lewis" }).click();
   await page.getByRole("link", { name: /Gloucester Road/ }).click();
   await page.waitForURL(/\/projects\/[0-9a-f-]{36}$/);

@@ -28,7 +28,7 @@ test("the office and the installer chat about a job", async ({ page, browser, re
   expect((await request.post("/api/app/push-token", { headers: { Authorization: `Bearer ${token}` }, data: { token: "nonsense", platform: "android" } })).status()).toBe(400);
 
   await signInAs(page, "Alex Morgan");
-  await page.goto("/contacts");
+  await page.goto("/contacts?view=list");
   await page.getByRole("link", { name: "Owen Lewis" }).click();
   await page.getByRole("link", { name: /Gloucester Road/ }).click();
   await page.waitForURL(/\/projects\/[0-9a-f-]{36}$/);

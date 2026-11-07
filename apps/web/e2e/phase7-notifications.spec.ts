@@ -19,7 +19,7 @@ const lines = <T,>(file: string) => {
 };
 
 async function openOwen(page: Page) {
-  await page.goto("/contacts");
+  await page.goto("/contacts?view=list");
   await page.getByRole("link", { name: "Owen Lewis" }).click();
   await page.waitForURL(/\/contacts\/[0-9a-f-]{36}$/);
 }
