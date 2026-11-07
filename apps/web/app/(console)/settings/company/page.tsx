@@ -28,6 +28,33 @@ export default async function CompanySettingsPage() {
   return (
     <div className="grid max-w-3xl gap-6">
       <Card>
+        <CardHeader className="flex-col items-start">
+          <CardTitle>Logo</CardTitle>
+          <p className="text-sm text-ink-3">Shown at the top of your proposals, their PDFs and your invoices.</p>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          {logoUrl ? (
+            <div className="flex flex-wrap items-center gap-4">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={logoUrl} alt="Your current logo" className="h-16 max-w-[220px] rounded-md border bg-white object-contain p-2" />
+              <ActionForm action={removeLogoAction}>
+                <SubmitButton variant="outline" size="sm" pendingText="Removing…">
+                  Remove logo
+                </SubmitButton>
+              </ActionForm>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No logo yet: proposals show your initials.</p>
+          )}
+          <ActionForm action={uploadLogoAction} className="flex flex-wrap items-end gap-3" resetOnSuccess>
+            <Field label={logoUrl ? "Replace the logo" : "Upload a logo"} htmlFor="logo" hint="PNG or JPEG, up to 2 MB. A wide logo on a white or clear background works best.">
+              <Input id="logo" name="logo" type="file" accept="image/png,image/jpeg" required className="w-72 py-1.5" aria-describedby="logo-hint" />
+            </Field>
+            <SubmitButton pendingText="Uploading…">Upload logo</SubmitButton>
+          </ActionForm>
+        </CardContent>
+      </Card>
+      <Card>
         <CardHeader>
           <CardTitle>Company details</CardTitle>
         </CardHeader>
@@ -64,33 +91,6 @@ export default async function CompanySettingsPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="flex-col items-start">
-          <CardTitle>Logo</CardTitle>
-          <p className="text-sm text-ink-3">At the top of your proposals and their PDFs.</p>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          {logoUrl ? (
-            <div className="flex flex-wrap items-center gap-4">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={logoUrl} alt="Your current logo" className="h-16 max-w-[220px] rounded-md border bg-white object-contain p-2" />
-              <ActionForm action={removeLogoAction}>
-                <SubmitButton variant="outline" size="sm" pendingText="Removing…">
-                  Remove logo
-                </SubmitButton>
-              </ActionForm>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">No logo yet: proposals show your initials.</p>
-          )}
-          <ActionForm action={uploadLogoAction} className="flex flex-wrap items-end gap-3" resetOnSuccess>
-            <Field label={logoUrl ? "Replace the logo" : "Upload a logo"} htmlFor="logo" hint="PNG or JPEG, up to 2 MB. A wide logo on a white or clear background works best.">
-              <Input id="logo" name="logo" type="file" accept="image/png,image/jpeg" required className="w-72 py-1.5" aria-describedby="logo-hint" />
-            </Field>
-            <SubmitButton pendingText="Uploading…">Upload logo</SubmitButton>
-          </ActionForm>
-        </CardContent>
-      </Card>
 
     </div>
   );
