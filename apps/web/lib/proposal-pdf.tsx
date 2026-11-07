@@ -1,6 +1,6 @@
 import "server-only";
 import { formatPence, paybackLabel, paybackYears, proposalReference, proposalTotals, SECTION_LABELS, type ProposalSection } from "@goinstall/core";
-import { Document, Page, renderToBuffer, StyleSheet, Text, View } from "@react-pdf/renderer";
+import { Document, Image, Page, renderToBuffer, StyleSheet, Text, View } from "@react-pdf/renderer";
 import { initials, type ProposalView } from "@/components/proposal-document";
 import { ProposalPdfSections } from "./proposal-pdf-sections";
 import { proposalViewWithLayout, type ProposalContent } from "./proposals";
@@ -30,6 +30,9 @@ function styles(brand: string) {
     footer: { position: "absolute", bottom: 22, left: 40, right: 40, fontSize: 8, color: INK3, flexDirection: "row", justifyContent: "space-between" },
   });
 }
+
+/** Only JPEG and PNG images can be drawn in the PDF. */
+const pdfImage = (url: string) => /\.(jpe?g|png)(\?|$)/i.test(url);
 
 export interface PdfExtras {
   brandColour: string | null;
@@ -145,6 +148,22 @@ function ProposalPdf({ p, x }: { p: ProposalView; x: PdfExtras }) {
           <Text style={{ marginTop: 12 }}>
             Accepted by {x.acceptance.name} on {formatDate(x.acceptance.at, { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}.
           </Text>
+        )}
+        {p.products && p.products.length > 0 && (
+          <View style={{ marginTop: 16 }}>
+            <Text style={s.section}>THE PRODUCTS</Text>
+            {p.products.map((prod) => (
+              <View key={prod.id} style={[s.line, { justifyContent: "flex-start", gap: 10, alignItems: "center" }]} wrap={false}>
+                {/* react-pdf draws JPEG and PNG only; WebP photos show on the web page. */}
+                {prod.photoUrl && pdfImage(prod.photoUrl) && <Image src={prod.photoUrl} style={{ width: 54, height: 54, objectFit: "contain" }} />}
+                <View style={{ flex: 1 }}>
+                  <Text style={s.bold}>{prod.name}</Text>
+                  {prod.makeModel && <Text style={s.muted}>{prod.makeModel}</Text>}
+                  {prod.datasheetUrl && <Text style={s.muted}>Datasheet on your proposal page.</Text>}
+                </View>
+              </View>
+            ))}
+          </View>
         )}
         {(p.terms || p.termsFile) && (
           <View style={s.terms}>

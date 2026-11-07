@@ -1,5 +1,6 @@
-import { CATEGORY_LABELS, formatPence, inStock, margin, PRODUCT_CATEGORIES, SPEC_FIELDS, type ProductCategory } from "@goinstall/core";
+import { CATEGORY_LABELS, formatPence, inStock, margin } from "@goinstall/core";
 import { ActionForm, SubmitButton } from "@/components/forms";
+import { ProductFields, type ProductFormValues } from "@/components/product-fields";
 import { ProductLibrary } from "@/components/product-library";
 import { PriceFileImport } from "@/components/price-file-import";
 import { Button } from "@/components/ui/button";
@@ -7,12 +8,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input, Select } from "@/components/ui/input";
 import { removeOfferAction, saveOfferAction, saveProductAction, saveSupplierAction, setProductArchivedAction } from "@/lib/actions/catalogue";
 import { asUser } from "@/lib/auth";
-import { listCatalogue, type CatalogueProduct } from "@/lib/catalogue";
+import { listCatalogue } from "@/lib/catalogue";
+import { signedUrls } from "@/lib/files";
 import { cn, formatDate } from "@/lib/utils";
 
 export const metadata = { title: "Products & suppliers" };
-
-const pounds = (p: number | null) => (p === null ? "" : (p / 100).toFixed(2));
 
 function LabelledInput({ id, label, ...props }: { id: string; label: string } & React.ComponentProps<"input">) {
   return (
@@ -25,85 +25,26 @@ function LabelledInput({ id, label, ...props }: { id: string; label: string } & 
   );
 }
 
-function ProductFields({ prefix, p, category }: { prefix: string; p?: CatalogueProduct; category?: ProductCategory }) {
-  const cat = p?.category ?? category ?? "panel";
-  return (
-    <>
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor={`${prefix}-category`} className="text-[13px] font-semibold text-ink-2">
-            Category
-          </label>
-          <Select id={`${prefix}-category`} name="category" defaultValue={cat}>
-            {PRODUCT_CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {CATEGORY_LABELS[c]}
-              </option>
-            ))}
-          </Select>
-        </div>
-        <LabelledInput id={`${prefix}-name`} name="name" label="Name on proposals" defaultValue={p?.name} required />
-        <LabelledInput id={`${prefix}-sell`} name="sell_price" label="Sell price (£, ex VAT)" inputMode="decimal" defaultValue={pounds(p?.sellPence ?? null)} />
-        <LabelledInput id={`${prefix}-make`} name="make" label="Make" defaultValue={p?.make ?? ""} />
-        <LabelledInput id={`${prefix}-model`} name="model" label="Model" defaultValue={p?.model} required />
-        <LabelledInput id={`${prefix}-sku`} name="sku" label="Your code (optional)" defaultValue={p?.sku ?? ""} />
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor={`${prefix}-unit`} className="text-[13px] font-semibold text-ink-2">
-            Sold per
-          </label>
-          <Select id={`${prefix}-unit`} name="unit" defaultValue={p?.unit ?? "each"}>
-            {["each", "kit", "metre", "hour", "day"].map((u) => (
-              <option key={u}>{u}</option>
-            ))}
-          </Select>
-        </div>
-      </div>
-      {(SPEC_FIELDS[cat]?.length ?? 0) > 0 && (
-        <fieldset className="flex flex-col gap-2">
-          <legend className="mb-1 text-[13px] font-semibold text-ink-2">Datasheet values used in designs (save after changing the category to see its fields)</legend>
-          <div className="grid gap-3 sm:grid-cols-4">
-            {SPEC_FIELDS[cat]!.map((f) =>
-              f.type === "boolean" ? (
-                <div key={f.key} className="flex flex-col gap-1.5">
-                  <label htmlFor={`${prefix}-spec-${f.key}`} className="text-[13px] text-ink-2">
-                    {f.label}
-                  </label>
-                  <Select id={`${prefix}-spec-${f.key}`} name={`spec_${f.key}`} defaultValue={p?.specs[f.key] === undefined ? "" : p.specs[f.key] ? "yes" : "no"}>
-                    <option value="">—</option>
-                    <option value="yes">Yes</option>
-                    <option value="no">No</option>
-                  </Select>
-                </div>
-              ) : (
-                <LabelledInput
-                  key={f.key}
-                  id={`${prefix}-spec-${f.key}`}
-                  name={`spec_${f.key}`}
-                  label={`${f.label}${f.unit ? ` (${f.unit})` : ""}`}
-                  inputMode={f.type === "number" ? "decimal" : undefined}
-                  defaultValue={p?.specs[f.key] === undefined ? "" : String(p.specs[f.key])}
-                />
-              ),
-            )}
-          </div>
-        </fieldset>
-      )}
-    </>
-  );
-}
-
 export default async function ProductsSettingsPage() {
-  const { products, suppliers, imports } = await asUser(
+  const { products, suppliers, imports, files } = await asUser(
     async (tx) => {
       const [products, suppliers, imports] = await Promise.all([
         listCatalogue(tx, { includeArchived: true }),
         tx.selectFrom("suppliers").selectAll().where("archived_at", "is", null).orderBy("name").execute(),
         tx.selectFrom("price_file_imports as i").leftJoin("suppliers as s", "s.id", "i.supplier_id").select(["i.supplier_id", "i.created_at", "s.name"]).orderBy("i.created_at", "desc").limit(20).execute(),
       ]);
-      return { products, suppliers, imports };
+      const fileIds = products.flatMap((p) => [p.datasheetFileId, p.photoFileId]).filter((x): x is string => Boolean(x));
+      const files = fileIds.length ? await tx.selectFrom("files").select(["id", "path"]).where("id", "in", fileIds).execute() : [];
+      return { products, suppliers, imports, files };
     },
     ["admin"],
   );
+  const urls = await signedUrls(files.map((f) => f.path), 3600);
+  const fileUrl = (id: string | null) => {
+    const f = id ? files.find((x) => x.id === id) : null;
+    return f ? { url: urls.get(f.path) ?? null } : null;
+  };
+  const formValues = (p: (typeof products)[number]): ProductFormValues => ({ ...p, datasheet: fileUrl(p.datasheetFileId), photo: fileUrl(p.photoFileId) });
   const lastImport = (supplierId: string) => imports.find((i) => i.supplier_id === supplierId);
   const active = products.filter((p) => !p.archived);
   const archived = products.filter((p) => p.archived);
@@ -219,7 +160,7 @@ export default async function ProductsSettingsPage() {
                         <summary className="cursor-pointer text-[13px] font-semibold text-primary">Edit product and supplier prices</summary>
                         <div className="mt-3 flex flex-col gap-5 rounded-[10px] border bg-surface-subtle p-4">
                           <ActionForm action={saveProductAction.bind(null, p.id)} className="flex flex-col gap-4">
-                            <ProductFields prefix={`p-${p.id}`} p={p} />
+                            <ProductFields prefix={`p-${p.id}`} p={formValues(p)} />
                             <div>
                               <SubmitButton size="sm">Save product</SubmitButton>
                             </div>

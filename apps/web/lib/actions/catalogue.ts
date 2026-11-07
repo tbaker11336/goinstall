@@ -1,13 +1,17 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { IMPORT_FIELDS, mapImportRows, parseCsv, parsePence, parseSpecs, PRODUCT_CATEGORIES, SPEC_FIELDS, type ColumnMapping, type ProductCategory } from "@goinstall/core";
 import { pgErrorCode, sql } from "@goinstall/db";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { asUser } from "@/lib/auth";
+import { extensionFor, fileStore } from "@/lib/files";
 import type { ActionResult } from "./crm";
 
 const ADMIN = ["admin"] as const;
+/** Server actions accept up to 4 MB (next.config.ts). */
+const MAX_PRODUCT_FILE_BYTES = 4 * 1024 * 1024;
 const text = (form: FormData, k: string) => String(form.get(k) ?? "").trim();
 const orNull = (v: string) => v || null;
 
@@ -34,15 +38,37 @@ export async function saveProductAction(id: string | null, _: ActionResult, form
   const category = parsed.data.category as ProductCategory;
   const specs = parseSpecs(category, Object.fromEntries((SPEC_FIELDS[category] ?? []).map((f) => [f.key, text(form, `spec_${f.key}`)])));
   if ("error" in specs) return { error: specs.error };
+  // Datasheet (PDF) and photo, shown with the product on proposals.
+  const upload = (name: string, types: string[], what: string) => {
+    const f = form.get(name);
+    if (!(f instanceof File) || f.size === 0) return null;
+    if (!types.includes(f.type)) return { error: `The ${what} must be ${what === "datasheet" ? "a PDF" : "a JPEG, PNG or WebP image"}.` };
+    if (f.size > MAX_PRODUCT_FILE_BYTES) return { error: `The ${what} is too large (4 MB maximum).` };
+    return f;
+  };
+  const datasheet = upload("datasheet", ["application/pdf"], "datasheet");
+  const photo = upload("photo", ["image/jpeg", "image/png", "image/webp"], "photo");
+  for (const f of [datasheet, photo]) if (f && "error" in f) return { error: f.error };
   const values = { ...parsed.data, make: orNull(parsed.data.make), sku: orNull(parsed.data.sku), sell_price_pence: sell, specs: JSON.stringify(specs.specs) };
   try {
-    return await asUser(async (tx) => {
+    return await asUser(async (tx, session) => {
+      const store = async (f: File, kind: "document" | "photo", category: string) => {
+        const fileId = randomUUID();
+        const path = `${session.companyId}/products/${fileId}.${extensionFor(f.type)}`;
+        await fileStore().put(path, new Uint8Array(await f.arrayBuffer()), f.type);
+        await tx.insertInto("files").values({ id: fileId, project_id: null, kind, category, path, content_type: f.type, size_bytes: f.size, original_name: f.name.slice(0, 200), source: "staff", uploaded_by: session.userId }).execute();
+        return fileId;
+      };
+      const files = {
+        ...(datasheet instanceof File ? { datasheet_file_id: await store(datasheet, "document", "product_datasheet") } : form.get("remove_datasheet") ? { datasheet_file_id: null } : {}),
+        ...(photo instanceof File ? { photo_file_id: await store(photo, "photo", "product_photo") } : form.get("remove_photo") ? { photo_file_id: null } : {}),
+      };
       if (id) {
-        const r = await tx.updateTable("products").set(values).where("id", "=", z.uuid().parse(id)).executeTakeFirst();
+        const r = await tx.updateTable("products").set({ ...values, ...files }).where("id", "=", z.uuid().parse(id)).executeTakeFirst();
         if (!r.numUpdatedRows) return { error: "Product not found" };
         return done("Product saved.");
       }
-      await tx.insertInto("products").values(values).execute();
+      await tx.insertInto("products").values({ ...values, ...files }).execute();
       return done("Product added.");
     }, [...ADMIN]);
   } catch (err) {

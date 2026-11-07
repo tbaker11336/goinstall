@@ -23,6 +23,8 @@ export interface SpecField {
   label: string;
   unit?: string;
   type: "number" | "boolean" | "text";
+  /** Shown up front when adding a product; the rest sit under "More datasheet details". */
+  essential?: boolean;
 }
 
 /**
@@ -31,9 +33,9 @@ export interface SpecField {
  */
 export const SPEC_FIELDS: Partial<Record<ProductCategory, SpecField[]>> = {
   panel: [
-    { key: "watts_peak", label: "Peak power", unit: "Wp", type: "number" },
-    { key: "width_mm", label: "Width", unit: "mm", type: "number" },
-    { key: "height_mm", label: "Height", unit: "mm", type: "number" },
+    { key: "watts_peak", label: "Peak power", unit: "Wp", essential: true, type: "number" },
+    { key: "width_mm", label: "Width", unit: "mm", essential: true, type: "number" },
+    { key: "height_mm", label: "Height", unit: "mm", essential: true, type: "number" },
     { key: "voc", label: "Open-circuit voltage (Voc)", unit: "V", type: "number" },
     { key: "isc", label: "Short-circuit current (Isc)", unit: "A", type: "number" },
     { key: "vmp", label: "Voltage at max power (Vmp)", unit: "V", type: "number" },
@@ -41,39 +43,39 @@ export const SPEC_FIELDS: Partial<Record<ProductCategory, SpecField[]>> = {
     { key: "temp_coeff_voc", label: "Voc temperature coefficient", unit: "%/°C", type: "number" },
     { key: "degradation_first_year_pct", label: "Output lost in year 1", unit: "%", type: "number" },
     { key: "degradation_annual_pct", label: "Output lost each later year", unit: "%", type: "number" },
-    { key: "warranty_years", label: "Product warranty", unit: "years", type: "number" },
+    { key: "warranty_years", label: "Product warranty", unit: "years", essential: true, type: "number" },
     { key: "performance_warranty_years", label: "Performance warranty", unit: "years", type: "number" },
   ],
   inverter: [
-    { key: "ac_kw", label: "AC output", unit: "kW", type: "number" },
+    { key: "ac_kw", label: "AC output", unit: "kW", essential: true, type: "number" },
     { key: "max_dc_kw", label: "Max DC input", unit: "kW", type: "number" },
-    { key: "mppt_count", label: "MPPT inputs", type: "number" },
+    { key: "mppt_count", label: "MPPT inputs", essential: true, type: "number" },
     { key: "mppt_min_v", label: "MPPT range from", unit: "V", type: "number" },
     { key: "mppt_max_v", label: "MPPT range to", unit: "V", type: "number" },
     { key: "max_input_v", label: "Max input voltage", unit: "V", type: "number" },
     { key: "max_input_a", label: "Max input current per MPPT", unit: "A", type: "number" },
-    { key: "hybrid", label: "Hybrid (battery-ready)", type: "boolean" },
-    { key: "phases", label: "Phases", type: "number" },
+    { key: "hybrid", label: "Hybrid (battery-ready)", essential: true, type: "boolean" },
+    { key: "phases", label: "Phases", essential: true, type: "number" },
     { key: "efficiency_pct", label: "Max efficiency", unit: "%", type: "number" },
-    { key: "warranty_years", label: "Product warranty", unit: "years", type: "number" },
+    { key: "warranty_years", label: "Product warranty", unit: "years", essential: true, type: "number" },
     { key: "ena_type_test_ref", label: "ENA type test register Product ID", type: "text" },
   ],
   battery: [
-    { key: "capacity_kwh", label: "Capacity", unit: "kWh", type: "number" },
-    { key: "usable_kwh", label: "Usable capacity", unit: "kWh", type: "number" },
-    { key: "power_kw", label: "Continuous power", unit: "kW", type: "number" },
+    { key: "capacity_kwh", label: "Capacity", unit: "kWh", essential: true, type: "number" },
+    { key: "usable_kwh", label: "Usable capacity", unit: "kWh", essential: true, type: "number" },
+    { key: "power_kw", label: "Continuous power", unit: "kW", essential: true, type: "number" },
     { key: "round_trip_efficiency_pct", label: "Round-trip efficiency", unit: "%", type: "number" },
-    { key: "warranty_years", label: "Product warranty", unit: "years", type: "number" },
+    { key: "warranty_years", label: "Product warranty", unit: "years", essential: true, type: "number" },
     { key: "ena_type_test_ref", label: "ENA type test register Product ID", type: "text" },
   ],
   ev_charger: [
-    { key: "rated_kw", label: "Rated power", unit: "kW", type: "number" },
-    { key: "rated_a", label: "Rated current", unit: "A", type: "number" },
-    { key: "phases", label: "Phases", type: "number" },
-    { key: "tethered", label: "Tethered", type: "boolean" },
+    { key: "rated_kw", label: "Rated power", unit: "kW", essential: true, type: "number" },
+    { key: "rated_a", label: "Rated current", unit: "A", essential: true, type: "number" },
+    { key: "phases", label: "Phases", essential: true, type: "number" },
+    { key: "tethered", label: "Tethered", essential: true, type: "boolean" },
     { key: "solar_divert", label: "Solar divert mode", type: "boolean" },
     { key: "pen_protection", label: "Built-in PEN fault protection", type: "boolean" },
-    { key: "warranty_years", label: "Product warranty", unit: "years", type: "number" },
+    { key: "warranty_years", label: "Product warranty", unit: "years", essential: true, type: "number" },
     { key: "ena_type_test_ref", label: "ENA type test register Product ID", type: "text" },
   ],
 };

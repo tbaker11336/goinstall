@@ -567,6 +567,7 @@ export interface Products {
   make: string | null;
   model: string;
   name: string;
+  photo_file_id: string | null;
   sell_price_pence: Int8 | null;
   sku: string | null;
   specs: Generated<Json>;

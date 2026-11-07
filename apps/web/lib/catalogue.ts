@@ -25,6 +25,9 @@ export interface CatalogueProduct {
   specs: Specs;
   sellPence: number | null;
   archived: boolean;
+  /** Datasheet PDF and photo shown with it on proposals (files ids). */
+  datasheetFileId: string | null;
+  photoFileId: string | null;
   offers: CatalogueOffer[];
   best: CatalogueOffer | null;
 }
@@ -69,6 +72,8 @@ export async function listCatalogue(tx: Tx, opts: { includeArchived?: boolean; c
       specs: (p.specs ?? {}) as Specs,
       sellPence: p.sell_price_pence === null ? null : Number(p.sell_price_pence),
       archived: p.archived_at !== null,
+      datasheetFileId: p.datasheet_file_id,
+      photoFileId: p.photo_file_id,
       offers: mine,
       best: bestOffer(mine),
     };

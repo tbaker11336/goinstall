@@ -196,7 +196,20 @@ export async function proposalContent(tx: Tx, proposalId: string, companyId?: st
   let lq = tx.selectFrom("proposal_lines").selectAll().where("proposal_id", "=", proposalId).orderBy("position");
   if (companyId) lq = lq.where("company_id", "=", companyId);
   const lines = await lq.execute();
-  return { proposal, lines };
+  // The products on its lines that have a photo or datasheet to show the customer.
+  const productIds = [...new Set(lines.map((l) => l.product_id).filter((x): x is string => Boolean(x)))];
+  let products: { id: string; name: string; make: string | null; model: string; photo_path: string | null; datasheet_path: string | null }[] = [];
+  if (productIds.length) {
+    let ppq = tx
+      .selectFrom("products as pd")
+      .leftJoin("files as ph", (j) => j.onRef("ph.id", "=", "pd.photo_file_id").onRef("ph.company_id", "=", "pd.company_id"))
+      .leftJoin("files as ds", (j) => j.onRef("ds.id", "=", "pd.datasheet_file_id").onRef("ds.company_id", "=", "pd.company_id"))
+      .select(["pd.id", "pd.name", "pd.make", "pd.model", "ph.path as photo_path", "ds.path as datasheet_path"])
+      .where("pd.id", "in", productIds);
+    if (companyId) ppq = ppq.where("pd.company_id", "=", companyId);
+    products = (await ppq.execute()).filter((x) => x.photo_path || x.datasheet_path);
+  }
+  return { proposal, lines, products };
 }
 
 export type ProposalContent = NonNullable<Awaited<ReturnType<typeof proposalContent>>>;
@@ -261,6 +274,16 @@ export async function proposalViewWithLayout(c: ProposalContent): Promise<Propos
   if (termsPath) {
     const url = urls.get(termsPath);
     if (url) view.termsFile = { url, name: c.proposal.terms_file_name ?? "Terms and conditions.pdf" };
+  }
+  if (c.products.length) {
+    const p = await signedUrls(c.products.flatMap((x) => [x.photo_path, x.datasheet_path]).filter((x): x is string => Boolean(x)), 3600);
+    view.products = c.products.map((x) => ({
+      id: x.id,
+      name: x.name,
+      makeModel: [x.make, x.model].filter(Boolean).join(" "),
+      photoUrl: x.photo_path ? (p.get(x.photo_path) ?? null) : null,
+      datasheetUrl: x.datasheet_path ? (p.get(x.datasheet_path) ?? null) : null,
+    }));
   }
   return view;
 }

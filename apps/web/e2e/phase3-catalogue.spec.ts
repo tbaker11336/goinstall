@@ -1,3 +1,4 @@
+import path from "node:path";
 import { expect, test } from "@playwright/test";
 import { signInAs } from "./helpers";
 
@@ -56,4 +57,25 @@ test("admin adds a panel from the product library with its datasheet values", as
   await page.reload();
   await page.getByLabel("Search panels by make, model or watts").fill("JKM445M-60HL4");
   await expect(page.getByRole("region", { name: "Library results" }).getByText("In catalogue").first()).toBeVisible();
+});
+
+test("an EV charger asks only for what matters, with a datasheet and photo for proposals", async ({ page }) => {
+  await signInAs(page, "Alex Morgan");
+  await page.goto("/settings/products");
+  await page.getByText("Add a product", { exact: true }).click();
+  await page.getByLabel("Category").last().selectOption({ label: "EV charger" });
+  await expect(page.getByRole("group", { name: "EV charger details" })).toBeVisible();
+  await expect(page.locator("#new-p-spec-rated_kw")).toBeVisible();
+  // Panel fields aren't asked for.
+  await expect(page.locator("#new-p-spec-watts_peak")).toHaveCount(0);
+  await page.locator("#new-p-name").fill("Test 7 kW charger");
+  await page.locator("#new-p-model").fill("TC-7");
+  await page.locator("#new-p-spec-rated_kw").fill("7.4");
+  await page.locator("#new-p-datasheet").setInputFiles(path.join(process.cwd(), "e2e", "fixtures", "test-certificate.pdf"));
+  await page.locator("#new-p-photo").setInputFiles(path.join(process.cwd(), "e2e", "fixtures", "site-photo.png"));
+  await page.getByRole("button", { name: "Add product" }).click();
+  const row = page.locator("tbody").filter({ hasText: "Test 7 kW charger" });
+  await expect(row).toBeVisible();
+  await row.getByText("Edit product and supplier prices").click();
+  await expect(row.getByRole("link", { name: "View current" })).toHaveCount(2);
 });

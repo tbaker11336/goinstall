@@ -30,7 +30,7 @@ wins.
 | 2 | `survey_field_history` | Every overwritten value (offline conflicts: last write wins, history kept) |
 | 2 | `photo_categories` | Per-company required photo types per survey kind |
 | 2 | `files` | All stored objects (photos, signatures, PDFs, attachments): bucket path, type, uploader; other tables reference it |
-| 3 | `products` | Company catalogue: category, make, model, specs JSON, sell price |
+| 3 | `products` | Company catalogue: category, make, model, specs JSON, sell price, datasheet PDF and photo (`datasheet_file_id`, `photo_file_id`, shown on proposals) |
 | 3 | `suppliers` | Connection type, credentials reference, last sync |
 | 3 | `supplier_products` | Cost, stock, lead time and SKU per supplier per product (replaces `products.supplier_id` in the spec, so the Kit tab can compare suppliers) |
 | 3 | `roof_data_cache` | Google Solar API responses per project, so each billed call is made once |

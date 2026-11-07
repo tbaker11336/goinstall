@@ -18,6 +18,8 @@ export interface ProposalView {
   layoutUrl?: string | null;
   lines: { id: string; section: string; description: string; quantity: number; unitPricePence: number; vatRate: number }[];
   terms: string | null;
+  /** Products on the proposal with a photo or datasheet to show (signed URLs). */
+  products?: { id: string; name: string; makeModel: string; photoUrl: string | null; datasheetUrl: string | null }[];
   /** The company's terms PDF attached to this proposal (signed URL). */
   termsFile?: { url: string; name: string } | null;
 }
@@ -174,6 +176,36 @@ export function ProposalDocument({ p }: { p: ProposalView }) {
           </div>
         )}
       </dl>
+
+      {p.products && p.products.length > 0 && (
+        <section aria-labelledby="products-heading" className="flex flex-col gap-3 border-t pt-4">
+          <h2 id="products-heading" className="text-lg font-bold">
+            The products
+          </h2>
+          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {p.products.map((x) => (
+              <li key={x.id} className="flex gap-3 rounded-lg border p-3">
+                {x.photoUrl ? (
+                  // Signed storage URLs: a plain img, not next/image.
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={x.photoUrl} alt={x.name} className="size-20 shrink-0 rounded-md bg-muted object-contain" />
+                ) : (
+                  <span className="size-20 shrink-0 rounded-md bg-muted" aria-hidden />
+                )}
+                <span className="flex min-w-0 flex-col gap-1 text-sm">
+                  <span className="font-semibold">{x.name}</span>
+                  {x.makeModel && <span className="text-ink-3">{x.makeModel}</span>}
+                  {x.datasheetUrl && (
+                    <a href={x.datasheetUrl} target="_blank" rel="noopener" className="w-fit font-medium text-primary underline">
+                      Datasheet (PDF)<span className="sr-only">: {x.name}, opens in a new tab</span>
+                    </a>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <BillsSection s={p.summary} />
       <FinanceSection s={p.summary} />
