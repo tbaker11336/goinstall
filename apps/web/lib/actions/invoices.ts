@@ -4,7 +4,9 @@ import { formatPence, parsePence, planInvoice, type InvoicePlan } from "@goinsta
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { asUser } from "@/lib/auth";
-import { recordInvoicePayment, nextInvoiceNumber } from "@/lib/deposits";
+import { withService } from "@goinstall/db";
+import { db } from "@/lib/db";
+import { nextInvoiceNumber, recordInvoicePayment, writeSystemNote, type SystemNote } from "@/lib/deposits";
 import { emailConfigured } from "@/lib/email";
 import { emailInvoice, kindLabel, newPayLink } from "@/lib/invoices";
 import { notifyTeam } from "@/lib/notify";
@@ -136,15 +138,20 @@ export async function recordPaymentAction(invoiceId: string, _: ActionResult, fo
   if (!uuid.safeParse(invoiceId).success) return { error: "Invoice not found" };
   const amount = money(String(form.get("amount") ?? ""));
   if (amount === null || amount <= 0) return { error: "Enter the amount received." };
-  const r: ActionResult & { paid?: { companyId: string; projectId: string; by: string; label: string } } = await asUser(async (tx, session) => {
+  const r: ActionResult & { paid?: { companyId: string; projectId: string; by: string; label: string }; note?: SystemNote } = await asUser(async (tx, session) => {
     const inv = await tx.selectFrom("invoices").select(["id", "status", "project_id", "kind"]).where("id", "=", invoiceId).executeTakeFirst();
     if (!inv) return { error: "Invoice not found" };
     if (inv.status === "paid") return { error: "This invoice is already recorded as paid." };
     if (inv.status === "void") return { error: "This invoice has been voided." };
-    await recordInvoicePayment(tx, { companyId: session.companyId, invoiceId: inv.id, amountPence: amount, method: "bank_transfer", provider: null, providerRef: null, actorId: session.userId });
+    const rec = await recordInvoicePayment(tx, { companyId: session.companyId, invoiceId: inv.id, amountPence: amount, method: "bank_transfer", provider: null, providerRef: null, actorId: session.userId });
     refresh(inv.project_id);
-    return { message: `${kindLabel(inv.kind)} of ${formatPence(amount)} recorded as paid.`, paid: { companyId: session.companyId, projectId: inv.project_id, by: session.userId, label: kindLabel(inv.kind) } };
+    return { message: `${kindLabel(inv.kind)} of ${formatPence(amount)} recorded as paid.`, paid: { companyId: session.companyId, projectId: inv.project_id, by: session.userId, label: kindLabel(inv.kind) }, note: rec.note };
   });
+  // The "paid" line in the customer's thread is a system message, written by the server once the payment is saved.
+  if (r.note) {
+    const note = r.note;
+    await withService(db(), (tx) => writeSystemNote(tx, note));
+  }
   if (r.paid) await notifyTeam(r.paid.companyId, "payment_received", { projectId: r.paid.projectId, exclude: r.paid.by, link: `/projects/${r.paid.projectId}/invoices`, data: { detail: `${r.paid.label} of ${formatPence(amount)} received by bank transfer` } });
   return { error: r.error, message: r.message };
 }

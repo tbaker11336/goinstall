@@ -49,14 +49,14 @@ export async function ensureDepositInvoice(tx: Tx, p: { companyId: string; proje
 }
 
 /**
- * Mark a deposit or balance invoice paid: record the payment (idempotent on provider ref), close
+ * Mark an invoice paid: record the payment (idempotent on provider ref), close
  * the invoice, move the project to Deposit paid and tell the team.
  * Spec: Deposit paid → draft purchase orders (phase 5) and Xero sync.
  */
 export async function recordInvoicePayment(
   tx: Tx,
   p: { companyId: string; invoiceId: string; amountPence: number; method: "card" | "bank_transfer"; provider: string | null; providerRef: string | null; actorId: string | null },
-): Promise<{ alreadyRecorded: boolean }> {
+): Promise<{ alreadyRecorded: boolean; note?: SystemNote }> {
   if (p.providerRef) {
     const dup = await tx.selectFrom("payments").select("id").where("provider", "=", p.provider).where("provider_ref", "=", p.providerRef).executeTakeFirst();
     if (dup) return { alreadyRecorded: true };
@@ -77,13 +77,27 @@ export async function recordInvoicePayment(
     await tx.updateTable("projects").set({ stage: "deposit_paid" }).where("id", "=", invoice.project_id).where("company_id", "=", p.companyId).execute();
   }
   const how = p.method === "card" ? "by card" : "by bank transfer";
-  await tx
-    .insertInto("messages")
-    .values({ company_id: p.companyId, contact_id: invoice.contact_id, project_id: invoice.project_id, channel: "system", direction: "internal", body: `${INVOICE_KIND_LABELS[invoice.kind as InvoiceKind] ?? "Invoice"} of ${formatPence(p.amountPence)} paid ${how}`, created_by: p.actorId })
-    .execute();
+  const note: SystemNote = { companyId: p.companyId, contactId: invoice.contact_id, projectId: invoice.project_id, body: `${INVOICE_KIND_LABELS[invoice.kind as InvoiceKind] ?? "Invoice"} of ${formatPence(p.amountPence)} paid ${how}`, createdBy: p.actorId };
+  // System messages are written by the server only (RLS): as the service role here, or by the caller after a staff action.
+  const { rows } = await sql<{ u: string }>`select current_user as u`.execute(tx);
+  const deferred = rows[0]?.u === "authenticated";
+  if (!deferred) await writeSystemNote(tx, note);
   await tx
     .insertInto("activity_log")
     .values({ company_id: p.companyId, project_id: invoice.project_id, contact_id: invoice.contact_id, actor_id: p.actorId, event: invoice.kind === "balance" ? "balance_paid" : invoice.kind === "deposit" ? "deposit_paid" : "invoice_paid", payload: { amount_pence: p.amountPence, method: p.method } })
     .execute();
-  return { alreadyRecorded: false };
+  return { alreadyRecorded: false, note: deferred ? note : undefined };
+}
+
+export interface SystemNote {
+  companyId: string;
+  contactId: string;
+  projectId: string;
+  body: string;
+  createdBy: string | null;
+}
+
+/** A system line in the contact's thread (service role only: staff can't write system messages). */
+export async function writeSystemNote(tx: Tx, n: SystemNote) {
+  await tx.insertInto("messages").values({ company_id: n.companyId, contact_id: n.contactId, project_id: n.projectId, channel: "system", direction: "internal", body: n.body, created_by: n.createdBy }).execute();
 }
