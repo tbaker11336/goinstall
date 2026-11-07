@@ -166,6 +166,7 @@ export default async function ProposalPage({
         .where("status", "!=", "void")
         .executeTakeFirst(),
     ]);
+    const products = await tx.selectFrom("products").select(["id", "name", "make", "model", "category", "sell_price_pence"]).where("archived_at", "is", null).orderBy("name").execute();
     const balance = await tx
       .selectFrom("invoices")
       .select(["id", "number", "status", "paid_at", "amount_pence", "issued_at"])
@@ -182,11 +183,13 @@ export default async function ProposalPage({
       proposal,
       invoice,
       balance,
+      products,
     };
   });
   if (!data) notFound();
   const { project, versions, hasDesign, company, content, proposal, invoice, balance } =
     data;
+  const catalogue = (("products" in data ? data.products : undefined) ?? []).map((p) => ({ id: p.id, name: p.name, make: p.make, model: p.model, category: p.category, sellPence: p.sell_price_pence === null ? null : Number(p.sell_price_pence) }));
 
   if (!content || !proposal) {
     return (
@@ -268,6 +271,8 @@ export default async function ProposalPage({
                 survey: (content.proposal.survey ?? []) as unknown as ProposalSurveySection[],
               }}
               labourVat={labourVat}
+              products={catalogue}
+              vatRates={(company.vat_rates ?? {}) as Partial<Record<string, number>>}
             />
           )}
           {!isDraft && content.lines.some((l) => l.display === "hide") && (

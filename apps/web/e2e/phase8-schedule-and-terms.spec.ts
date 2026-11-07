@@ -144,17 +144,28 @@ test("terms and conditions PDF goes onto new proposals", async ({ page }) => {
 
   // Lines can be shown without a price, or hidden; the total still counts them.
   const totalBefore = (await page.getByTestId("proposal-total").textContent())!;
-  await page.getByLabel("Line 1: customer sees").selectOption("hide_price");
+  // "Customer sees" is the eye icon at the end of each row.
+  await page.getByRole("button", { name: "Line 1: customer sees: Line and price" }).click();
+  await page.getByRole("menuitemradio", { name: "Line, no price" }).click();
+  // A line from the catalogue: search, pick, and it's named and priced.
+  await page.getByRole("button", { name: "Add line" }).click();
+  const m = await page.getByTestId("proposal-line").count();
+  await page.getByRole("combobox", { name: `Line ${m} product` }).fill("hybrid inverter");
+  await page.getByRole("option", { name: /5 kW hybrid inverter/ }).click();
+  await expect(page.getByLabel(`Line ${m} description`)).toHaveValue("5 kW hybrid inverter");
+  await expect(page.getByLabel(`Line ${m} unit price`)).not.toHaveValue("");
+  await page.getByRole("button", { name: `Remove line ${m}` }).click();
   await page.getByRole("button", { name: "Add line" }).click();
   const n = await page.getByTestId("proposal-line").count();
   await page.getByLabel(`Line ${n} description`).fill("Certification and paperwork");
   await page.getByLabel(`Line ${n} unit price`).fill("100");
   await page.getByLabel(`Line ${n} VAT rate`).fill("0");
-  await page.getByLabel(`Line ${n}: customer sees`).selectOption("hide");
+  await page.getByRole("button", { name: `Line ${n}: customer sees: Line and price` }).click();
+  await page.getByRole("menuitemradio", { name: "Hidden (in total)" }).click();
   await page.getByRole("button", { name: "Save draft" }).click();
   await expect(page.getByText(/^Saved\. Total/)).toBeVisible();
   await page.reload();
-  await expect(page.getByLabel("Line 1: customer sees")).toHaveValue("hide_price");
+  await expect(page.getByRole("button", { name: "Line 1: customer sees: Line, no price" })).toBeVisible();
   await expect(doc.getByText("Included").first()).toBeVisible();
   await expect(doc.getByText("Certification and paperwork")).toHaveCount(0);
   const toPence = (t: string) => Math.round(Number(t.replace(/[£,]/g, "")) * 100);

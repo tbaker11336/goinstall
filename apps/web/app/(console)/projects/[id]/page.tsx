@@ -6,6 +6,7 @@ import { ActionForm, SubmitButton } from "@/components/forms";
 import { StageControls } from "@/components/stage-controls";
 import { Thread } from "@/components/thread";
 import { Avatar } from "@/components/domain";
+import { DeleteRecord } from "@/components/delete-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, Input, Select, Textarea } from "@/components/ui/input";
 import { addNoteAction, updateProjectAction, updateWorkDescriptionAction } from "@/lib/actions/crm";
@@ -15,7 +16,7 @@ import { cn, formatDate, formatMoney } from "@/lib/utils";
 
 export default async function ProjectOverviewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const data = await asUser(async (tx) => {
+  const data = await asUser(async (tx, session) => {
     const project = await tx
       .selectFrom("projects as p")
       .innerJoin("contacts as c", "c.id", "p.contact_id")
@@ -47,7 +48,7 @@ export default async function ProjectOverviewPage({ params }: { params: Promise<
       .executeTakeFirst();
     if (!project) return null;
     const [timeline, staff] = await Promise.all([contactTimeline(tx, project.contact_id, project.id), listStaff(tx)]);
-    return { project, timeline, staff };
+    return { project, timeline, staff, isAdmin: session.role === "admin" };
   });
   if (!data) notFound();
   const { project: p, timeline, staff } = data;
@@ -249,6 +250,14 @@ export default async function ProjectOverviewPage({ params }: { params: Promise<
               </details>
             </CardContent>
           </Card>
+          {data.isAdmin && (
+            <DeleteRecord
+              kind="project"
+              id={p.id}
+              name={`the project at ${p.site_address_line1 ?? "this address"}`}
+              consequences="Its survey, designs, proposals, bookings, checklists, test results, paperwork and files go with it. The customer and their messages stay."
+            />
+          )}
         </div>
       </div>
     </div>

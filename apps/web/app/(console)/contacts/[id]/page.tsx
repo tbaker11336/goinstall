@@ -8,6 +8,7 @@ import { Composer } from "@/components/composer";
 import { ActionForm, SubmitButton } from "@/components/forms";
 import { Thread, THREAD_TABS, type ThreadTab } from "@/components/thread";
 import { buttonVariants } from "@/components/ui/button";
+import { DeleteRecord } from "@/components/delete-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { addProjectAction, updateContactAction } from "@/lib/actions/crm";
 import { withService } from "@goinstall/db";
@@ -25,7 +26,7 @@ export default async function ContactPage({ params, searchParams }: { params: Pr
   if (!z.uuid().safeParse(id).success) notFound();
   const tab: ThreadTab = THREAD_TABS.some((t) => t.key === tabParam) ? (tabParam as ThreadTab) : "all";
 
-  const data = await asUser(async (tx) => {
+  const data = await asUser(async (tx, session) => {
     const contact = await tx.selectFrom("contacts").selectAll().where("id", "=", id).executeTakeFirst();
     if (!contact) return null;
     const [projects, timeline, staff, sources, templates] = await Promise.all([
@@ -48,7 +49,7 @@ export default async function ContactPage({ params, searchParams }: { params: Pr
         .orderBy("name")
         .execute(),
     ]);
-    return { contact, projects, timeline, staff, sources, templates };
+    return { contact, projects, timeline, staff, sources, templates, isAdmin: session.role === "admin" };
   });
   if (!data) notFound();
   // The add-on's number (billing rows are admin-only, so read for this company server-side).
@@ -166,6 +167,14 @@ export default async function ContactPage({ params, searchParams }: { params: Pr
               </details>
             </CardContent>
           </Card>
+          {data.isAdmin && (
+            <DeleteRecord
+              kind="contact"
+              id={contact.id}
+              name={contact.name}
+              consequences={`Their details, message history${projects.length ? ` and ${projects.length} project${projects.length === 1 ? "" : "s"} (with everything on them)` : ""} go with them.`}
+            />
+          )}
         </aside>
 
         <Card className="flex min-w-0 flex-[999_1_520px] flex-col overflow-hidden" aria-label="Conversation">

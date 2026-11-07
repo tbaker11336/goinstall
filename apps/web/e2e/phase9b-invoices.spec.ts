@@ -82,6 +82,13 @@ test("invoices on an accepted quote: summary, extra work emailed and paid, a sta
   await wrong.getByRole("button", { name: /^Void / }).click();
   await expect(wrong).toContainText("Void");
 
+  // A project with invoices on it can't be deleted.
+  await page.getByRole("navigation", { name: "Project sections" }).getByRole("link", { name: "Overview" }).click();
+  await page.getByRole("button", { name: "Delete project" }).click();
+  await page.getByRole("button", { name: "Yes, delete project" }).click();
+  await expect(page.getByRole("alert")).toContainText("This project can't be deleted. It has invoices");
+  await expect(page.getByRole("alert")).toContainText("Mark the project lost instead.");
+
   // Across projects: the Invoices page.
   await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Invoices" }).click();
   await page.getByLabel("Show").selectOption("paid");

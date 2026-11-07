@@ -78,6 +78,8 @@ test("an electrical-only job: described in words, no survey or design step", asy
   await expect(install.getByText("Return visit: fit sockets booked for 2 hours.")).toBeVisible();
   await expect(page.getByRole("article", { name: "Return visit: fit sockets" })).toContainText("14:00–16:00");
   if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/schedule-tab.png`, fullPage: true });
+  const projectUrl = page.url().replace(/\/schedule.*$/, "");
+
 
   await page.goto(`/schedule?view=day&date=${day}`);
   const job = page.getByRole("button", { name: /09:00–11:00 Electrical work Ruth Ellis/ });
@@ -86,4 +88,25 @@ test("an electrical-only job: described in words, no survey or design step", asy
   const dialog = page.getByRole("dialog", { name: "Electrical work" });
   await expect(dialog.getByText("Engineer").first()).toBeVisible();
   await expect(dialog.getByText(/, 09:00–11:00/)).toBeVisible();
+
+  // Office staff can't delete; an admin deletes the project, then the contact.
+  await signInAs(page, "Priya Shah");
+  await page.goto(projectUrl);
+  await expect(page.getByRole("button", { name: "Delete project" })).toHaveCount(0);
+  await signInAs(page, "Alex Morgan");
+  await page.goto(projectUrl);
+  await page.getByRole("button", { name: "Delete project" }).click();
+  await expect(page.getByRole("alertdialog")).toContainText("Its survey, designs, proposals, bookings");
+  await page.getByRole("button", { name: "Yes, delete project" }).click();
+  await page.waitForURL(/\/contacts\/[0-9a-f-]{36}$/);
+  await expect(page.getByRole("heading", { name: "Ruth Ellis", level: 1 })).toBeVisible();
+  await expect(page.getByText("No projects yet.")).toBeVisible();
+  await page.goto(projectUrl);
+  await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
+  await page.goBack();
+  await page.getByRole("button", { name: "Delete contact" }).click();
+  await page.getByRole("button", { name: "Yes, delete contact" }).click();
+  await page.waitForURL(/\/contacts$/);
+  await page.goto("/contacts?view=list");
+  await expect(page.getByRole("link", { name: "Ruth Ellis" })).toHaveCount(0);
 });

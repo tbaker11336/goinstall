@@ -1,11 +1,12 @@
 "use client";
 
-import { formatPence, lineTotal, parsePence, proposalTotals, LINE_DISPLAY_LABELS, LINE_DISPLAYS, SECTION_LABELS, type LineDisplay, type ProposalSection, type ProposalSurveySection } from "@goinstall/core";
+import { formatPence, lineTotal, parsePence, proposalTotals, sectionFor, SECTION_LABELS, type LineDisplay, type ProposalSection, type ProposalSurveySection } from "@goinstall/core";
 import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { FormMessage, type FormState } from "@/components/forms";
 import { resendBalanceInvoiceAction } from "@/lib/actions/invoices";
+import { LineVisibility, ProductPicker, type PickerProduct } from "@/components/product-picker";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select, Textarea } from "@/components/ui/input";
 import {
@@ -123,17 +124,22 @@ export interface EditorLine {
   display: LineDisplay;
 }
 
-const SECTIONS = Object.keys(SECTION_LABELS) as ProposalSection[];
 
 /** Draft editor: lines (generated and custom), title, intro and deposit, with live totals. */
 export function ProposalEditor({
   proposalId,
   initial,
   labourVat,
+  products,
+  vatRates,
 }: {
   proposalId: string;
   initial: { title: string; intro: string; depositPct: string; lines: EditorLine[]; survey: ProposalSurveySection[] };
   labourVat: number | null;
+  /** The catalogue, to pick a product for a line. */
+  products: PickerProduct[];
+  /** VAT % per product category (Settings › Invoices & quotes). */
+  vatRates: Partial<Record<string, number>>;
 }) {
   const router = useRouter();
   const [title, setTitle] = useState(initial.title);
@@ -150,6 +156,15 @@ export function ProposalEditor({
   );
   const update = (key: string, patch: Partial<EditorLine>) =>
     setLines((ls) => ls.map((l) => (l.key === key ? { ...l, ...patch } : l)));
+  // Picking a product names the line, prices it and puts it in the right section of the proposal.
+  const pickProduct = (l: EditorLine, p: PickerProduct) =>
+    update(l.key, {
+      productId: p.id,
+      section: sectionFor(p.category),
+      description: !l.description.trim() || l.description === products.find((x) => x.id === l.productId)?.name ? p.name : l.description,
+      unitPrice: p.sellPence === null ? l.unitPrice : (p.sellPence / 100).toFixed(2),
+      vatRate: vatRates[p.category] === undefined ? l.vatRate : String(vatRates[p.category]),
+    });
   const move = (i: number, d: -1 | 1) =>
     setLines((ls) => {
       const j = i + d;
@@ -212,13 +227,13 @@ export function ProposalEditor({
           <caption className="sr-only">Proposal lines</caption>
           <thead>
             <tr className="text-left text-xs text-ink-3">
-              <th className="pb-2 font-semibold">Section</th>
+              <th className="w-52 pb-2 font-semibold">Product</th>
               <th className="pb-2 font-semibold">Description</th>
               <th className="w-20 pb-2 font-semibold">Qty</th>
               <th className="w-28 pb-2 font-semibold">Unit price (£)</th>
               <th className="w-20 pb-2 font-semibold">VAT %</th>
               <th className="w-24 pb-2 text-right font-semibold">Total</th>
-              <th className="w-28 pb-2">
+              <th className="w-40 pb-2">
                 <span className="sr-only">Actions</span>
               </th>
             </tr>
@@ -230,29 +245,20 @@ export function ProposalEditor({
               return (
                 <tr key={l.key} className="border-t align-top" data-testid="proposal-line">
                   <td className="py-2 pr-2">
-                    <Select aria-label={`Line ${n} section`} value={l.section} onChange={(e) => update(l.key, { section: e.target.value as ProposalSection })} className="h-9">
-                      {SECTIONS.map((s) => (
-                        <option key={s} value={s}>
-                          {SECTION_LABELS[s]}
-                        </option>
-                      ))}
-                    </Select>
+                    <ProductPicker
+                      label={`Line ${n} product`}
+                      products={products}
+                      value={products.find((p) => p.id === l.productId) ?? null}
+                      onPick={(p) => pickProduct(l, p)}
+                      onClear={() => update(l.key, { productId: null })}
+                    />
                   </td>
                   <td className="py-2 pr-2">
                     <Input aria-label={`Line ${n} description`} value={l.description} onChange={(e) => update(l.key, { description: e.target.value })} className="h-9" />
-                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-                      <label className="flex items-center gap-1.5 text-xs text-ink-3">
-                        Customer sees
-                        <Select aria-label={`Line ${n}: customer sees`} value={l.display} onChange={(e) => update(l.key, { display: e.target.value as LineDisplay })} className="h-7 w-auto py-0 text-xs">
-                          {LINE_DISPLAYS.map((d) => (
-                            <option key={d} value={d}>
-                              {LINE_DISPLAY_LABELS[d]}
-                            </option>
-                          ))}
-                        </Select>
-                      </label>
-                      {l.origin === "design" && <span className="text-xs text-muted-foreground">From the design</span>}
-                    </div>
+                    <span className="mt-1 block text-xs text-muted-foreground">
+                      {SECTION_LABELS[l.section]}
+                      {l.origin === "design" ? " · from the design" : ""}
+                    </span>
                   </td>
                   <td className="py-2 pr-2">
                     <Input aria-label={`Line ${n} quantity`} inputMode="decimal" value={l.quantity} onChange={(e) => update(l.key, { quantity: e.target.value })} className="h-9" />
@@ -266,6 +272,7 @@ export function ProposalEditor({
                   <td className="py-2 pr-2 pt-4 text-right font-medium">{formatPence(total)}</td>
                   <td className="py-2">
                     <div className="flex justify-end gap-1">
+                      <LineVisibility label={`Line ${n}: customer sees`} value={l.display} onChange={(d) => update(l.key, { display: d })} />
                       <Button type="button" size="icon" variant="ghost" aria-label={`Move line ${n} up`} disabled={i === 0} onClick={() => move(i, -1)}>
                         <ArrowUp className="size-4" />
                       </Button>
