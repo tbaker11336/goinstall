@@ -27,13 +27,13 @@ export async function payInvoiceByCardAction(token: string): Promise<{ error?: s
     if (!inv.stripe_account_id) return { error: "Card payments aren't available. Please pay by bank transfer." };
     const session = await provider.createCheckout({
       amountPence: Number(inv.amount_pence),
-      description: `Balance for ${inv.name} (${inv.number})`,
+      description: `Invoice ${inv.number} from ${inv.name}`,
       customerEmail: inv.email,
       successUrl: `${base}/i/${token}?paid=1`,
       cancelUrl: `${base}/i/${token}`,
       metadata: { invoice_id: inv.id, company_id: inv.company_id },
       connectedAccountId: inv.stripe_account_id,
-      idempotencyKey: `balance-${inv.id}-${Math.floor(Date.now() / 600_000)}`,
+      idempotencyKey: `invoice-${inv.id}-${Math.floor(Date.now() / 600_000)}`,
     });
     return { url: session.url };
   }).catch(() => ({ error: "Card payment couldn't be started. Please try again or pay by bank transfer." }));

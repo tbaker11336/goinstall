@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, CalendarDays, FileText, Folder, LayoutGrid, SlidersHorizontal, Users } from "lucide-react";
+import { Bell, CalendarDays, FileText, Folder, LayoutGrid, Receipt, SlidersHorizontal, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Avatar } from "@/components/domain";
@@ -12,6 +12,7 @@ const NAV = [
   { href: "/projects", label: "Projects", icon: Folder },
   { href: "/proposals", label: "Proposals", icon: FileText },
   { href: "/schedule", label: "Schedule", icon: CalendarDays },
+  { href: "/invoices", label: "Invoices", icon: Receipt },
 ];
 
 export function Logo({ size = 32 }: { size?: number }) {

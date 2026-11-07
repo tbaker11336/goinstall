@@ -60,6 +60,9 @@ design rules: never invent rule values).
   title, when, where, guests, description; any booking type incl. "Other
   visit") and Handover (installer photos, checklist readings, electrical
   test results, office uploads, paperwork, generate and send the pack).
+- Invoices: a project Invoices tab (and an Invoices page across projects)
+  once the quote is accepted: deposit, stage payments, balance and extra
+  work; PDF, email with pay link, record payment, void.
 - Electrical test results: per distribution board, the fields of the EIC
   continuation sheet (circuit details and test results); installers fill
   them in the app, the office can edit; values are text, nothing pre-filled.

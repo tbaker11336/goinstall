@@ -1,5 +1,5 @@
 import "server-only";
-import { formatPence } from "@goinstall/core";
+import { formatPence, INVOICE_KIND_LABELS, type InvoiceKind } from "@goinstall/core";
 import type { StripeEvent } from "@goinstall/integrations";
 import { withService } from "@goinstall/db";
 import { z } from "zod";
@@ -45,7 +45,7 @@ export async function handleStripeEvent(event: StripeEvent): Promise<{ status: s
   });
   if ("paid" in r && r.paid) {
     const p = r.paid;
-    await notifyTeam(p.companyId, "payment_received", { projectId: p.projectId, link: `/projects/${p.projectId}/proposal`, data: { detail: `${p.kind === "balance" ? "Balance" : "Deposit"} of ${formatPence(p.amount)} paid by card` } });
+    await notifyTeam(p.companyId, "payment_received", { projectId: p.projectId, link: `/projects/${p.projectId}/invoices`, data: { detail: `${INVOICE_KIND_LABELS[p.kind as InvoiceKind] ?? "Invoice"} of ${formatPence(p.amount)} paid by card` } });
   }
   return { status: r.status };
 }

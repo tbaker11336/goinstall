@@ -389,6 +389,7 @@ export interface Invoices {
   company_id: Generated<string>;
   created_at: Generated<Timestamp>;
   created_by: Generated<string | null>;
+  description: string | null;
   due_date: Timestamp | null;
   id: Generated<string>;
   issued_at: Generated<Timestamp>;
@@ -398,6 +399,7 @@ export interface Invoices {
   pay_token_hash: string | null;
   project_id: string;
   proposal_id: string | null;
+  sent_at: Timestamp | null;
   status: Generated<string>;
   updated_at: Generated<Timestamp>;
   vat_pence: Generated<Int8>;

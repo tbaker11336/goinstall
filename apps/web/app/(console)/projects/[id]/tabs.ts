@@ -5,6 +5,7 @@ export const PROJECT_TABS = [
   { slug: "survey", label: "Survey", doneAt: "design", phase: 2 },
   { slug: "design", label: "Design", doneAt: "proposal_sent", phase: 3 },
   { slug: "proposal", label: "Proposal", doneAt: "accepted", phase: 4 },
+  { slug: "invoices", label: "Invoices", doneAt: null, phase: 4 },
   { slug: "kit", label: "Kit & suppliers", doneAt: "kit_ordered", phase: 5 },
   { slug: "schedule", label: "Schedule", doneAt: "scheduled", phase: 5 },
   { slug: "handover", label: "Handover", doneAt: "complete", phase: 6 },

@@ -1,4 +1,4 @@
-import { formatPence } from "@goinstall/core";
+import { formatPence, INVOICE_KIND_LABELS, type InvoiceKind } from "@goinstall/core";
 import { withService } from "@goinstall/db";
 import type { Metadata } from "next";
 import { Logo } from "@/components/sidebar";
@@ -9,6 +9,8 @@ import { formatDate } from "@/lib/utils";
 import { PayInvoiceButton } from "./pay-button";
 
 export const dynamic = "force-dynamic";
+
+const kindLabel = (k: string) => INVOICE_KIND_LABELS[k as InvoiceKind] ?? "Invoice";
 
 export const metadata: Metadata = {
   title: "Your invoice",
@@ -33,6 +35,8 @@ export default async function PublicInvoicePage({ params, searchParams }: { para
             "i.status",
             "i.issued_at",
             "i.paid_at",
+            "i.description",
+            "i.due_date",
             "c.name as company_name",
             "c.brand_primary_colour",
             "c.phone",
@@ -76,12 +80,17 @@ export default async function PublicInvoicePage({ params, searchParams }: { para
           <section className="flex flex-col gap-5 rounded-2xl border bg-card p-6">
             <div>
               <p className="text-sm text-ink-3">Invoice {data.number} · {formatDate(data.issued_at, { day: "numeric", month: "long", year: "numeric" })}</p>
-              <h1 className="mt-1 text-2xl font-bold">{data.kind === "balance" ? "Balance due" : "Amount due"}</h1>
+              <h1 className="mt-1 text-2xl font-bold">{data.kind === "balance" ? "Balance due" : `${kindLabel(data.kind)} due`}</h1>
+              {data.description && <p className="mt-1">{data.description}</p>}
               <p className="text-ink-3">
                 {data.contact_name} · {[data.site_address_line1, data.site_town, data.site_postcode].filter(Boolean).join(", ")}
               </p>
             </div>
             <p className="stat text-4xl font-bold">{formatPence(Number(data.amount_pence))}</p>
+            {data.due_date && !isPaid && <p className="-mt-3 text-sm text-ink-3">Due by {formatDate(data.due_date, { day: "numeric", month: "long", year: "numeric" })}</p>}
+            <a href={`/i/${token}/pdf`} className="w-fit text-sm font-semibold text-primary underline">
+              Download the invoice (PDF)
+            </a>
             {isPaid || paid ? (
               <p role="status" className="rounded-md bg-success-tint px-4 py-3 font-semibold text-success-text">
                 {isPaid ? `Paid${data.paid_at ? ` on ${formatDate(data.paid_at, { day: "numeric", month: "long" })}` : ""}. Thank you.` : "Thank you: your payment is being confirmed."}

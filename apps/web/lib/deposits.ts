@@ -1,5 +1,5 @@
 import "server-only";
-import { formatPence } from "@goinstall/core";
+import { formatPence, INVOICE_KIND_LABELS, type InvoiceKind } from "@goinstall/core";
 import { sql, type Tx } from "@goinstall/db";
 
 /**
@@ -79,11 +79,11 @@ export async function recordInvoicePayment(
   const how = p.method === "card" ? "by card" : "by bank transfer";
   await tx
     .insertInto("messages")
-    .values({ company_id: p.companyId, contact_id: invoice.contact_id, project_id: invoice.project_id, channel: "system", direction: "internal", body: `${invoice.kind === "balance" ? "Balance" : "Deposit"} of ${formatPence(p.amountPence)} paid ${how}`, created_by: p.actorId })
+    .values({ company_id: p.companyId, contact_id: invoice.contact_id, project_id: invoice.project_id, channel: "system", direction: "internal", body: `${INVOICE_KIND_LABELS[invoice.kind as InvoiceKind] ?? "Invoice"} of ${formatPence(p.amountPence)} paid ${how}`, created_by: p.actorId })
     .execute();
   await tx
     .insertInto("activity_log")
-    .values({ company_id: p.companyId, project_id: invoice.project_id, contact_id: invoice.contact_id, actor_id: p.actorId, event: invoice.kind === "balance" ? "balance_paid" : "deposit_paid", payload: { amount_pence: p.amountPence, method: p.method } })
+    .values({ company_id: p.companyId, project_id: invoice.project_id, contact_id: invoice.contact_id, actor_id: p.actorId, event: invoice.kind === "balance" ? "balance_paid" : invoice.kind === "deposit" ? "deposit_paid" : "invoice_paid", payload: { amount_pence: p.amountPence, method: p.method } })
     .execute();
   return { alreadyRecorded: false };
 }
