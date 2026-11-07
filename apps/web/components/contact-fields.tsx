@@ -4,6 +4,9 @@ import { Field, Input, Select } from "@/components/ui/input";
 
 interface ContactValues {
   name?: string;
+  first_name?: string | null;
+  last_name?: string | null;
+  company_name?: string | null;
   phone?: string | null;
   email?: string | null;
   address_line1?: string | null;
@@ -46,8 +49,14 @@ export function ContactFields({
   const sources = [...new Set([...SOURCES, ...extraSources, ...(values.source ? [values.source] : [])])];
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      <Field label="Name" htmlFor="name" className="sm:col-span-2">
-        <Input id="name" name="name" defaultValue={values.name} required autoComplete="off" />
+      <Field label="First name" htmlFor="first_name">
+        <Input id="first_name" name="first_name" defaultValue={values.first_name ?? values.name ?? ""} required autoComplete="off" />
+      </Field>
+      <Field label="Last name" htmlFor="last_name">
+        <Input id="last_name" name="last_name" defaultValue={values.last_name ?? ""} autoComplete="off" />
+      </Field>
+      <Field label="Company (optional)" htmlFor="company_name" className="sm:col-span-2">
+        <Input id="company_name" name="company_name" defaultValue={values.company_name ?? ""} autoComplete="off" />
       </Field>
       <Field label="Phone" htmlFor="phone">
         <Input id="phone" name="phone" type="tel" defaultValue={values.phone ?? ""} />

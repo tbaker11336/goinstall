@@ -259,13 +259,16 @@ export interface Contacts {
   address_line1: string | null;
   address_line2: string | null;
   company_id: Generated<string>;
+  company_name: string | null;
   county: string | null;
   created_at: Generated<Timestamp>;
   created_by: Generated<string | null>;
   email: string | null;
+  first_name: string | null;
   id: Generated<string>;
   interested_in: Generated<ArrayType<ProductType>>;
   last_activity_at: Generated<Timestamp>;
+  last_name: string | null;
   legacy_id: string | null;
   lost_reason: string | null;
   name: string;

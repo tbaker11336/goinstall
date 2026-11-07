@@ -8,7 +8,8 @@ test("create an enquiry, move it across the Kanban and open the project", async 
   await signInAs(page, "Priya Shah");
   await page.getByRole("link", { name: "New enquiry" }).first().click();
 
-  await page.getByLabel("Name").fill("Nina Patel");
+  await page.getByLabel("First name").fill("Nina");
+  await page.getByLabel("Last name").fill("Patel");
   await page.getByLabel("Phone").fill("07700 900555");
   await page.getByLabel("Email").fill("nina.patel@example.com");
   await page.getByLabel("Address", { exact: true }).fill("41 Redland Grove");

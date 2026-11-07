@@ -29,7 +29,19 @@ const optional = z
   .optional();
 
 const contactFields = {
-  name: z.string().trim().min(1, "Enter the customer's name"),
+  first_name: z.string().trim().min(1, "Enter the customer's first name").max(100),
+  last_name: z
+    .string()
+    .trim()
+    .max(100)
+    .optional()
+    .transform((v) => v || null),
+  company_name: z
+    .string()
+    .trim()
+    .max(200)
+    .optional()
+    .transform((v) => v || null),
   phone: optional,
   email: z
     .union([z.literal(""), z.email("Enter a valid email address")])
@@ -46,6 +58,9 @@ const contactFields = {
     .optional()
     .transform((v) => v || null),
 };
+
+/** The full name kept alongside the parts (the database also keeps them in step). */
+const fullName = (c: { first_name: string; last_name: string | null }) => [c.first_name, c.last_name].filter(Boolean).join(" ");
 
 function formObject(form: FormData) {
   const obj: Record<string, unknown> = {};
@@ -77,7 +92,7 @@ export async function createEnquiryAction(_: ActionResult, form: FormData): Prom
     const owner = contact.owner_id ?? session.userId;
     const c = await tx
       .insertInto("contacts")
-      .values({ ...contact, owner_id: owner, interested_in: products })
+      .values({ ...contact, name: fullName(contact), owner_id: owner, interested_in: products })
       .returning("id")
       .executeTakeFirstOrThrow();
     const p = await tx
@@ -105,7 +120,7 @@ export async function createEnquiryAction(_: ActionResult, form: FormData): Prom
     return { projectId: p.id, companyId: session.companyId, owner, me: session.userId };
   });
   // Someone else's enquiry: tell its owner.
-  if (owner !== me) await notifyTeam(companyId, "new_enquiry", { projectId, recipients: [owner], data: { site: [contact.address_line1, contact.town].filter(Boolean).join(", ") || undefined, detail: `${contact.name}, added by a colleague.` } });
+  if (owner !== me) await notifyTeam(companyId, "new_enquiry", { projectId, recipients: [owner], data: { site: [contact.address_line1, contact.town].filter(Boolean).join(", ") || undefined, detail: `${fullName(contact)}, added by a colleague.` } });
   revalidatePath("/", "layout");
   redirect(`/projects/${projectId}`);
 }
@@ -119,7 +134,7 @@ export async function updateContactAction(contactId: string, _: ActionResult, fo
   const n = await asUser(async (tx) => {
     const r = await tx
       .updateTable("contacts")
-      .set({ ...fields, interested_in: products })
+      .set({ ...fields, name: fullName(fields), interested_in: products })
       .where("id", "=", z.uuid().parse(contactId))
       .executeTakeFirst();
     return Number(r.numUpdatedRows);

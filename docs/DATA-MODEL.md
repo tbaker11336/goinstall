@@ -21,6 +21,7 @@ wins.
 | Phase | Table | Notes |
 | --- | --- | --- |
 | 1 | `companies`, `users`, `teams`, `contacts`, `projects`, `messages`, `activity_log`, `integrations` | Built. Unmatched inbound messages have no contact (the manual-link inbox) |
+| 1 | `contacts.first_name`, `last_name`, `company_name` | First and last name entered separately (a trigger keeps `name`, the full name, in step either way) and an optional company (added in build) |
 | 1 | `projects.work_description`, product `electrical` | General electrical work described in words; electrical-only projects skip the survey and design steps (added in build) |
 | 2 | `message_templates` | Email and WhatsApp; WhatsApp templates carry Meta approval status |
 | 2 | `surveys` | One per project per `kind` (`solar_battery`, `ev`: separate surveys, business decision); online and in-person status, surveyor, hashed link token |

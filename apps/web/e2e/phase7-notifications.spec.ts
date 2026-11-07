@@ -39,7 +39,8 @@ test("team notifications in the app, and survey reminders from the daily job", a
   const before = lines(OUTBOX).length;
   await page.goto("/dashboard");
   await page.getByRole("link", { name: "New enquiry" }).first().click();
-  await page.getByLabel("Name").fill("Nina Okoro");
+  await page.getByLabel("First name").fill("Nina");
+  await page.getByLabel("Last name").fill("Okoro");
   await page.getByLabel("Phone").fill("07700 900199");
   await page.getByLabel("Address", { exact: true }).fill("4 Harbour View");
   await page.getByLabel("Town").fill("Portishead");

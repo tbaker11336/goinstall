@@ -76,6 +76,7 @@ export default async function ContactPage({ params, searchParams }: { params: Pr
               <h1 className="text-2xl font-bold tracking-[-0.02em]">{contact.name}</h1>
               <ContactStageChip stage={contact.stage} />
             </div>
+            {contact.company_name && <span className="font-semibold text-ink-2">{contact.company_name}</span>}
             <span className="text-sm text-ink-3">
               {contact.stage === "lost" && contact.lost_reason ? `Lost: ${contact.lost_reason}` : `Contact since ${since}`}
               {owner && ` · Owner ${owner}`}

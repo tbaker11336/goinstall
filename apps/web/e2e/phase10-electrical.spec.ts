@@ -10,7 +10,9 @@ test.use({ viewport: { width: 1440, height: 1200 } });
 test("an electrical-only job: described in words, no survey or design step", async ({ page }) => {
   await signInAs(page, "Alex Morgan");
   await page.goto("/contacts/new");
-  await page.getByLabel("Name").fill("Ruth Ellis");
+  await page.getByLabel("First name").fill("Ruth");
+  await page.getByLabel("Last name").fill("Ellis");
+  await page.getByLabel("Company (optional)").fill("Ellis Lettings Ltd");
   await page.getByLabel("Phone").fill("07700 900188");
   await page.getByLabel("Address", { exact: true }).fill("9 Clifton Down");
   await page.getByLabel("Town").fill("Bristol");
@@ -25,6 +27,11 @@ test("an electrical-only job: described in words, no survey or design step", asy
   await expect(tabs.getByRole("link", { name: /Survey$/ })).toHaveCount(0);
   await expect(tabs.getByRole("link", { name: /Design$/ })).toHaveCount(0);
   await expect(page.locator("[data-project-page] header")).toContainText("Electrical");
+  // The contact has the name in two parts and the company.
+  await page.locator("[data-project-page] header").getByRole("link", { name: "Ruth Ellis" }).click();
+  await expect(page.getByRole("heading", { name: "Ruth Ellis", level: 1 })).toBeVisible();
+  await expect(page.getByText("Ellis Lettings Ltd").first()).toBeVisible();
+  await page.goBack();
 
   const description = page.getByLabel("Work description", { exact: true });
   await expect(description).toHaveValue("Replace consumer unit; add two double sockets in the kitchen.");
