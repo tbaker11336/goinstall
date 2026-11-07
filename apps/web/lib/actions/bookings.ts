@@ -355,3 +355,47 @@ export async function sendTeamMessageAction(projectId: string, _: ActionResult, 
   revalidatePath(`/projects/${projectId}/schedule`);
   return { message: "Sent." };
 }
+
+const newProjectSchema = z.object({
+  contactId: z.uuid(),
+  products: z.array(z.enum(["solar", "battery", "ev", "electrical"])).min(1, "Choose at least one product"),
+  workDescription: z
+    .string()
+    .trim()
+    .max(5000)
+    .optional()
+    .transform((v) => v || null),
+});
+
+/**
+ * "New project" from the Schedule page's New booking popup: a project for an
+ * existing customer at their address, returned so it can be booked at once.
+ */
+export async function newProjectForBookingAction(
+  input: z.input<typeof newProjectSchema>,
+): Promise<{ error?: string; project?: { id: string; customer: string; address: string | null; products: string[]; length: null } }> {
+  const parsed = newProjectSchema.safeParse(input);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message };
+  const d = parsed.data;
+  return asUser(async (tx, session) => {
+    const c = await tx.selectFrom("contacts").select(["id", "name", "address_line1", "address_line2", "town", "county", "postcode", "owner_id"]).where("id", "=", d.contactId).executeTakeFirst();
+    if (!c) return { error: "Customer not found" };
+    const p = await tx
+      .insertInto("projects")
+      .values({
+        contact_id: c.id,
+        products: d.products,
+        work_description: d.workDescription,
+        owner_id: c.owner_id ?? session.userId,
+        site_address_line1: c.address_line1,
+        site_address_line2: c.address_line2,
+        site_town: c.town,
+        site_county: c.county,
+        site_postcode: c.postcode,
+      })
+      .returning("id")
+      .executeTakeFirstOrThrow();
+    revalidatePath("/", "layout");
+    return { project: { id: p.id, customer: c.name, address: [c.address_line1, c.town, c.postcode].filter(Boolean).join(", ") || null, products: d.products, length: null } };
+  });
+}

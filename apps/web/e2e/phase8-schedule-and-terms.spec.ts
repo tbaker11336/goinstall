@@ -93,8 +93,8 @@ test("EV install: no scaffold, declined in the app, rescheduled and the customer
   await page.goto(`/schedule?view=day&date=${todayUk()}`);
   await page.getByRole("button", { name: "New booking" }).click();
   const popup = page.getByRole("dialog", { name: "New booking" });
-  await popup.getByRole("combobox", { name: "Which job?" }).fill("owen gloucester");
-  await popup.getByRole("option", { name: /Owen Lewis/ }).click();
+  await popup.getByRole("combobox", { name: "Customer" }).fill("owen");
+  await popup.getByRole("option", { name: /Gloucester Road/ }).click();
   await popup.getByText("Other visit", { exact: true }).click();
   await popup.getByLabel("Title").fill("Meter check");
   await expect(popup.getByLabel("Start date")).toHaveValue(todayUk());
@@ -104,6 +104,23 @@ test("EV install: no scaffold, declined in the app, rescheduled and the customer
   await expect(popup.getByText("Meter check booked for 2 hours.")).toBeVisible();
   await popup.getByRole("button", { name: "Close" }).click();
   await expect(page.getByRole("button", { name: /10:00–12:00 Meter check Owen Lewis/ })).toBeVisible();
+
+  // Or a new project for an existing customer, booked straight away.
+  await page.getByRole("button", { name: "New booking" }).click();
+  await popup.getByRole("combobox", { name: "Customer" }).fill("owen lewis");
+  await popup.getByRole("option", { name: "+ New project for Owen Lewis" }).click();
+  await popup.getByRole("button", { name: "Create project and book" }).click();
+  await expect(popup.getByText("Choose at least one product")).toBeVisible();
+  await popup.getByLabel("Electrical").check();
+  await popup.getByLabel("Work description (optional)").fill("Outside socket for the garden");
+  await popup.getByRole("button", { name: "Create project and book" }).click();
+  await popup.getByLabel("Length in").selectOption("hours");
+  await popup.getByLabel("Length", { exact: true }).fill("2");
+  await popup.getByLabel("Start time").fill("14:00");
+  await popup.getByRole("button", { name: "Book install" }).click();
+  await expect(popup.getByText("Install booked for 2 hours.")).toBeVisible();
+  await popup.getByRole("button", { name: "Close" }).click();
+  await expect(page.getByRole("button", { name: /14:00–16:00 Electrical work Owen Lewis/ })).toBeVisible();
 
   // The moved job asks Dan again (in the app, the next day it's on).
   await app.reload();
