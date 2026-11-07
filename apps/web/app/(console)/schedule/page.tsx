@@ -1,10 +1,11 @@
-import { bookingDates, bookingTitle, calendarRange, ukDate, type CalendarView } from "@goinstall/core";
+import { bookingDates, bookingTitle, calendarRange, ukDate, type CalendarView, type LengthUnit } from "@goinstall/core";
 import { z } from "zod";
 import { PageHeader } from "@/components/domain";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { asUser } from "@/lib/auth";
 import { loadBookings, loadPeople, type ScheduleBooking } from "@/lib/schedule";
 import { CalendarLink } from "./calendar-links";
+import { NewBookingButton, type BookableProject } from "./new-booking";
 import { ScheduleCalendar, type CalendarEvent } from "./schedule-calendar";
 
 export const metadata = { title: "Schedule" };
@@ -21,10 +22,26 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
   const range = calendarRange(view, date);
   const team = sp.team && z.uuid().safeParse(sp.team).success ? sp.team : null;
 
-  const { bookings, people, isAdmin } = await asUser(async (tx, s) => ({
+  const { bookings, people, isAdmin, projects } = await asUser(async (tx, s) => ({
     bookings: await loadBookings(tx, { from: range.from, to: range.to }),
     people: await loadPeople(tx),
     isAdmin: s.role === "admin",
+    // Jobs that can be booked from here, most recent first.
+    projects: await tx
+      .selectFrom("projects as p")
+      .innerJoin("contacts as c", (j) => j.onRef("c.id", "=", "p.contact_id").onRef("c.company_id", "=", "p.company_id"))
+      .select(["p.id", "c.name", "p.site_address_line1", "p.site_town", "p.site_postcode", "p.products", "p.estimated_length", "p.estimated_length_unit"])
+      .where("p.stage", "!=", "lost")
+      .orderBy("p.updated_at", "desc")
+      .limit(500)
+      .execute(),
+  }));
+  const bookable: BookableProject[] = projects.map((p) => ({
+    id: p.id,
+    customer: p.name,
+    address: [p.site_address_line1, p.site_town, p.site_postcode].filter(Boolean).join(", ") || null,
+    products: p.products,
+    length: p.estimated_length && p.estimated_length_unit ? { value: Number(p.estimated_length), unit: p.estimated_length_unit as LengthUnit } : null,
   }));
 
   const members = team ? new Set(people.users.filter((u) => u.team_id === team).map((u) => u.id)) : null;
@@ -52,7 +69,11 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
 
   return (
     <>
-      <PageHeader title="Schedule" description="Every survey, installation and scaffold booking. Click a booking to see it, move it or tell the customer." />
+      <PageHeader
+        title="Schedule"
+        description="Every survey, installation and scaffold booking. Click a booking to see it, move it or tell the customer."
+        actions={<NewBookingButton projects={bookable} people={people} date={date} />}
+      />
       <div className="flex flex-col gap-6">
         <ScheduleCalendar
           view={view}

@@ -89,6 +89,22 @@ test("EV install: no scaffold, declined in the app, rescheduled and the customer
   // Month cells show just the title.
   await expect(page.getByRole("button", { name: /^(✕ Declined: )?EV charger installation$/ }).first()).toBeVisible();
 
+  // Booking straight from the Schedule page: pick the job, then the invite.
+  await page.goto(`/schedule?view=day&date=${todayUk()}`);
+  await page.getByRole("button", { name: "New booking" }).click();
+  const popup = page.getByRole("dialog", { name: "New booking" });
+  await popup.getByRole("combobox", { name: "Which job?" }).fill("owen gloucester");
+  await popup.getByRole("option", { name: /Owen Lewis/ }).click();
+  await popup.getByText("Other visit", { exact: true }).click();
+  await popup.getByLabel("Title").fill("Meter check");
+  await expect(popup.getByLabel("Start date")).toHaveValue(todayUk());
+  await popup.getByLabel("Start time").fill("10:00");
+  await popup.getByLabel("Lee Carter").check();
+  await popup.getByRole("button", { name: "Book other visit" }).click();
+  await expect(popup.getByText("Meter check booked for 2 hours.")).toBeVisible();
+  await popup.getByRole("button", { name: "Close" }).click();
+  await expect(page.getByRole("button", { name: /10:00–12:00 Meter check Owen Lewis/ })).toBeVisible();
+
   // The moved job asks Dan again (in the app, the next day it's on).
   await app.reload();
   await expect(app.getByText("My jobs")).toBeVisible();
@@ -110,6 +126,8 @@ test("terms and conditions PDF goes onto new proposals", async ({ page }) => {
   await page.getByRole("button", { name: "Save company details" }).click();
   await expect(page.getByText("Company details saved.")).toBeVisible();
   await page.getByLabel("Upload a logo").setInputFiles(path.join(process.cwd(), "e2e", "fixtures", "site-photo.png"));
+  // A preview before it's uploaded.
+  await expect(page.getByAltText("Preview of the logo you chose")).toBeVisible();
   await page.getByRole("button", { name: "Upload logo" }).click();
   await expect(page.getByText("Logo saved. It's on your proposals.")).toBeVisible();
   await expect(page.getByAltText("Your current logo")).toBeVisible();

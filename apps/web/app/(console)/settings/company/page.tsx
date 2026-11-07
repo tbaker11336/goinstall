@@ -1,7 +1,8 @@
 import { ActionForm, SubmitButton } from "@/components/forms";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, Input, Textarea } from "@/components/ui/input";
-import { removeLogoAction, updateCompanyAction, uploadLogoAction } from "@/lib/actions/settings";
+import { LogoUpload } from "@/components/logo-upload";
+import { removeLogoAction, updateCompanyAction } from "@/lib/actions/settings";
 import { signedUrls } from "@/lib/files";
 import { asUser } from "@/lib/auth";
 
@@ -46,12 +47,7 @@ export default async function CompanySettingsPage() {
           ) : (
             <p className="text-sm text-muted-foreground">No logo yet: proposals show your initials.</p>
           )}
-          <ActionForm action={uploadLogoAction} className="flex flex-wrap items-end gap-3" resetOnSuccess>
-            <Field label={logoUrl ? "Replace the logo" : "Upload a logo"} htmlFor="logo" hint="PNG or JPEG, up to 2 MB. A wide logo on a white or clear background works best.">
-              <Input id="logo" name="logo" type="file" accept="image/png,image/jpeg" required className="w-72 py-1.5" aria-describedby="logo-hint" />
-            </Field>
-            <SubmitButton pendingText="Uploading…">Upload logo</SubmitButton>
-          </ActionForm>
+          <LogoUpload replacing={Boolean(logoUrl)} />
         </CardContent>
       </Card>
       <Card>

@@ -72,6 +72,7 @@ export function BookingInvite({
   projectLength,
   booking,
   initialType,
+  defaultDate,
 }: {
   projectId: string;
   prefix: string;
@@ -82,6 +83,8 @@ export function BookingInvite({
   projectLength: { value: number; unit: LengthUnit } | null;
   booking?: InviteBooking;
   initialType?: InviteType;
+  /** Start date for a new booking (e.g. the day being viewed on the calendar). */
+  defaultDate?: string;
 }) {
   const [type, setType] = useState<InviteType>(booking?.type ?? initialType ?? types[0] ?? "install");
   const len = booking && booking.type === type ? booking.length : defaultLength(type, projectLength);
@@ -107,7 +110,7 @@ export function BookingInvite({
 
       <Row icon={Clock} label="When">
         <Field label="Start date" htmlFor={`${p}start`}>
-          <Input id={`${p}start`} name="start_date" type="date" required defaultValue={booking?.startDate ?? ""} />
+          <Input id={`${p}start`} name="start_date" type="date" required defaultValue={booking?.startDate ?? defaultDate ?? ""} />
         </Field>
         <BookingLength key={`${type}-${len.unit}`} prefix={p} value={len.value} unit={len.unit} startTime={booking?.type === type ? booking.startTime : ""} />
       </Row>
