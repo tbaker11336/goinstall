@@ -13,6 +13,8 @@ export const SMS_OUTBOX = `${process.cwd()}/.data/e2e-sms.jsonl`;
 export const CRON_SECRET = "e2e-cron-secret";
 // The stand-in Xero keeps its invoices and payments here.
 export const XERO_FILE = `${process.cwd()}/.data/e2e-xero.json`;
+// The stand-in Google Calendar keeps everyone's events here.
+export const CALENDAR_FILE = `${process.cwd()}/.data/e2e-calendar.json`;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -31,7 +33,7 @@ export default defineConfig({
   webServer: [
   {
     // Fresh database with demo data, then the app with dev sign-in.
-    command: `mkdir -p .data && rm -f ${OUTBOX} ${SMS_OUTBOX} ${PUSH_OUTBOX} ${XERO_FILE} && rm -rf .data/e2e-uploads && DATABASE_URL=${pgAdmin} pnpm --filter @goinstall/db reset-dev goinstall_e2e && pnpm exec next dev --port ${port}`,
+    command: `mkdir -p .data && rm -f ${OUTBOX} ${SMS_OUTBOX} ${PUSH_OUTBOX} ${XERO_FILE} ${CALENDAR_FILE} && rm -rf .data/e2e-uploads && DATABASE_URL=${pgAdmin} pnpm --filter @goinstall/db reset-dev goinstall_e2e && pnpm exec next dev --port ${port}`,
     url: `http://localhost:${port}/login`,
     reuseExistingServer: false,
     timeout: 180_000,
@@ -62,6 +64,10 @@ export default defineConfig({
       XERO_FAKE_FILE: XERO_FILE,
       XERO_CLIENT_ID: "",
       XERO_CLIENT_SECRET: "",
+      GOOGLE_CALENDAR_FAKE: "true",
+      GOOGLE_CALENDAR_FAKE_FILE: CALENDAR_FILE,
+      GOOGLE_OAUTH_CLIENT_ID: "",
+      GOOGLE_OAUTH_CLIENT_SECRET: "",
     },
   },
   {

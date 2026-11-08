@@ -1,6 +1,8 @@
 import { bookingDates, bookingTitle, calendarRange, ukDate, type CalendarView, type LengthUnit } from "@goinstall/core";
 import { z } from "zod";
+import Link from "next/link";
 import { PageHeader } from "@/components/domain";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { asUser } from "@/lib/auth";
 import { loadBookings, loadPeople, type ScheduleBooking } from "@/lib/schedule";
@@ -81,7 +83,14 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
       <PageHeader
         title="Schedule"
         description="Every survey, installation and scaffold booking. Click a booking to see it, move it or tell the customer."
-        actions={<NewBookingButton customers={customers} people={people} date={date} />}
+        actions={
+          <>
+            <Link href="/my-calendar" className={buttonVariants({ variant: "outline" })}>
+              My Google Calendar
+            </Link>
+            <NewBookingButton customers={customers} people={people} date={date} />
+          </>
+        }
       />
       <div className="flex flex-col gap-6">
         <ScheduleCalendar

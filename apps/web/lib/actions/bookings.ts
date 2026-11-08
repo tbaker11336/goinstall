@@ -8,6 +8,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { asUser } from "@/lib/auth";
 import { emailConfigured, emailSender, fromAddress } from "@/lib/email";
+import { syncCalendarsLater } from "@/lib/calendar-sync";
 import { notifyBooking } from "@/lib/notify";
 import { calendarFeedUrl, newCalendarNonce } from "@/lib/schedule";
 import { sendSms } from "@/lib/sms";
@@ -127,7 +128,10 @@ export async function saveBookingAction(projectId: string, bookingId: string | n
     return { message: `${d.type === "task" ? (d.title ?? "Visit") : BOOKING_TYPE_LABELS[d.type]} ${bookingId ? "updated" : "booked"}${many ? ` for ${formatLength(length.value, length.unit)}` : ""}.` };
   });
   const sv = saved as { companyId: string; bookingId: string; actor: string } | null;
-  if (sv) await notifyBooking(sv.companyId, sv.bookingId, sv.actor);
+  if (sv) {
+    syncCalendarsLater(sv.companyId, sv.bookingId);
+    await notifyBooking(sv.companyId, sv.bookingId, sv.actor);
+  }
   return result;
 }
 
@@ -148,15 +152,19 @@ export async function moveBookingAction(bookingId: string, firstDate: string, te
     revalidatePath("/schedule");
     return { companyId: session.companyId, actor: session.userId };
   });
-  if ("companyId" in moved && moved.companyId) await notifyBooking(moved.companyId, bookingId, moved.actor ?? null);
+  if ("companyId" in moved && moved.companyId) {
+    syncCalendarsLater(moved.companyId, bookingId);
+    await notifyBooking(moved.companyId, bookingId, moved.actor ?? null);
+  }
   return "error" in moved ? { error: moved.error } : {};
 }
 
 export async function cancelBookingAction(bookingId: string): Promise<ActionResult> {
   if (!uuid.safeParse(bookingId).success) return { error: "Not found" };
-  return asUser(async (tx) => {
+  return asUser(async (tx, session) => {
     const b = await tx.updateTable("bookings").set({ status: "cancelled" }).where("id", "=", bookingId).returning("project_id").executeTakeFirst();
     if (!b) return { error: "Booking not found" };
+    syncCalendarsLater(session.companyId, bookingId);
     if (b.project_id) revalidatePath(`/projects/${b.project_id}`, "layout");
     revalidatePath("/schedule");
     return { message: "Booking cancelled." };
@@ -291,6 +299,7 @@ export async function rescheduleBookingAction(bookingId: string, _: ActionResult
     return { companyId: session.companyId, actor: session.userId };
   });
   if ("error" in done) return { error: done.error };
+  syncCalendarsLater(done.companyId, bookingId);
   await notifyBooking(done.companyId, bookingId, done.actor);
   return { message: "Moved. Let the customer know with Notify customer." };
 }

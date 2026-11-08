@@ -1,4 +1,5 @@
-import { ScrollView, View } from "react-native";
+import { Linking, ScrollView, View } from "react-native";
+import { API_URL } from "../config";
 import { useStore } from "../store";
 import { colors } from "../theme";
 import { Button, Card, H1, H2, Muted, SyncBadge } from "../ui";
@@ -20,6 +21,12 @@ export function Profile() {
         {st.lastSyncAt && <Muted style={{ marginTop: 4 }}>Last synced {new Date(st.lastSyncAt).toLocaleString("en-GB", { timeZone: "Europe/London" })}</Muted>}
         <View style={{ height: 12 }} />
         <Button label="Sync now" variant="outline" onPress={() => void st.sync()} />
+      </Card>
+      <Card>
+        <H2>Google Calendar</H2>
+        <Muted>Put your jobs in your own Google Calendar. Opens in your browser: sign in to GoInstall there, then connect.</Muted>
+        <View style={{ height: 12 }} />
+        <Button label="Connect Google Calendar" variant="outline" onPress={() => void Linking.openURL(`${API_URL}/my-calendar`)} />
       </Card>
       <Button
         label="Sign out"

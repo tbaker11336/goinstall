@@ -98,6 +98,18 @@ export interface BookingAssignments {
   user_id: string | null;
 }
 
+export interface BookingCalendarEvents {
+  booking_id: string;
+  company_id: Generated<string>;
+  created_at: Generated<Timestamp>;
+  created_by: Generated<string | null>;
+  event_id: string;
+  id: Generated<string>;
+  provider: Generated<string>;
+  updated_at: Generated<Timestamp>;
+  user_id: string;
+}
+
 export interface BookingResponses {
   booking_id: string;
   company_id: Generated<string>;
@@ -967,6 +979,7 @@ export interface Users {
 export interface DB {
   activity_log: ActivityLog;
   booking_assignments: BookingAssignments;
+  booking_calendar_events: BookingCalendarEvents;
   booking_responses: BookingResponses;
   bookings: Bookings;
   calc_tables: CalcTables;

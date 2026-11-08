@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { asUser } from "@/lib/auth";
+import { removeCalendarEvents } from "@/lib/calendar-sync";
 import { fileStore } from "@/lib/files";
 import type { ActionResult } from "./crm";
 
@@ -40,12 +41,13 @@ async function removeFiles(paths: string[]) {
 export async function deleteProjectAction(projectId: string): Promise<ActionResult> {
   if (!uuid.safeParse(projectId).success) return { error: "Project not found" };
   const r = await asUser(
-    async (tx) => {
+    async (tx, session) => {
       const p = await tx.selectFrom("projects").select(["id", "contact_id"]).where("id", "=", projectId).executeTakeFirst();
       if (!p) return { error: "Project not found" };
       const invoices = await blockingInvoices(tx, [p.id]);
       if (invoices.length) return { error: `This project can't be deleted. ${refusal(invoices)}` };
       const paths = await filePaths(tx, [p.id]);
+      await removeCalendarEvents(session.companyId, (await tx.selectFrom("bookings").select("id").where("project_id", "=", p.id).execute()).map((b) => b.id));
       const gone = await tx.deleteFrom("projects").where("id", "=", p.id).executeTakeFirst();
       if (!gone.numDeletedRows) return { error: "Only an admin can delete a project." };
       return { paths, contactId: p.contact_id };
@@ -62,13 +64,14 @@ export async function deleteProjectAction(projectId: string): Promise<ActionResu
 export async function deleteContactAction(contactId: string): Promise<ActionResult> {
   if (!uuid.safeParse(contactId).success) return { error: "Contact not found" };
   const r = await asUser(
-    async (tx) => {
+    async (tx, session) => {
       const c = await tx.selectFrom("contacts").select("id").where("id", "=", contactId).executeTakeFirst();
       if (!c) return { error: "Contact not found" };
       const projects = (await tx.selectFrom("projects").select("id").where("contact_id", "=", c.id).execute()).map((p) => p.id);
       const invoices = await blockingInvoices(tx, projects);
       if (invoices.length) return { error: `This contact can't be deleted. ${refusal(invoices)}` };
       const paths = await filePaths(tx, projects);
+      if (projects.length) await removeCalendarEvents(session.companyId, (await tx.selectFrom("bookings").select("id").where("project_id", "in", projects).execute()).map((b) => b.id));
       // Projects first (their cascades), then the contact with its messages and activity.
       if (projects.length) await tx.deleteFrom("projects").where("id", "in", projects).execute();
       const gone = await tx.deleteFrom("contacts").where("id", "=", c.id).executeTakeFirst();
