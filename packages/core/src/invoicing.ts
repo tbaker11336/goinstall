@@ -118,3 +118,27 @@ export function isOverdue(inv: { status: string; dueDate: string | null }, today
 function pounds(p: number) {
   return `£${(p / 100).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
+
+/**
+ * Split an invoice into one line per VAT rate for accounting software.
+ * Quote invoices take the quote's mix of rates in proportion; extra work
+ * has a single rate. Net and VAT always add up to the invoice exactly.
+ */
+export function vatLines(inv: { amountPence: number; vatPence: number }, quoteNetByRate: { rate: number; netPence: number }[] | null): { rate: number; netPence: number; vatPence: number }[] {
+  const net = inv.amountPence - inv.vatPence;
+  const groups = (quoteNetByRate ?? []).filter((g) => g.netPence !== 0);
+  const quoteNet = groups.reduce((n, g) => n + g.netPence, 0);
+  if (groups.length <= 1 || quoteNet <= 0) {
+    const rate = groups[0]?.rate ?? (net > 0 ? Math.round((inv.vatPence / net) * 10000) / 100 : 0);
+    return [{ rate, netPence: net, vatPence: inv.vatPence }];
+  }
+  const out = groups.map((g) => {
+    const n = Math.round((net * g.netPence) / quoteNet);
+    return { rate: g.rate, netPence: n, vatPence: Math.round((n * g.rate) / 100) };
+  });
+  // Put any rounding pennies on the largest line so the totals match exactly.
+  const big = out.reduce((a, b) => (b.netPence > a.netPence ? b : a));
+  big.netPence += net - out.reduce((t, l) => t + l.netPence, 0);
+  big.vatPence += inv.vatPence - out.reduce((t, l) => t + l.vatPence, 0);
+  return out;
+}

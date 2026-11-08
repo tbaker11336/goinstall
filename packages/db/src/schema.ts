@@ -403,6 +403,7 @@ export interface Invoices {
   status: Generated<string>;
   updated_at: Generated<Timestamp>;
   vat_pence: Generated<Int8>;
+  xero_error: string | null;
   xero_invoice_id: string | null;
   xero_synced_at: Timestamp | null;
 }
@@ -525,6 +526,7 @@ export interface Payments {
   provider_ref: string | null;
   status: Generated<string>;
   updated_at: Generated<Timestamp>;
+  xero_payment_id: string | null;
 }
 
 export interface PhotoCategories {

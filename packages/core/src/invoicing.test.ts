@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { invoiceSummary, isOverdue, planInvoice, quoteVatShare } from "./invoicing";
+import { invoiceSummary, isOverdue, planInvoice, quoteVatShare, vatLines } from "./invoicing";
 
 // £12,000 including £2,000 VAT, 25% deposit.
 const quote = { totalPence: 1_200_000, vatPence: 200_000, depositPence: 300_000 };
@@ -40,5 +40,28 @@ describe("invoicing an accepted quote", () => {
     expect(isOverdue({ status: "open", dueDate: "2026-11-01" }, "2026-11-07")).toBe(true);
     expect(isOverdue({ status: "paid", dueDate: "2026-11-01" }, "2026-11-07")).toBe(false);
     expect(isOverdue({ status: "open", dueDate: null }, "2026-11-07")).toBe(false);
+  });
+});
+
+describe("vatLines", () => {
+  it("splits a stage payment across the quote's VAT rates, adding up exactly", () => {
+    // Quote: £10,000 solar at 0% and £1,000 EV at 20% (£200 VAT): £11,200.
+    const quoteNet = [
+      { rate: 0, netPence: 1_000_000 },
+      { rate: 20, netPence: 100_000 },
+    ];
+    const lines = vatLines({ amountPence: 336_000, vatPence: 6_000 }, quoteNet); // 30%
+    expect(lines).toEqual([
+      { rate: 0, netPence: 300_000, vatPence: 0 },
+      { rate: 20, netPence: 30_000, vatPence: 6_000 },
+    ]);
+    const odd = vatLines({ amountPence: 100_001, vatPence: 1_786 }, quoteNet);
+    expect(odd.reduce((t, l) => t + l.netPence + l.vatPence, 0)).toBe(100_001);
+    expect(odd.reduce((t, l) => t + l.vatPence, 0)).toBe(1_786);
+  });
+
+  it("uses one line at the invoice's own rate for extra work or a single-rate quote", () => {
+    expect(vatLines({ amountPence: 12_000, vatPence: 2_000 }, null)).toEqual([{ rate: 20, netPence: 10_000, vatPence: 2_000 }]);
+    expect(vatLines({ amountPence: 5_000, vatPence: 0 }, [{ rate: 0, netPence: 9_000 }])).toEqual([{ rate: 0, netPence: 5_000, vatPence: 0 }]);
   });
 });

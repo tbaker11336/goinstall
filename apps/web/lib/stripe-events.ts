@@ -1,4 +1,5 @@
 import "server-only";
+import { syncToXeroLater } from "./xero";
 import { formatPence, INVOICE_KIND_LABELS, type InvoiceKind } from "@goinstall/core";
 import type { StripeEvent } from "@goinstall/integrations";
 import { withService } from "@goinstall/db";
@@ -41,6 +42,7 @@ export async function handleStripeEvent(event: StripeEvent): Promise<{ status: s
       providerRef: s.id,
       actorId: null,
     });
+    if (!r.alreadyRecorded) syncToXeroLater(m.data.company_id, inv.id);
     return { status: r.alreadyRecorded ? "duplicate" : "recorded", paid: r.alreadyRecorded ? null : { companyId: m.data.company_id, projectId: inv.project_id, kind: inv.kind, amount: Number(s.amount_total) } };
   });
   if ("paid" in r && r.paid) {

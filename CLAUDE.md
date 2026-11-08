@@ -70,7 +70,15 @@ design rules: never invent rule values).
   (internal use): accounts are created confirmed and signed straight in.
   Remove it before opening sign-ups to other installers.
 - Calendar sync: a private iCal feed link per team (Google, Outlook and
-  Apple subscribe to it); no account connections for now.
+  Apple subscribe to it). Next: each person can connect Google Calendar and
+  their bookings are pushed to it (option A; busy times later).
+- Xero (November 2026): each company connects its own organisation in
+  Settings › Integrations. Invoices go to Xero when raised (approved by
+  default, or draft), with payments and voids; payments made in Xero come
+  back daily or on "Check Xero for payments". Account codes and tax types are
+  chosen by the company from its own Xero. Needs `XERO_CLIENT_ID`,
+  `XERO_CLIENT_SECRET` and `INTEGRATION_TOKEN_KEY`; granular scopes
+  (`XERO_SCOPES` overrides them).
 
 ## Environments
 

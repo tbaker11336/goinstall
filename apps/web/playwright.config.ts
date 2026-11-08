@@ -11,6 +11,8 @@ export const OUTBOX = `${process.cwd()}/.data/e2e-outbox.jsonl`;
 export const PUSH_OUTBOX = `${process.cwd()}/.data/e2e-push.jsonl`;
 export const SMS_OUTBOX = `${process.cwd()}/.data/e2e-sms.jsonl`;
 export const CRON_SECRET = "e2e-cron-secret";
+// The stand-in Xero keeps its invoices and payments here.
+export const XERO_FILE = `${process.cwd()}/.data/e2e-xero.json`;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -29,7 +31,7 @@ export default defineConfig({
   webServer: [
   {
     // Fresh database with demo data, then the app with dev sign-in.
-    command: `mkdir -p .data && rm -f ${OUTBOX} ${SMS_OUTBOX} ${PUSH_OUTBOX} && rm -rf .data/e2e-uploads && DATABASE_URL=${pgAdmin} pnpm --filter @goinstall/db reset-dev goinstall_e2e && pnpm exec next dev --port ${port}`,
+    command: `mkdir -p .data && rm -f ${OUTBOX} ${SMS_OUTBOX} ${PUSH_OUTBOX} ${XERO_FILE} && rm -rf .data/e2e-uploads && DATABASE_URL=${pgAdmin} pnpm --filter @goinstall/db reset-dev goinstall_e2e && pnpm exec next dev --port ${port}`,
     url: `http://localhost:${port}/login`,
     reuseExistingServer: false,
     timeout: 180_000,
@@ -56,6 +58,10 @@ export default defineConfig({
       SMS_EXTRA_TEXT_PENCE: "6",
       STRIPE_SMS_PRICE_ID: "price_e2e_sms",
       PLATFORM_ADMIN_EMAILS: "alex@brightside.test",
+      XERO_FAKE: "true",
+      XERO_FAKE_FILE: XERO_FILE,
+      XERO_CLIENT_ID: "",
+      XERO_CLIENT_SECRET: "",
     },
   },
   {

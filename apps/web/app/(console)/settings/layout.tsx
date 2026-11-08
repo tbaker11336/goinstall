@@ -15,6 +15,7 @@ const SECTIONS = [
   { href: "/settings/terms", label: "Terms & conditions" },
   { href: "/settings/checklists", label: "Install checklists" },
   { href: "/settings/marketing", label: "Marketing" },
+  { href: "/settings/integrations", label: "Integrations" },
 ];
 
 export default async function SettingsLayout({ children }: { children: React.ReactNode }) {

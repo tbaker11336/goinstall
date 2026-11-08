@@ -1,6 +1,7 @@
 "use server";
 
 import { firstName, formatPence, lineTotal, parsePence, proposalReference, proposalTotals, type DraftLine, type LineDisplay } from "@goinstall/core";
+import { syncToXeroLater } from "@/lib/xero";
 import { sql, withService, type Tx } from "@goinstall/db";
 import { textToHtml } from "@goinstall/integrations";
 import { revalidatePath } from "next/cache";
@@ -308,6 +309,7 @@ export async function recordBankTransferAction(proposalId: string, _: ActionResu
     if (p.status !== "accepted") return { error: "Record the deposit once the customer has accepted the proposal." };
     const invoice = await ensureDepositInvoice(tx, { companyId: p.company_id, projectId: p.project_id, proposalId: p.id, depositPence: Number(p.deposit_pence) });
     if (invoice.status === "paid") return { error: "The deposit is already recorded as paid." };
+    syncToXeroLater(p.company_id, invoice.id);
     const rec = await recordInvoicePayment(tx, { companyId: p.company_id, invoiceId: invoice.id, amountPence: amount, method: "bank_transfer", provider: null, providerRef: null, actorId: session.userId });
     revalidatePath(`/projects/${p.project_id}`, "layout");
     return { message: `Deposit of ${formatPence(amount)} recorded. The project is now at Deposit paid.`, paid: { companyId: p.company_id, projectId: p.project_id, by: session.userId }, note: rec.note };

@@ -1,4 +1,5 @@
 import "server-only";
+import { syncToXeroLater } from "./xero";
 import { createHash, randomBytes } from "node:crypto";
 import { formatPence } from "@goinstall/core";
 import { withService, type Tx } from "@goinstall/db";
@@ -76,6 +77,7 @@ export async function completeInstall(companyId: string, projectId: string): Pro
       await tx.updateTable("projects").set({ stage: "complete" }).where("id", "=", projectId).where("company_id", "=", companyId).execute();
     }
     const inv = await ensureBalanceInvoice(tx, companyId, projectId);
+    if (inv) syncToXeroLater(companyId, inv.id);
     if (inv?.token) {
       const sent = await emailBalanceInvoice(tx, companyId, projectId, inv, inv.token, null);
       await tx

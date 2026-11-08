@@ -7,6 +7,7 @@ import { ActionForm, FormMessage, SubmitButton, type FormState } from "@/compone
 import { Button } from "@/components/ui/button";
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { createInvoiceAction, emailInvoiceAction, recordPaymentAction, voidInvoiceAction } from "@/lib/actions/invoices";
+import { syncInvoiceAction } from "@/lib/actions/xero";
 import { cn } from "@/lib/utils";
 
 const money = (v: string) => {
@@ -167,6 +168,36 @@ export function InvoiceActions({ invoice }: { invoice: { id: string; number: str
           </Field>
           <SubmitButton size="sm">Mark paid</SubmitButton>
         </ActionForm>
+      )}
+      <FormMessage state={state} />
+    </div>
+  );
+}
+
+/** Where the invoice stands in Xero, with a way to send it (again). */
+export function XeroStatus({ invoiceId, number, inXero, error }: { invoiceId: string; number: string; inXero: boolean; error: string | null }) {
+  const router = useRouter();
+  const { pending, state, run } = useRun();
+  return (
+    <div className="mt-1 flex flex-wrap items-center gap-2 text-[13px]" data-testid="xero-status">
+      {error ? <span className="text-red-700">{error}</span> : inXero ? <span className="font-semibold text-success-text">✓ In Xero</span> : <span className="text-ink-3">Not in Xero yet</span>}
+      {(error || !inXero) && (
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          disabled={pending}
+          aria-label={`Send ${number} to Xero`}
+          onClick={() =>
+            run(async () => {
+              const r = await syncInvoiceAction(invoiceId);
+              router.refresh();
+              return r;
+            })
+          }
+        >
+          {pending ? "Sending…" : "Send to Xero"}
+        </Button>
       )}
       <FormMessage state={state} />
     </div>

@@ -3,7 +3,7 @@ import { FileText } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
-import { InvoiceActions, NewInvoiceForm } from "@/components/invoice-client";
+import { InvoiceActions, NewInvoiceForm, XeroStatus } from "@/components/invoice-client";
 import { InvoiceStatus } from "@/components/invoice-status";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,12 +32,13 @@ export default async function ProjectInvoicesPage({ params }: { params: Promise<
         .where("status", "=", "accepted")
         .orderBy("accepted_at", "desc")
         .executeTakeFirst(),
-      tx.selectFrom("invoices").select(["id", "number", "kind", "status", "description", "amount_pence", "vat_pence", "issued_at", "due_date", "paid_at", "sent_at", "proposal_id"]).where("project_id", "=", id).orderBy("issued_at").execute(),
+      tx.selectFrom("invoices").select(["id", "number", "kind", "status", "description", "amount_pence", "vat_pence", "issued_at", "due_date", "paid_at", "sent_at", "proposal_id", "xero_invoice_id", "xero_error", "xero_synced_at"]).where("project_id", "=", id).orderBy("issued_at").execute(),
     ]);
-    return { project, quote, invoices };
+    const xero = await tx.selectFrom("integrations").select("status").where("provider", "=", "xero").where("user_id", "is", null).where("status", "=", "connected").executeTakeFirst();
+    return { project, quote, invoices, xero: Boolean(xero) };
   });
   if (!data) notFound();
-  const { project, quote, invoices } = data;
+  const { project, quote, invoices, xero } = data;
   const today = ukDate(new Date());
   const rows = invoices.map((i) => ({ ...i, amountPence: Number(i.amount_pence), due: i.due_date ? ukDate(i.due_date) : null }));
   const ofQuote = rows.filter((i) => quote && i.proposal_id === quote.id);
@@ -100,6 +101,9 @@ export default async function ProjectInvoicesPage({ params }: { params: Promise<
                           </a>
                           <InvoiceActions invoice={{ id: i.id, number: i.number, status: i.status, amountPence: i.amountPence, sent: Boolean(i.sent_at) }} />
                         </div>
+                        {xero && i.status !== "draft" && (
+                          <XeroStatus invoiceId={i.id} number={i.number} inXero={Boolean(i.xero_invoice_id)} error={i.xero_error} />
+                        )}
                       </div>
                       <div className="text-right">
                         <p className="text-lg font-bold">{formatPence(i.amountPence)}</p>

@@ -1,6 +1,7 @@
 "use server";
 
 import { formatPence, parsePence, planInvoice, type InvoicePlan } from "@goinstall/core";
+import { syncToXeroLater } from "@/lib/xero";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { asUser } from "@/lib/auth";
@@ -103,6 +104,7 @@ export async function createInvoiceAction(projectId: string, _: ActionResult, fo
       })
       .returning(["id", "number"])
       .executeTakeFirstOrThrow();
+    syncToXeroLater(session.companyId, inv.id);
     let sent = "";
     if (d.send) {
       const token = await newPayLink(tx, session.companyId, inv.id);
@@ -143,6 +145,7 @@ export async function recordPaymentAction(invoiceId: string, _: ActionResult, fo
     if (!inv) return { error: "Invoice not found" };
     if (inv.status === "paid") return { error: "This invoice is already recorded as paid." };
     if (inv.status === "void") return { error: "This invoice has been voided." };
+    syncToXeroLater(session.companyId, inv.id);
     const rec = await recordInvoicePayment(tx, { companyId: session.companyId, invoiceId: inv.id, amountPence: amount, method: "bank_transfer", provider: null, providerRef: null, actorId: session.userId });
     refresh(inv.project_id);
     return { message: `${kindLabel(inv.kind)} of ${formatPence(amount)} recorded as paid.`, paid: { companyId: session.companyId, projectId: inv.project_id, by: session.userId, label: kindLabel(inv.kind) }, note: rec.note };
@@ -164,15 +167,16 @@ export async function recordBalanceTransferAction(invoiceId: string, state: Acti
 /** Cancel an unpaid invoice (it stays on record as void; its pay link stops working). */
 export async function voidInvoiceAction(invoiceId: string): Promise<ActionResult> {
   if (!uuid.safeParse(invoiceId).success) return { error: "Invoice not found" };
-  return asUser(async (tx) => {
+  return asUser(async (tx, session) => {
     const inv = await tx
       .updateTable("invoices")
       .set({ status: "void", pay_token_hash: null })
       .where("id", "=", invoiceId)
       .where("status", "=", "open")
-      .returning(["project_id", "number"])
+      .returning(["id", "project_id", "number"])
       .executeTakeFirst();
     if (!inv) return { error: "Only an unpaid invoice can be voided." };
+    syncToXeroLater(session.companyId, inv.id);
     await tx.insertInto("activity_log").values({ project_id: inv.project_id, event: "invoice_voided", payload: { number: inv.number }}).execute();
     refresh(inv.project_id);
     return { message: `Invoice ${inv.number} voided.` };

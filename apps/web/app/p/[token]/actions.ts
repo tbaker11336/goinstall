@@ -1,6 +1,7 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
+import { syncToXeroLater } from "@/lib/xero";
 import { formatPence, proposalReference } from "@goinstall/core";
 import { sql, withService, type Tx } from "@goinstall/db";
 import { revalidatePath } from "next/cache";
@@ -84,7 +85,10 @@ export async function acceptProposalAction(token: string, input: z.input<typeof 
       .where("company_id", "=", p.companyId)
       .execute();
     const deposit = Number(row.deposit_pence);
-    if (deposit > 0) await ensureDepositInvoice(tx, { companyId: p.companyId, projectId: p.projectId, proposalId: p.id, depositPence: deposit });
+    if (deposit > 0) {
+      const inv = await ensureDepositInvoice(tx, { companyId: p.companyId, projectId: p.projectId, proposalId: p.id, depositPence: deposit });
+      syncToXeroLater(p.companyId, inv.id);
+    }
     await tx
       .updateTable("projects")
       .set({ stage: "accepted", value: (Number(row.total_pence) / 100).toFixed(2) })
