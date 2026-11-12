@@ -19,3 +19,4 @@ export * from "./proposal-summary";
 export * from "./proposal-survey";
 export * from "./test-results";
 export * from "./invoicing";
+export * from "./proposal-template";

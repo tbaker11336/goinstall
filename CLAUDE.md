@@ -54,6 +54,10 @@ design rules: never invent rule values).
 - Scaffold up/down bookings are for solar projects only.
 - Terms and conditions: text and/or a PDF in Settings › Terms & conditions,
   attached to every proposal (and its email) and accepted on signing.
+- Proposal template (Settings › Proposal template): a front cover and
+  pages around the quote (About us, reviews, featured work, accreditations,
+  custom text), ordered and switched on by the company; empty pages are left
+  out. Drafts use the current template; sent proposals keep theirs.
 - Schedule: one calendar (day / week / month) with a team filter; clicking a
   booking shows it with Reschedule and Notify customer.
 - Project tabs: Schedule (bookings written like calendar invites: type,

@@ -1,7 +1,7 @@
 import "server-only";
 import { customerLines, formatPence, paybackLabel, paybackYears, proposalReference, proposalTotals, SECTION_LABELS, type ProposalSection } from "@goinstall/core";
 import { Document, Image, Page, renderToBuffer, StyleSheet, Text, View } from "@react-pdf/renderer";
-import { initials, type ProposalView } from "@/components/proposal-document";
+import { initials, type ProposalPageView, type ProposalView } from "@/components/proposal-document";
 import { ProposalPdfSections } from "./proposal-pdf-sections";
 import { proposalViewWithLayout, type ProposalContent } from "./proposals";
 import { fileStore } from "./files";
@@ -54,10 +54,90 @@ export interface PdfExtras {
   /** The logo and product photos, read from storage. */
   logo?: PdfImage | null;
   photos?: Map<string, PdfImage>;
+  /** Template images: the cover, and "<page id>:work:<n>" / "<page id>:acc:<n>". */
+  cover?: PdfImage | null;
+  pageImages?: Map<string, PdfImage>;
+}
+
+/** A template page (reviews, featured work, accreditations or a custom page). */
+function TemplatePdfPage({ pg, s, images }: { pg: ProposalPageView; s: ReturnType<typeof styles>; images?: Map<string, PdfImage> }) {
+  return (
+    <View style={{ marginTop: 16 }}>
+      <Text style={s.section}>{pg.title.toUpperCase()}</Text>
+      {pg.intro && pg.type !== "text" && <Text style={[s.muted, { marginBottom: 4 }]}>{pg.intro}</Text>}
+      {pg.type === "text" && pg.intro && <Text style={{ lineHeight: 1.4, marginTop: 4 }}>{pg.intro}</Text>}
+      {pg.type === "reviews" && (
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 4 }}>
+          {pg.reviews.map((r, i) => (
+            <View key={i} style={{ width: "48%", backgroundColor: "#f9fafb", borderRadius: 6, padding: 9 }} wrap={false}>
+              {r.rating && <Text style={[s.bold, { color: "#B54708", marginBottom: 3 }]}>{`${r.rating} out of 5 stars`}</Text>}
+              {r.text && <Text style={{ lineHeight: 1.4 }}>{`"${r.text}"`}</Text>}
+              <Text style={[s.muted, { marginTop: 4 }]}>{[r.name, r.location].filter(Boolean).join(", ")}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+      {pg.type === "reviews" && pg.link && <Text style={[s.muted, { marginTop: 6 }]}>More reviews: {pg.link}</Text>}
+      {pg.type === "featured_work" && (
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 4 }}>
+          {pg.work.map((w, i) => {
+            const im = images?.get(`${pg.id}:work:${i}`);
+            return (
+              <View key={i} style={{ width: "48%" }} wrap={false}>
+                {im && <Image src={im} style={{ width: "100%", height: 130, objectFit: "cover", borderRadius: 6 }} />}
+                <Text style={[s.bold, { marginTop: 4 }]}>{w.title}</Text>
+                {w.description && <Text style={s.muted}>{w.description}</Text>}
+              </View>
+            );
+          })}
+        </View>
+      )}
+      {pg.type === "accreditations" && (
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 4 }}>
+          {pg.accreditations.map((a, i) => {
+            const im = images?.get(`${pg.id}:acc:${i}`);
+            return (
+              <View key={i} style={{ width: "31%", alignItems: "center", borderWidth: 1, borderColor: LINE, borderRadius: 6, padding: 8 }} wrap={false}>
+                {im && <Image src={im} style={{ height: 40, maxWidth: 120, objectFit: "contain", marginBottom: 4 }} />}
+                <Text style={s.bold}>{a.name}</Text>
+                {a.number && <Text style={s.muted}>{a.number}</Text>}
+              </View>
+            );
+          })}
+        </View>
+      )}
+    </View>
+  );
+}
+
+/** The front cover: a full page with the photo, the headline and who it's for. */
+function CoverPdfPage({ p, x, brand, reference }: { p: ProposalView; x: PdfExtras; brand: string; reference: string }) {
+  const c = p.cover!;
+  return (
+    <Page size="A4" style={{ fontFamily: "Helvetica", color: INK }}>
+      {x.cover ? <Image src={x.cover} style={{ width: "100%", height: 470, objectFit: "cover" }} /> : <View style={{ width: "100%", height: 470, backgroundColor: brand }} />}
+      <View style={{ padding: 48, flex: 1 }}>
+        {x.logo ? <Image src={x.logo} style={{ height: 44, maxWidth: 180, objectFit: "contain", marginBottom: 24 }} /> : <Text style={{ fontFamily: "Helvetica-Bold", fontSize: 14, marginBottom: 24 }}>{p.companyName}</Text>}
+        <Text style={{ fontFamily: "Helvetica-Bold", fontSize: 26, lineHeight: 1.2 }}>{c.headline}</Text>
+        {c.subheading && <Text style={{ fontSize: 13, color: INK3, marginTop: 8, lineHeight: 1.4 }}>{c.subheading}</Text>}
+        <View style={{ marginTop: "auto", flexDirection: "row", justifyContent: "space-between", borderTopWidth: 1, borderTopColor: LINE, paddingTop: 12 }}>
+          <View>
+            <Text style={{ color: INK3, fontSize: 9 }}>Prepared for</Text>
+            <Text style={{ fontFamily: "Helvetica-Bold", fontSize: 11 }}>{p.contactName}</Text>
+          </View>
+          <View style={{ alignItems: "flex-end" }}>
+            <Text style={{ color: INK3, fontSize: 9 }}>Proposal {reference}</Text>
+            <Text style={{ fontFamily: "Helvetica-Bold", fontSize: 11 }}>{p.companyName}</Text>
+          </View>
+        </View>
+      </View>
+    </Page>
+  );
 }
 
 function ProposalPdf({ p, x }: { p: ProposalView; x: PdfExtras }) {
-  const s = styles(x.brandColour && /^#[0-9a-f]{6}$/i.test(x.brandColour) ? x.brandColour : "#0B7A62");
+  const brand = x.brandColour && /^#[0-9a-f]{6}$/i.test(x.brandColour) ? x.brandColour : "#0B7A62";
+  const s = styles(brand);
   const t = proposalTotals(p.lines, p.depositPct);
   const fin = p.summary.finance;
   const saving = fin ? fin.firstYear.totals.savingPence : (p.summary.yearlySavingPence ?? null);
@@ -75,22 +155,8 @@ function ProposalPdf({ p, x }: { p: ProposalView; x: PdfExtras }) {
       <Text render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
     </View>
   );
-  return (
-    <Document title={`${p.companyName} proposal ${ref}`} author={p.companyName}>
-      <Page size="A4" style={s.page}>
-        <View style={s.header}>
-          <View style={{ flexDirection: "row", gap: 8 }}>
-            {x.logo ? <Image src={x.logo} style={{ height: 34, maxWidth: 140, objectFit: "contain" }} /> : <Text style={s.logo}>{initials(p.companyName)}</Text>}
-            <View>
-              <Text style={s.bold}>{p.companyName}</Text>
-              <Text style={s.muted}>{p.mcsNumber ? `MCS certified installer · ${p.mcsNumber}` : "Installer"}</Text>
-            </View>
-          </View>
-          <View style={{ alignItems: "flex-end" }}>
-            <Text style={s.muted}>Proposal {ref}</Text>
-            {p.validUntil && <Text style={s.muted}>Valid until {formatDate(p.validUntil, { day: "numeric", month: "long", year: "numeric" })}</Text>}
-          </View>
-        </View>
+  const quote = (
+    <>
         <Text style={s.title}>{p.title}</Text>
         <Text style={s.muted}>Prepared for {p.contactName}</Text>
         {p.intro && <Text style={{ marginTop: 8, lineHeight: 1.4 }}>{p.intro}</Text>}
@@ -201,7 +267,10 @@ function ProposalPdf({ p, x }: { p: ProposalView; x: PdfExtras }) {
             ))}
           </View>
         )}
-        {p.about && (p.about.text || p.about.facts.length > 0) && (
+    </>
+  );
+  const about = p.about && (p.about.text || p.about.facts.length > 0) ? (
+
           <View style={{ marginTop: 16 }} wrap={false}>
             <Text style={s.section}>ABOUT {p.companyName.toUpperCase()}</Text>
             <View style={{ flexDirection: "row", gap: 14, marginTop: 4 }}>
@@ -215,7 +284,29 @@ function ProposalPdf({ p, x }: { p: ProposalView; x: PdfExtras }) {
               </View>
             </View>
           </View>
-        )}
+  ) : null;
+  return (
+    <Document title={`${p.companyName} proposal ${ref}`} author={p.companyName}>
+      {p.cover && <CoverPdfPage p={p} x={x} brand={brand} reference={ref} />}
+      <Page size="A4" style={s.page}>
+        <View style={s.header}>
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            {x.logo ? <Image src={x.logo} style={{ height: 34, maxWidth: 140, objectFit: "contain" }} /> : <Text style={s.logo}>{initials(p.companyName)}</Text>}
+            <View>
+              <Text style={s.bold}>{p.companyName}</Text>
+              <Text style={s.muted}>{p.mcsNumber ? `MCS certified installer · ${p.mcsNumber}` : "Installer"}</Text>
+            </View>
+          </View>
+          <View style={{ alignItems: "flex-end" }}>
+            <Text style={s.muted}>Proposal {ref}</Text>
+            {p.validUntil && <Text style={s.muted}>Valid until {formatDate(p.validUntil, { day: "numeric", month: "long", year: "numeric" })}</Text>}
+          </View>
+        </View>
+        {(p.pages ?? [{ type: "quote" }, { type: "about" }]).map((pg, i) => {
+          if (pg.type === "quote") return <View key={`q${i}`}>{quote}</View>;
+          if (pg.type === "about") return <View key={`a${i}`}>{about}</View>;
+          return <TemplatePdfPage key={`t${i}`} pg={pg as ProposalPageView} s={s} images={x.pageImages} />;
+        })}
         {(p.terms || p.termsFile) && (
           <View style={s.terms}>
             <Text style={[s.bold, { color: INK, marginBottom: 4 }]}>Terms and conditions</Text>
@@ -237,7 +328,22 @@ export function renderProposalPdf(p: ProposalView, x: PdfExtras) {
 /** The PDF for a loaded proposal as a download response. */
 export async function proposalPdfResponse(c: ProposalContent) {
   const p = c.proposal;
+  // Template images by place, read from storage (JPEG and PNG, as uploaded in Settings).
+  const tPath = (id: string | null) => (id ? (c.templateFiles.find((f) => f.id === id)?.path ?? null) : null);
+  const pageImages = new Map<string, PdfImage>();
+  for (const pg of c.template.pages) {
+    for (const [i, w] of pg.work.entries()) {
+      const im = await loadImage(tPath(w.photoFileId));
+      if (im) pageImages.set(`${pg.id}:work:${i}`, im);
+    }
+    for (const [i, a] of pg.accreditations.entries()) {
+      const im = await loadImage(tPath(a.logoFileId));
+      if (im) pageImages.set(`${pg.id}:acc:${i}`, im);
+    }
+  }
   const buf = await renderProposalPdf(await proposalViewWithLayout(c), {
+    cover: await loadImage(tPath(c.template.cover.imageFileId)),
+    pageImages,
     brandColour: p.brand_primary_colour,
     contact: [p.company_phone, p.company_email, p.company_website].filter((v): v is string => Boolean(v)),
     bank: { name: p.bank_account_name, sortCode: p.bank_sort_code, account: p.bank_account_number },

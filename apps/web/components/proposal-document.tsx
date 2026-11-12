@@ -1,4 +1,4 @@
-import { customerLines, formatPence, paybackLabel, paybackYears, proposalReference, proposalTotals, SECTION_LABELS, type LineDisplay, type ProposalSection, type ProposalSurveySection, type ProposalSummary } from "@goinstall/core";
+import { customerLines, formatPence, paybackLabel, paybackYears, proposalReference, proposalTotals, SECTION_LABELS, type LineDisplay, type ProposalSection, type ProposalSurveySection, type ProposalSummary, type TemplatePageType } from "@goinstall/core";
 import { AssumptionsSection, BillsSection, EnvironmentSection, FinanceSection, LayoutImage, McsSection, SystemSection } from "./proposal-sections";
 import { formatDate } from "@/lib/utils";
 
@@ -28,7 +28,21 @@ export interface ProposalView {
   /** The customer's survey answers by section, with the installer's note beside each. */
   survey?: ProposalSurveySection[];
   /** The company's terms PDF attached to this proposal (signed URL). */
-  termsFile?: { url: string; name: string } | null;
+  termsFile?: { url: string; name: string } | null;  /** The front cover from the template (Settings › Proposal). */
+  cover?: { headline: string; subheading: string | null; imageUrl: string | null } | null;
+  /** The pages in the company's order; "quote" is the quote itself. Without a template: the quote, then About us. */
+  pages?: ProposalPageView[];
+}
+
+export interface ProposalPageView {
+  id: string;
+  type: TemplatePageType;
+  title: string;
+  intro: string | null;
+  link: string | null;
+  reviews: { name: string; location: string | null; rating: number | null; text: string }[];
+  work: { title: string; description: string | null; photoUrl: string | null }[];
+  accreditations: { name: string; number: string | null; logoUrl: string | null }[];
 }
 
 const SECTIONS: ProposalSection[] = ["solar", "battery", "ev", "installation"];
@@ -89,220 +103,367 @@ export function ProposalDocument({ p }: { p: ProposalView }) {
     p.summary.kWp ? { label: "System size", value: `${Number(p.summary.kWp).toFixed(2)} kWp` } : null,
   ].filter((t): t is { label: string; value: string } => Boolean(t));
 
+  const pages: ProposalPageView[] = p.pages ?? [
+    { id: "quote", type: "quote", title: "Your quote", intro: null, link: null, reviews: [], work: [], accreditations: [] },
+    { id: "about", type: "about", title: "About us", intro: null, link: null, reviews: [], work: [], accreditations: [] },
+  ];
+  const ref = proposalReference(p.documentPrefix, p.number, p.version);
   return (
-    <article className="flex flex-col gap-6 rounded-[14px] border bg-card p-8 max-md:p-5" aria-label="Proposal">
-      <header className="flex flex-wrap items-start justify-between gap-4 border-b pb-6">
+    <article className="flex flex-col overflow-hidden rounded-[14px] border bg-card" aria-label="Proposal">
+      {p.cover && <Cover p={p} reference={ref} />}
+      <div className="flex flex-col gap-10 p-8 max-md:p-5">
+        {!p.cover && (
+  <header className="flex flex-wrap items-start justify-between gap-4 border-b pb-6">
+          <div className="flex items-center gap-3">
+            {p.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={p.logoUrl} alt={`${p.companyName} logo`} className="h-14 max-w-[180px] object-contain" />
+            ) : (
+              <span aria-hidden className="grid size-11 place-items-center rounded-[10px] bg-foreground text-sm font-bold text-white">
+                {initials(p.companyName)}
+              </span>
+            )}
+            <div>
+              <p className="font-bold">{p.companyName}</p>
+              <p className="text-[13px] text-ink-3">{p.mcsNumber ? `MCS certified installer · ${p.mcsNumber}` : "Installer"}</p>
+            </div>
+          </div>
+          <div className="text-right text-[13px] text-ink-3">
+            <p>Proposal {proposalReference(p.documentPrefix, p.number, p.version)}</p>
+            {p.validUntil && <p>Valid until {formatDate(p.validUntil, { day: "numeric", month: "long", year: "numeric" })}</p>}
+          </div>
+        </header>
+  )}
+        {pages.map((pg) => {
+          switch (pg.type) {
+            case "quote":
+              return (
+                <section key={pg.id} aria-label="Your quote" className="flex flex-col gap-6">
+                  <div>
+                    <h2 className="text-[22px] font-bold tracking-[-0.02em]">{p.title}</h2>
+                    <p className="text-ink-3">Prepared for {p.contactName}</p>
+                    {p.intro && <p className="mt-3 whitespace-pre-line text-sm text-ink-2">{p.intro}</p>}
+                  </div>
+
+                  {(p.summary.panelCount || tiles.length > 0) && (
+                    <div className="grid gap-3 sm:grid-cols-[1.7fr_1fr_1fr]">
+                      {p.summary.panelCount ? (
+                        <div className="overflow-hidden rounded-[10px] sm:row-span-2">
+                          {p.summary.layout && p.layoutUrl ? (
+                            <LayoutImage layout={p.summary.layout} url={p.layoutUrl} label={`Proposed layout: ${p.summary.panelCount} panels on the aerial view of the roof`} />
+                          ) : (
+                            <RoofSketch panels={p.summary.panelCount} />
+                          )}
+                        </div>
+                      ) : null}
+                      {tiles.map((t) => (
+                        <Tile key={t.label} {...t} />
+                      ))}
+                    </div>
+                  )}
+
+                  {SECTIONS.map((s) => {
+                    const lines = customerLines(p.lines).filter((l) => l.section === s);
+                    if (!lines.length) return null;
+                    return (
+                      <section key={s} aria-labelledby={`sec-${s}`}>
+                        <h3 id={`sec-${s}`} className="mb-1 text-xs font-bold tracking-[0.06em] text-ink-3 uppercase">
+                          {SECTION_LABELS[s]}
+                        </h3>
+                        <ul>
+                          {lines.map((l) => {
+                            const total = Math.round(l.quantity * l.unitPricePence);
+                            return (
+                              <li key={l.id} className="flex justify-between gap-4 border-b py-3 text-[15px]">
+                                <span>
+                                  {l.quantity !== 1 && !l.description.match(/^\d+\s*×/) ? `${l.quantity} × ` : ""}
+                                  {l.description}
+                                </span>
+                                {l.display === "hide_price" ? (
+                                  <span className="text-ink-3">Included</span>
+                                ) : (
+                                  <span className={total < 0 ? "font-medium text-primary" : "font-medium"}>{total < 0 ? `−${formatPence(-total)}` : formatPence(total)}</span>
+                                )}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </section>
+                    );
+                  })}
+
+                  <dl className="ml-auto grid w-full max-w-[440px] grid-cols-[1fr_auto] gap-x-8 gap-y-1.5 text-right">
+                    <dt className="text-ink-3">Subtotal</dt>
+                    <dd>{formatPence(totals.subtotalPence)}</dd>
+                    {totals.vatByRate.length > 1 ? (
+                      totals.vatByRate.map((r) => (
+                        <div key={r.rate} className="contents">
+                          <dt className="text-ink-3">VAT at {r.rate}%</dt>
+                          <dd>{formatPence(r.vatPence)}</dd>
+                        </div>
+                      ))
+                    ) : (
+                      <>
+                        <dt className="text-ink-3">VAT{totals.vatByRate[0] ? ` at ${totals.vatByRate[0].rate}%` : ""}</dt>
+                        <dd>{formatPence(totals.vatPence)}</dd>
+                      </>
+                    )}
+                    <dt className="text-2xl font-bold">Total</dt>
+                    <dd className="text-2xl font-bold" data-testid="proposal-total">
+                      {formatPence(totals.totalPence)}
+                    </dd>
+                    {totals.depositPence > 0 && (
+                      <div className="col-span-2 mt-2 flex justify-between rounded-[10px] bg-accent-tint px-4 py-2.5 font-semibold text-accent-strong">
+                        <span>Deposit to confirm ({p.depositPct}%)</span>
+                        <span>{formatPence(totals.depositPence)}</span>
+                      </div>
+                    )}
+                  </dl>
+
+                  {p.products && p.products.length > 0 && (
+                    <section aria-labelledby="products-heading" className="flex flex-col gap-3 border-t pt-4">
+                      <h2 id="products-heading" className="text-lg font-bold">
+                        The products
+                      </h2>
+                      <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        {p.products.map((x) => (
+                          <li key={x.id} className="flex gap-3 rounded-lg border p-3">
+                            {x.photoUrl ? (
+                              // Signed storage URLs: a plain img, not next/image.
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={x.photoUrl} alt={x.name} className="size-28 shrink-0 rounded-md bg-muted object-contain" />
+                            ) : (
+                              <span className="size-28 shrink-0 rounded-md bg-muted" aria-hidden />
+                            )}
+                            <span className="flex min-w-0 flex-col gap-1 text-sm">
+                              <span className="font-semibold">{x.name}</span>
+                              {x.makeModel && <span className="text-ink-3">{x.makeModel}</span>}
+                              {x.datasheetUrl && (
+                                <a href={x.datasheetUrl} target="_blank" rel="noopener" className="w-fit font-medium text-primary underline">
+                                  Datasheet (PDF)<span className="sr-only">: {x.name}, opens in a new tab</span>
+                                </a>
+                              )}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </section>
+                  )}
+
+                  {p.survey && p.survey.length > 0 && (
+                    <section aria-labelledby="survey-heading" className="flex flex-col gap-3 border-t pt-4">
+                      <h2 id="survey-heading" className="text-lg font-bold">
+                        Your survey
+                      </h2>
+                      <p className="-mt-2 text-sm text-ink-3">What we found at your property, with our notes.</p>
+                      {p.survey.map((sec) => (
+                        <div key={sec.key} className="grid gap-3 rounded-lg border p-4 md:grid-cols-2" data-testid="survey-section">
+                          <div>
+                            <h3 className="mb-2 font-semibold">{sec.title}</h3>
+                            {sec.items.length > 0 ? (
+                              <dl className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-4 gap-y-1 text-sm">
+                                {sec.items.map((it) => (
+                                  <div key={it.label} className="contents">
+                                    <dt className="text-ink-3">{it.label}</dt>
+                                    <dd className="whitespace-pre-line">{it.value}</dd>
+                                  </div>
+                                ))}
+                              </dl>
+                            ) : (
+                              <p className="text-sm text-ink-3">No answers recorded.</p>
+                            )}
+                          </div>
+                          <div className="rounded-md bg-surface-subtle p-3 text-sm">
+                            <p className="mb-1 text-xs font-bold tracking-[0.06em] text-ink-3 uppercase">Our notes</p>
+                            <p className="whitespace-pre-line">{sec.note ?? "—"}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </section>
+                  )}
+
+                  <BillsSection s={p.summary} />
+                  <FinanceSection s={p.summary} />
+                  <SystemSection s={p.summary} />
+                  <McsSection s={p.summary} />
+                  <EnvironmentSection s={p.summary} />
+                  <AssumptionsSection s={p.summary} />
+                </section>
+              );
+            case "about":
+              return (
+                <div key={pg.id}>
+                  {p.about && (p.about.text || p.about.facts.length > 0) && (
+                    <section aria-labelledby="about-heading" className="flex flex-col gap-3 border-t pt-4">
+                      <h2 id="about-heading" className="text-lg font-bold">
+                        About {p.companyName}
+                      </h2>
+                      <div className="grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+                        <div className="flex flex-col gap-3">
+                          {p.logoUrl && (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={p.logoUrl} alt="" className="h-12 w-fit max-w-[200px] object-contain" />
+                          )}
+                          {p.about.text && <p className="whitespace-pre-line text-sm text-ink-2">{p.about.text}</p>}
+                        </div>
+                        <ul className="flex flex-col gap-1 text-sm text-ink-3">
+                          {[...p.about.facts, ...p.about.contact].map((f) => (
+                            <li key={f}>{f}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </section>
+                  )}
+                </div>
+              );
+            default:
+              return <TemplatePage key={pg.id} page={pg} />;
+          }
+        })}
+
+        {(p.terms || p.termsFile) && (
+          <section aria-labelledby="terms-heading" className="flex flex-col gap-2 border-t pt-4 text-sm">
+            <h2 id="terms-heading" className="font-semibold">
+              Terms and conditions
+            </h2>
+            {p.termsFile && (
+              <a href={p.termsFile.url} target="_blank" rel="noopener" className="inline-flex w-fit items-center gap-2 rounded-md border px-3 py-2 font-medium text-primary hover:bg-muted">
+                Read the terms and conditions (PDF)
+                <span className="sr-only">: {p.termsFile.name}, opens in a new tab</span>
+              </a>
+            )}
+            {p.terms && (
+              <details>
+                <summary className="cursor-pointer text-ink-2">{p.termsFile ? "Summary of the terms" : "Show the terms"}</summary>
+                <p className="mt-2 whitespace-pre-line text-ink-3">{p.terms}</p>
+              </details>
+            )}
+          </section>
+        )}
+      </div>
+    </article>
+  );
+}
+
+/** The front cover: the company's photo (or brand colour), logo, headline and who it's for. */
+function Cover({ p, reference }: { p: ProposalView; reference: string }) {
+  const c = p.cover!;
+  return (
+    <header className={`relative isolate flex min-h-[380px] flex-col justify-between gap-10 overflow-hidden p-8 text-white max-md:min-h-[300px] max-md:p-5 ${c.imageUrl ? "bg-foreground" : "bg-primary"}`}>
+      {c.imageUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={c.imageUrl} alt="" className="absolute inset-0 -z-10 h-full w-full object-cover" />
+      )}
+      <div aria-hidden className={`absolute inset-0 -z-10 ${c.imageUrl ? "bg-gradient-to-t from-black/80 via-black/35 to-black/20" : "bg-gradient-to-br from-black/0 to-black/25"}`} />
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-center gap-3">
           {p.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={p.logoUrl} alt={`${p.companyName} logo`} className="h-14 max-w-[180px] object-contain" />
+            <img src={p.logoUrl} alt={`${p.companyName} logo`} className="h-12 max-w-[180px] rounded-md bg-white/95 object-contain p-1.5" />
           ) : (
-            <span aria-hidden className="grid size-11 place-items-center rounded-[10px] bg-foreground text-sm font-bold text-white">
+            <span aria-hidden className="grid size-11 place-items-center rounded-[10px] bg-white/15 text-sm font-bold">
               {initials(p.companyName)}
             </span>
           )}
           <div>
             <p className="font-bold">{p.companyName}</p>
-            <p className="text-[13px] text-ink-3">{p.mcsNumber ? `MCS certified installer · ${p.mcsNumber}` : "Installer"}</p>
+            {p.mcsNumber && <p className="text-[13px] text-white/80">MCS certified installer · {p.mcsNumber}</p>}
           </div>
         </div>
-        <div className="text-right text-[13px] text-ink-3">
-          <p>Proposal {proposalReference(p.documentPrefix, p.number, p.version)}</p>
+        <div className="text-right text-[13px] text-white/80">
+          <p>Proposal {reference}</p>
           {p.validUntil && <p>Valid until {formatDate(p.validUntil, { day: "numeric", month: "long", year: "numeric" })}</p>}
         </div>
-      </header>
-
-      <div>
-        <h2 className="text-[22px] font-bold tracking-[-0.02em]">{p.title}</h2>
-        <p className="text-ink-3">Prepared for {p.contactName}</p>
-        {p.intro && <p className="mt-3 whitespace-pre-line text-sm text-ink-2">{p.intro}</p>}
       </div>
+      <div className="flex max-w-2xl flex-col gap-2">
+        <h2 className="text-[34px] leading-tight font-bold tracking-[-0.02em] max-md:text-[26px]" data-testid="cover-headline">
+          {c.headline}
+        </h2>
+        {c.subheading && <p className="text-lg text-white/90">{c.subheading}</p>}
+        <p className="mt-2 text-sm text-white/80">Prepared for {p.contactName}</p>
+      </div>
+    </header>
+  );
+}
 
-      {(p.summary.panelCount || tiles.length > 0) && (
-        <div className="grid gap-3 sm:grid-cols-[1.7fr_1fr_1fr]">
-          {p.summary.panelCount ? (
-            <div className="overflow-hidden rounded-[10px] sm:row-span-2">
-              {p.summary.layout && p.layoutUrl ? (
-                <LayoutImage layout={p.summary.layout} url={p.layoutUrl} label={`Proposed layout: ${p.summary.panelCount} panels on the aerial view of the roof`} />
-              ) : (
-                <RoofSketch panels={p.summary.panelCount} />
-              )}
-            </div>
-          ) : null}
-          {tiles.map((t) => (
-            <Tile key={t.label} {...t} />
-          ))}
-        </div>
-      )}
+function Stars({ n }: { n: number }) {
+  return (
+    <span className="text-[15px] tracking-[1px] text-amber-500" role="img" aria-label={`${n} out of 5 stars`}>
+      {"★".repeat(n)}
+      <span className="text-ink-3 opacity-30">{"★".repeat(5 - n)}</span>
+    </span>
+  );
+}
 
-      {SECTIONS.map((s) => {
-        const lines = customerLines(p.lines).filter((l) => l.section === s);
-        if (!lines.length) return null;
-        return (
-          <section key={s} aria-labelledby={`sec-${s}`}>
-            <h3 id={`sec-${s}`} className="mb-1 text-xs font-bold tracking-[0.06em] text-ink-3 uppercase">
-              {SECTION_LABELS[s]}
-            </h3>
-            <ul>
-              {lines.map((l) => {
-                const total = Math.round(l.quantity * l.unitPricePence);
-                return (
-                  <li key={l.id} className="flex justify-between gap-4 border-b py-3 text-[15px]">
-                    <span>
-                      {l.quantity !== 1 && !l.description.match(/^\d+\s*×/) ? `${l.quantity} × ` : ""}
-                      {l.description}
-                    </span>
-                    {l.display === "hide_price" ? (
-                      <span className="text-ink-3">Included</span>
-                    ) : (
-                      <span className={total < 0 ? "font-medium text-primary" : "font-medium"}>{total < 0 ? `−${formatPence(-total)}` : formatPence(total)}</span>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-        );
-      })}
-
-      <dl className="ml-auto grid w-full max-w-[440px] grid-cols-[1fr_auto] gap-x-8 gap-y-1.5 text-right">
-        <dt className="text-ink-3">Subtotal</dt>
-        <dd>{formatPence(totals.subtotalPence)}</dd>
-        {totals.vatByRate.length > 1 ? (
-          totals.vatByRate.map((r) => (
-            <div key={r.rate} className="contents">
-              <dt className="text-ink-3">VAT at {r.rate}%</dt>
-              <dd>{formatPence(r.vatPence)}</dd>
-            </div>
-          ))
-        ) : (
-          <>
-            <dt className="text-ink-3">VAT{totals.vatByRate[0] ? ` at ${totals.vatByRate[0].rate}%` : ""}</dt>
-            <dd>{formatPence(totals.vatPence)}</dd>
-          </>
-        )}
-        <dt className="text-2xl font-bold">Total</dt>
-        <dd className="text-2xl font-bold" data-testid="proposal-total">
-          {formatPence(totals.totalPence)}
-        </dd>
-        {totals.depositPence > 0 && (
-          <div className="col-span-2 mt-2 flex justify-between rounded-[10px] bg-accent-tint px-4 py-2.5 font-semibold text-accent-strong">
-            <span>Deposit to confirm ({p.depositPct}%)</span>
-            <span>{formatPence(totals.depositPence)}</span>
-          </div>
-        )}
-      </dl>
-
-      {p.products && p.products.length > 0 && (
-        <section aria-labelledby="products-heading" className="flex flex-col gap-3 border-t pt-4">
-          <h2 id="products-heading" className="text-lg font-bold">
-            The products
-          </h2>
-          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {p.products.map((x) => (
-              <li key={x.id} className="flex gap-3 rounded-lg border p-3">
-                {x.photoUrl ? (
-                  // Signed storage URLs: a plain img, not next/image.
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={x.photoUrl} alt={x.name} className="size-28 shrink-0 rounded-md bg-muted object-contain" />
-                ) : (
-                  <span className="size-28 shrink-0 rounded-md bg-muted" aria-hidden />
-                )}
-                <span className="flex min-w-0 flex-col gap-1 text-sm">
-                  <span className="font-semibold">{x.name}</span>
-                  {x.makeModel && <span className="text-ink-3">{x.makeModel}</span>}
-                  {x.datasheetUrl && (
-                    <a href={x.datasheetUrl} target="_blank" rel="noopener" className="w-fit font-medium text-primary underline">
-                      Datasheet (PDF)<span className="sr-only">: {x.name}, opens in a new tab</span>
-                    </a>
-                  )}
-                </span>
+/** Reviews, featured work, accreditations or a custom page from the template. */
+function TemplatePage({ page }: { page: ProposalPageView }) {
+  const id = `page-${page.id}`;
+  return (
+    <section aria-labelledby={id} className="flex flex-col gap-4 border-t pt-8" data-testid={`page-${page.type}`}>
+      <div className="flex flex-col gap-1">
+        <h2 id={id} className="text-[22px] font-bold tracking-[-0.02em]">
+          {page.title}
+        </h2>
+        {page.type !== "text" && page.intro && <p className="text-ink-3">{page.intro}</p>}
+      </div>
+      {page.type === "text" && page.intro && <p className="max-w-3xl whitespace-pre-line text-[15px] leading-relaxed text-ink-2">{page.intro}</p>}
+      {page.type === "reviews" && (
+        <>
+          <ul className="grid gap-4 md:grid-cols-2">
+            {page.reviews.map((r, i) => (
+              <li key={i} className="flex flex-col gap-3 rounded-[12px] bg-surface-subtle p-5">
+                {r.rating && <Stars n={r.rating} />}
+                <blockquote className="text-[15px] leading-relaxed whitespace-pre-line">“{r.text}”</blockquote>
+                <p className="mt-auto text-sm font-semibold">
+                  {r.name}
+                  {r.location && <span className="font-normal text-ink-3"> · {r.location}</span>}
+                </p>
               </li>
             ))}
           </ul>
-        </section>
-      )}
-
-      {p.survey && p.survey.length > 0 && (
-        <section aria-labelledby="survey-heading" className="flex flex-col gap-3 border-t pt-4">
-          <h2 id="survey-heading" className="text-lg font-bold">
-            Your survey
-          </h2>
-          <p className="-mt-2 text-sm text-ink-3">What we found at your property, with our notes.</p>
-          {p.survey.map((sec) => (
-            <div key={sec.key} className="grid gap-3 rounded-lg border p-4 md:grid-cols-2" data-testid="survey-section">
-              <div>
-                <h3 className="mb-2 font-semibold">{sec.title}</h3>
-                {sec.items.length > 0 ? (
-                  <dl className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-4 gap-y-1 text-sm">
-                    {sec.items.map((it) => (
-                      <div key={it.label} className="contents">
-                        <dt className="text-ink-3">{it.label}</dt>
-                        <dd className="whitespace-pre-line">{it.value}</dd>
-                      </div>
-                    ))}
-                  </dl>
-                ) : (
-                  <p className="text-sm text-ink-3">No answers recorded.</p>
-                )}
-              </div>
-              <div className="rounded-md bg-surface-subtle p-3 text-sm">
-                <p className="mb-1 text-xs font-bold tracking-[0.06em] text-ink-3 uppercase">Our notes</p>
-                <p className="whitespace-pre-line">{sec.note ?? "—"}</p>
-              </div>
-            </div>
-          ))}
-        </section>
-      )}
-
-      <BillsSection s={p.summary} />
-      <FinanceSection s={p.summary} />
-      <SystemSection s={p.summary} />
-      <McsSection s={p.summary} />
-      <EnvironmentSection s={p.summary} />
-      <AssumptionsSection s={p.summary} />
-
-      {p.about && (p.about.text || p.about.facts.length > 0) && (
-        <section aria-labelledby="about-heading" className="flex flex-col gap-3 border-t pt-4">
-          <h2 id="about-heading" className="text-lg font-bold">
-            About {p.companyName}
-          </h2>
-          <div className="grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-            <div className="flex flex-col gap-3">
-              {p.logoUrl && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={p.logoUrl} alt="" className="h-12 w-fit max-w-[200px] object-contain" />
-              )}
-              {p.about.text && <p className="whitespace-pre-line text-sm text-ink-2">{p.about.text}</p>}
-            </div>
-            <ul className="flex flex-col gap-1 text-sm text-ink-3">
-              {[...p.about.facts, ...p.about.contact].map((f) => (
-                <li key={f}>{f}</li>
-              ))}
-            </ul>
-          </div>
-        </section>
-      )}
-
-      {(p.terms || p.termsFile) && (
-        <section aria-labelledby="terms-heading" className="flex flex-col gap-2 border-t pt-4 text-sm">
-          <h2 id="terms-heading" className="font-semibold">
-            Terms and conditions
-          </h2>
-          {p.termsFile && (
-            <a href={p.termsFile.url} target="_blank" rel="noopener" className="inline-flex w-fit items-center gap-2 rounded-md border px-3 py-2 font-medium text-primary hover:bg-muted">
-              Read the terms and conditions (PDF)
-              <span className="sr-only">: {p.termsFile.name}, opens in a new tab</span>
+          {page.link && (
+            <a href={page.link} target="_blank" rel="noopener" className="w-fit text-sm font-semibold text-primary underline">
+              Read more reviews<span className="sr-only"> (opens in a new tab)</span>
             </a>
           )}
-          {p.terms && (
-            <details>
-              <summary className="cursor-pointer text-ink-2">{p.termsFile ? "Summary of the terms" : "Show the terms"}</summary>
-              <p className="mt-2 whitespace-pre-line text-ink-3">{p.terms}</p>
-            </details>
-          )}
-        </section>
+        </>
       )}
-    </article>
+      {page.type === "featured_work" && (
+        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {page.work.map((w, i) => (
+            <li key={i} className="flex flex-col overflow-hidden rounded-[12px] border">
+              {w.photoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={w.photoUrl} alt={w.title} className="aspect-[4/3] w-full bg-muted object-cover" />
+              ) : (
+                <span aria-hidden className="aspect-[4/3] w-full bg-muted" />
+              )}
+              <div className="flex flex-col gap-1 p-4">
+                <p className="font-semibold">{w.title}</p>
+                {w.description && <p className="text-sm text-ink-3">{w.description}</p>}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      {page.type === "accreditations" && (
+        <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          {page.accreditations.map((a, i) => (
+            <li key={i} className="flex flex-col items-center gap-2 rounded-[12px] border p-4 text-center">
+              {a.logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={a.logoUrl} alt={`${a.name} logo`} className="h-16 w-full object-contain" />
+              ) : (
+                <span aria-hidden className="grid h-16 place-items-center text-2xl font-bold text-ink-3">
+                  {initials(a.name)}
+                </span>
+              )}
+              <p className="text-sm font-semibold">{a.name}</p>
+              {a.number && <p className="text-xs text-ink-3">{a.number}</p>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

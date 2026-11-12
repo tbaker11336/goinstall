@@ -234,6 +234,8 @@ async function emailProposal(tx: Tx, session: Session, proposalId: string, kind:
       .updateTable("proposals")
       .set({
         status: "sent",
+        // The cover and pages as they are now go out with it (and stay that way).
+        template: sql`(select proposal_template from public.companies where id = proposals.company_id)`,
         link_nonce: nonce,
         token_hash: hashToken(token),
         token_expires_at: new Date(Date.now() + PROPOSAL_LINK_DAYS * 86_400_000),

@@ -256,6 +256,7 @@ export interface Companies {
   payment_terms: string | null;
   phone: string | null;
   postcode: string | null;
+  proposal_template: Generated<Json>;
   proposal_valid_days: number | null;
   shared_visit_discount_pence: Int8 | null;
   stripe_account_id: string | null;
@@ -686,6 +687,7 @@ export interface Proposals {
   summary: Generated<Json>;
   survey: Generated<Json>;
   survey_notes: Generated<Json>;
+  template: Json | null;
   terms: string | null;
   terms_file_id: string | null;
   title: Generated<string>;

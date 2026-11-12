@@ -1,5 +1,6 @@
 import "server-only";
 import { createHash, createHmac, randomBytes } from "node:crypto";
+import { coverHeadline, firstName as firstNameOf, normaliseTemplate, pageTitle, templateFileIds, visiblePages } from "@goinstall/core";
 import { buildLinesFromDesigns, financeForSummary, proposalSurvey, shownSurvey, type ProposalSurveySection, type SurveyNotes, type CatalogueItem, type LineDisplay, type ProductCategory, type ProposalSummary, type SummaryArray, type SummaryProduct, type VatRates } from "@goinstall/core";
 import { sql, type Tx } from "@goinstall/db";
 import type { ProposalView } from "@/components/proposal-document";
@@ -146,7 +147,7 @@ export async function findPublicProposal(tx: Tx, token: string): Promise<PublicP
 }
 
 /** Full proposal content for display (console preview, public page and PDF). */
-export async function proposalContent(tx: Tx, proposalId: string, companyId?: string) {
+export async function proposalContent(tx: Tx, proposalId: string, companyId?: string, opts: { companyTemplate?: boolean } = {}) {
   let pq = tx
     .selectFrom("proposals as pr")
     .innerJoin("projects as p", (j) => j.onRef("p.id", "=", "pr.project_id").onRef("p.company_id", "=", "pr.company_id"))
@@ -188,6 +189,9 @@ export async function proposalContent(tx: Tx, proposalId: string, companyId?: st
       "co.vat_number as company_vat_number",
       "co.competent_person_scheme_number",
       "pr.survey",
+      "pr.template",
+      "co.proposal_template",
+      "p.site_address_line1 as site_line1",
       "co.mcs_number",
       "co.brand_primary_colour",
       "co.document_prefix",
@@ -219,7 +223,16 @@ export async function proposalContent(tx: Tx, proposalId: string, companyId?: st
     if (companyId) ppq = ppq.where("pd.company_id", "=", companyId);
     products = (await ppq.execute()).filter((x) => x.photo_path || x.datasheet_path);
   }
-  return { proposal, lines, products };
+  // The template: the one it was sent with, else the company's current one; and its images.
+  const template = normaliseTemplate(opts.companyTemplate ? proposal.proposal_template : (proposal.template ?? proposal.proposal_template));
+  const ids = templateFileIds(template);
+  let templateFiles: { id: string; path: string; content_type: string }[] = [];
+  if (ids.length) {
+    let tq = tx.selectFrom("files").select(["id", "path", "content_type"]).where("id", "in", ids).where("deleted_at", "is", null);
+    if (companyId) tq = tq.where("company_id", "=", companyId);
+    templateFiles = await tq.execute();
+  }
+  return { proposal, lines, products, template, templateFiles };
 }
 
 export type ProposalContent = NonNullable<Awaited<ReturnType<typeof proposalContent>>>;
@@ -321,6 +334,30 @@ export async function proposalViewWithLayout(c: ProposalContent): Promise<Propos
     const url = urls.get(termsPath);
     if (url) view.termsFile = { url, name: c.proposal.terms_file_name ?? "Terms and conditions.pdf" };
   }
+  // The cover and pages from the template, with their images.
+  const tUrls = await signedUrls(c.templateFiles.map((f) => f.path), 3600);
+  const img = (id: string | null) => {
+    const f = id ? c.templateFiles.find((x) => x.id === id) : undefined;
+    return f ? (tUrls.get(f.path) ?? null) : null;
+  };
+  const t = c.template;
+  if (t.cover.enabled) {
+    view.cover = {
+      headline: coverHeadline(t, { firstName: firstNameOf(c.proposal.contact_name), name: c.proposal.contact_name, address: c.proposal.site_line1, fallback: view.title }),
+      subheading: t.cover.subheading,
+      imageUrl: img(t.cover.imageFileId),
+    };
+  }
+  view.pages = visiblePages(t, { about: Boolean(view.about && (view.about.text || view.about.facts.length)) }).map((pg) => ({
+    id: pg.id,
+    type: pg.type,
+    title: pageTitle(pg),
+    intro: pg.intro,
+    link: pg.link,
+    reviews: pg.reviews,
+    work: pg.work.map((w) => ({ title: w.title, description: w.description, photoUrl: img(w.photoFileId) })),
+    accreditations: pg.accreditations.map((a) => ({ name: a.name, number: a.number, logoUrl: img(a.logoFileId) })),
+  }));
   if (c.products.length) {
     const p = await signedUrls(c.products.flatMap((x) => [x.photo_path, x.datasheet_path]).filter((x): x is string => Boolean(x)), 3600);
     view.products = c.products.map((x) => ({
